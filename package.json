@@ -1,0 +1,37 @@
+{
+  "name": "freelog-auth-provider",
+  "version": "1.0.0",
+  "description": "飞致网络授权服务",
+  "private": true,
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "egg": "^1.7.0",
+    "egg-freelog-base": "^1.0.12",
+    "egg-scripts": "^1.0.0",
+    "mongoose": "^4.11.7",
+    "node-uuid": "^1.4.8"
+  },
+  "engines": {
+    "node": ">=6.0.0"
+  },
+  "scripts": {
+    "start": "egg-scripts start --daemon",
+    "stop": "egg-scripts stop",
+    "dev": "egg-bin dev",
+    "test": "npm run lint -- --fix && npm run test-local",
+    "test-local": "egg-bin test",
+    "cov": "egg-bin cov",
+    "lint": "eslint .",
+    "ci": "npm run lint && npm run cov",
+    "autod": "autod"
+  },
+  "ci": {
+    "version": "6, 8"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "author": "yuliang",
+  "license": "MIT"
+}
