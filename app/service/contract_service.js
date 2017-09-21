@@ -2,6 +2,7 @@
  * Created by yuliang on 2017/8/16.
  */
 
+'use strict'
 
 const mongoModels = require('../models/index')
 
@@ -18,9 +19,8 @@ module.exports = app => {
             if (!this.app.type.object(model)) {
                 return Promise.reject(new Error("model must be object"))
             }
-            model.id = mongoModels.ObjectId
 
-            return mongoModels.contract.create(model).then()
+            return mongoModels.contract.create(model)
         }
 
         /**
@@ -34,7 +34,7 @@ module.exports = app => {
                 return Promise.reject(new Error("condition must be object"))
             }
 
-            return mongoModels.contract.findOne(condition)
+            return mongoModels.contract.findOne(condition).exec()
         }
 
         /**
@@ -48,16 +48,23 @@ module.exports = app => {
                 return Promise.reject(new Error("condition must be object"))
             }
 
-            return mongoModels.contract.find(condition, null, {skip: (page - 1) * pageSize, limit: pageSize})
+            let options = {}
+            if (this.app.type.int32(page) && this.app.type.int32(pageSize)) {
+                options = {skip: (page - 1) * pageSize, limit: pageSize}
+            } else if (this.app.type.int32(pageSize)) {
+                options = {limit: pageSize}
+            }
+
+            return mongoModels.contract.find(condition, null, options).exec()
         }
 
         /**
          * 根据ID查询合约
          * @param contractId
-         * @returns {Query}
+         * @returns {Promise}
          */
         getContractById(contractId) {
-            return mongoModels.contract.findById(contractId)
+            return mongoModels.contract.findById(contractId).exec()
         }
     }
 }

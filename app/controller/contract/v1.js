@@ -2,7 +2,6 @@
  * Created by yuliang on 2017/8/16.
  */
 
-
 'use strict'
 
 module.exports = app => {
@@ -18,6 +17,10 @@ module.exports = app => {
             let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
             let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
 
+            ctx.app.rabbitClient.publish('auth.contract.b', 'accountRechargeEvent', {test: 'test-2'}, {
+                mandatory: true
+            }).catch(console.log)
+
             let condition = {
                 $or: [{partyOne: ctx.request.userId}, {partyTwo: ctx.request.userId}]
             }
@@ -26,18 +29,8 @@ module.exports = app => {
                 condition.contractType = contractType
             }
 
-            await ctx.validate().service.contractService.getContractList(condition).then().map(item => {
-                return {
-                    contractId: item._id,
-                    targetId: item.targetId,
-                    partyOne: item.partyOne,
-                    partyTwo: item.partyTwo,
-                    policySegment: item.policySegment,
-                    contractType: item.contractType,
-                    createDate: item.createDate,
-                    expireDate: item.expireDate
-                }
-            }).bind(ctx).then(ctx.success).catch(ctx.error)
+            await ctx.validate().service.contractService.getContractList(condition).bind(ctx).map(buildReturnContract)
+                .then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -46,20 +39,10 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async show(ctx) {
-            let contractId = ctx.checkParams("id").notEmpty().value
+            let contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
 
-            await ctx.validate().service.contractService.getContractById(contractId).then(data => {
-                ctx.success(data ? {
-                    contractId: data._id,
-                    targetId: data.targetId,
-                    partyOne: data.partyOne,
-                    partyTwo: data.partyTwo,
-                    policySegment: data.policySegment,
-                    contractType: data.contractType,
-                    createDate: data.createDate,
-                    expireDate: data.expireDate
-                } : null)
-            }).bind(ctx).catch(ctx.error)
+            await ctx.validate().service.contractService.getContractById(contractId).bind(ctx).then(buildReturnContract)
+                .then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -68,35 +51,130 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async create(ctx) {
-            let partyTwo = ctx.checkBody('partyTwo').isInt().value
             let contractType = ctx.checkBody('contractType').in([1, 2, 3]).value
-            let policySegment = ctx.checkBody('policySegment').exist().notEmpty().type("object").value
-            let expireDate = ctx.checkBody('expireDate').isDate().value
-            //合约签订的目标对象ID(resourceId/presentableId)
-            let targetId = ctx.checkBody('targetId').exist().notEmpty().value
+            let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
+            let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
+            let policyId = ctx.checkBody('policyId').exist().notEmpty().isMongoObjectId().value
 
-            //乙方提供的授权策略ID/presentableId,此处考虑暂时不要.由应用层面的服务端去做检查
-            //let policyId = ctx.checkBody('policyId').isUUID().value
-            // let resourcePolicy = await ctx.service.resourcePolicyService.getResourcePolicy({policyId, resourceId})
-            // if (!resourcePolicy) {
-            //     ctx.error("资源授权策略已发生变更")
-            // }
+            await ctx.validate().service.contractService.getContract({
+                targetId: policyId,
+                partyTwo: ctx.request.userId,
+                segmentId: segmentId,
+                expireDate: {$gt: new Date()},
+                status: 0
+            }).then(oldContract => {
+                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订"})
+            })
 
-            ctx.allowContentType({type: 'json'}).validate()
+            let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
+                ? `${ctx.app.config.gatewayUrl}/api/v1/presentables/${policyId}`
+                : `${ctx.app.config.gatewayUrl}/api/v1/resources/policies/${policyId}`)
 
-            let contractModel = {
-                targetId: targetId,
-                partyOne: ctx.request.userId,  //甲方为申请方
-                partyTwo: partyTwo,
-                contractType: contractType,
-                policySegment: policySegment,
-                policySegmentDescription: '333',
-                expireDate: expireDate,
+            if (!policyInfo) {
+                ctx.error({msg: 'policyId错误'})
+            }
+            if (policyInfo.serialNumber !== serialNumber) {
+                ctx.error({msg: 'serialNumber不匹配,policy已变更,变更时间' + new Date(policyInfo.updateDate).toLocaleString()})
+            }
+            policyInfo.expireDate = new Date(policyInfo.expireDate)
+            if (policyInfo.expireDate < new Date()) {
+                ctx.error({msg: '策略已过期'})
+            }
+            let policySegment = policyInfo.policy.find(t => t.segmentId === segmentId)
+            if (!policySegment) {
+                ctx.error({msg: 'segmentId错误,未找到策略段'})
             }
 
-            await ctx.service.contractService.createContract(contractModel).bind(ctx).then(data => {
-                ctx.success(data ? {contractId: data._id, targetId: data.target} : null)
-            }).catch(ctx.error)
+            let contractModel = {
+                segmentId, policySegment, contractType,
+                targetId: policyId,
+                resourceId: policyInfo.resourceId,
+                partyTwo: ctx.request.userId,
+                expireDate: policyInfo.expireDate,
+                languageType: policyInfo.languageType,
+                partyOne: contractType === ctx.app.contractType.PresentableToUer
+                    ? policyInfo.nodeId
+                    : policyInfo.userId
+            }
+
+            let policyTextBuffer = new Buffer(policyInfo.policyText, 'utf8')
+
+            /**
+             * 保持策略原文副本,以备以后核查
+             */
+            await ctx.app.upload.putBuffer(`contracts/${serialNumber}.txt`, policyTextBuffer).then(url => {
+                contractModel.policyCounterpart = url
+            })
+
+            await ctx.service.contractService.createContract(contractModel).bind(ctx).then(buildReturnContract)
+                .then(ctx.success).catch(ctx.error)
+        }
+
+        /**
+         * 用户签订的presentable合约
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async userContracts(ctx) {
+            let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
+            let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
+            let userId = ctx.checkParams("userId").exist().isInt().value
+            let presentableId = ctx.checkQuery("presentableId").isMongoObjectId().value
+
+            await ctx.validate().service.contractService.getContractList({
+                partyTwo: userId,
+                targetId: presentableId,
+                contractType: ctx.app.contractType.PresentableToUer,
+                expireDate: {$gt: new Date()},
+                status: 0
+            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }
+
+        /**
+         * 节点商与资源商签订的合约
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async nodeContracts(ctx) {
+            let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
+            let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
+            let nodeId = ctx.checkParams("nodeId").exist().isInt().value
+            let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
+
+            await ctx.validate().service.contractService.getContractList({
+                partyTwo: nodeId,
+                targetId: resourceId,
+                contractType: ctx.app.contractType.ResourceToNode,
+                expireDate: {$gt: new Date()},
+                status: 0
+            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }
+
+        /**
+         * 资源商与资源商签订的合约
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async authorContracts(ctx) {
+            let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
+            let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
+            let authorId = ctx.checkParams("authorId").exist().isInt().value
+            let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
+
+            await ctx.validate().service.contractService.getContractList({
+                partyTwo: authorId,
+                targetId: resourceId,
+                contractType: ctx.app.contractType.ResourceToResource
+            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
     }
+}
+
+const buildReturnContract = (data) => {
+    if (data) {
+        data = data.toObject()
+        Reflect.deleteProperty(data, 'languageType')
+        Reflect.deleteProperty(data, 'policyCounterpart')
+    }
+    return data
 }

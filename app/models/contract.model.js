@@ -7,20 +7,49 @@
 
 const mongoose = require('mongoose')
 
+const toObjectOptions = {
+    transform: function (doc, ret, options) {
+        return {
+            contractId: ret._id,
+            targetId: ret.targetId,
+            resourceId: ret.resourceId,
+            partyOne: ret.partyOne,
+            partyTwo: ret.partyTwo,
+            segmentId: ret.segmentId,
+            policySegment: ret.policySegment,
+            contractType: ret.contractType,
+            createDate: ret.createDate,
+            expireDate: ret.expireDate,
+            languageType: ret.languageType,
+            policyCounterpart: ret.policyCounterpart,
+            status: ret.status
+        }
+    }
+}
+
 const ContractSchema = new mongoose.Schema({
-    targetId: {type: String, required: true}, //目标ID,当为资源时是资源ID,为消费方案时 是presentableId
+    targetId: {type: String, required: true}, //目标ID,当为资源时是资源策略ID,为消费方案时是presentableId
     partyOne: {type: Number, required: true}, //甲方
     partyTwo: {type: Number, required: true}, //乙方
     contractType: {type: Number, required: true}, //合约类型
+    resourceId: {type: String, required: true},
+    segmentId: {type: String, required: true},
     policySegment: {  //预览策略
-        user: {type: Array, required: true},
-        license: {type: String, required: true},
-        payMent: {type: String, required: true}
+        users: {type: Array, required: true},
+        license: {type: Array, required: true},
+        payments: {type: Array, required: true}
     },
-    policySegmentDescription: {type: String, default: [], required: true}, //引用策略描述语言原文
+    policyCounterpart: {type: String, required: true},
+    languageType: {type: String, required: true},
     expireDate: {type: Date, required: true}, //合同过期时间
-    status: {type: String, required: true, default: 0},
-}, {versionKey: false, timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'}})
+    status: {type: Number, required: true, default: 0},
+}, {
+    versionKey: false,
+    timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},
+    toJSON: toObjectOptions,
+    toObject: toObjectOptions
+})
 
+ContractSchema.index({targetId: 1});
 
 module.exports = mongoose.model('contract', ContractSchema)

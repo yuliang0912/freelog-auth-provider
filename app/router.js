@@ -1,10 +1,19 @@
 'use strict';
 
 module.exports = app => {
-    /**
-     * 资源合约相关API
-     */
-    app.resources('/v1/contracts', '/v1/contracts', app.controller.contract.v1)
 
-    app.resources('/v1/contracts/target', '/v1/contracts/target', app.controller.contract.target.v1)
+    const controller = app.controller.contract
+    /**
+     * 资源合约相关REST-API
+     */
+    app.resources('/v1/contracts', '/v1/contracts', controller.v1)
+
+    //消费客户的presentable合约列表
+    app.get('/v1/contracts/user/:userId', controller.v1.userContracts)
+
+    //节点商的resource合约列表
+    app.get('/v1/contracts/node/:nodeId', controller.v1.nodeContracts)
+
+    //资源商引用其他资源的resource合约列表
+    app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
 };

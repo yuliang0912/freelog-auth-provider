@@ -1,21 +1,15 @@
 /**
- * Created by yuliang on 2017/8/17.
+ * Created by yuliang on 2017/9/5.
  */
 
-'use strict'
+const rabbitClient = require('./helper/rabbit_mq_client')
 
+module.exports = {
+    get rabbitClient() {
+        return rabbitClient.Instance
+    },
 
-const contractType = require('../enum/contract_type')
-
-module.exports = (() => {
-
-    const appExpand = {
-        /**
-         * 合约类型
-         */
-        contractType,
+    initRabbitClient(){
+        return new rabbitClient(this.config.rabbitMq)
     }
-
-    return appExpand
-
-})()
+}

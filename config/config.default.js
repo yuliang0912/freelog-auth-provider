@@ -76,7 +76,50 @@ module.exports = appInfo => {
         freelogBase: {
             retCodeEnum: {},
             errCodeEnum: {}
-        }
+        },
+
+        gatewayUrl: "http://192.168.0.3:1201",
+
+        rabbitMq: {
+            connOptions: {
+                host: '192.168.99.100',
+                port: 5672,
+                login: 'guest',
+                password: 'guest',
+                authMechanism: 'AMQPLAIN'
+            },
+            implOptions: {
+                reconnect: true,
+                reconnectBackoffTime: 10000  //10秒尝试连接一次
+            },
+            exchange: {
+                name: 'freelog-contract-exchange',
+            },
+            queues: [
+                {
+                    name: 'auth-contract-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: '#.contract.#'
+                        }, {
+                            exchange: 'freelog-pay-exchange',
+                            routingKey: 'pay.recharge'
+                        }
+                    ]
+                }, {
+                    name: 'auth-contract-event-receive-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-event-exchange',
+                            routingKey: 'event.contract.trigger'
+                        }
+                    ]
+                }
+            ]
+        },
     }
 
     return config;

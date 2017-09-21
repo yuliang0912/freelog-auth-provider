@@ -5,6 +5,9 @@
 'use strict'
 
 const mongoDb = require('./app/models/db_start')
+const contractService = require('./app/contract-service/index')
+const freelogFetch = require('./app/contract-service/fetch')
+const settlementTimerService = require('./app/settlement-timer-service/index')
 
 module.exports = async (app) => {
 
@@ -18,8 +21,41 @@ module.exports = async (app) => {
             err.message || err.toString())
     })
 
-    global.Promise = require('bluebird')
+    await mongoDb.connect(app).catch(console.log)
+    await contractService.runContractService(app)
+
+    settlementTimerService.startService()
+
+    global.eggApp = app
 
 
-    await mongoDb.connect(app)
+    let m1 = {
+        req: (req) => {
+            req.array = req.array || []
+            req.array.push('m1')
+        },
+        res: (res) => {
+            res.array = res.array || []
+            res.array.push('r1')
+        }
+    }
+
+    let m2 = {
+        req: (req) => {
+            req.array = req.array || []
+            req.array.push('m2')
+        },
+        res: (res) => {
+            res.array = res.array || []
+            res.array.push('r2')
+        }
+    }
+
+    let request = {'title': '此处是模拟的request对象'}
+
+
+    // new freelogFetch().use(m1).use(m2).fetch(request).then(response => {
+    //     console.log(response.data)
+    // })
+
 }
