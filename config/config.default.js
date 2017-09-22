@@ -101,9 +101,6 @@ module.exports = appInfo => {
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
                         {
-                            exchange: 'freelog-contract-exchange',
-                            routingKey: '#.contract.#'
-                        }, {
                             exchange: 'freelog-pay-exchange',
                             routingKey: 'pay.recharge'
                         }

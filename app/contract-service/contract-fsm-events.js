@@ -13,7 +13,7 @@ module.exports = {
      * 进入新的状态
      */
     onEnterState(lifecycle){
-        if (lifecycle.to === this.contract.status) {
+        if (lifecycle.to === this.contract.state) {
             return
         }
 

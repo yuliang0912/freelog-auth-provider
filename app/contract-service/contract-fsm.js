@@ -16,7 +16,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
         /**
          * 初始化合同当前状态
          */
-        init: contractInfo.status,
+        init: contractInfo.state,
 
         /**
          * 附加到状态机上的数据与函数
@@ -35,8 +35,8 @@ module.exports.getContractFsm = (contractInfo, events) => {
              * @param message
              */
             execEvent(event, message, ...args){
-                if (Reflect.has(this, event.eventNo) && typeof this[event.eventNo] === 'function') {
-                    this[event.eventNo](message, ...args)
+                if (Reflect.has(this, event.eventId) && typeof this[event.eventId] === 'function') {
+                    Reflect.get(this, event.eventId).call(this, message, ...args)
                     this.currEvent = event
                 } else {
                     console.log('无效的事件:' + eventName)
@@ -49,7 +49,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
          */
         transitions: contractInfo.policy.map(item => {
             return {
-                name: item.eventNo,
+                name: item.eventId,
                 from: item.currentState,
                 to: item.nextState
             }

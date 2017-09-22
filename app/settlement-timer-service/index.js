@@ -5,34 +5,33 @@
 'use strict'
 
 const schedule = require('node-schedule')
-const fsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-data-provider')
-
+const settlementTimerTaskQueue = new (require('./task-queue'))
 const handler = {
 
     /***
      * 待处理任务队列
      */
-    taskQueue: [],
+    //taskQueue: [],
 
     /**
      * 定时任务
      */
     scheduleJob(){
         //测试阶段每10S一个周期
-        schedule.scheduleJob({rule: '*/10 * * * * *'}, async () => {
+        schedule.scheduleJob({rule: '*/30 * * * * *'}, async () => {
             let getTaskQueue = (startSeqId, endSeqId) => {
                 if (startSeqId < 1 || endSeqId < 1 || startSeqId > endSeqId) {
                     return
                 }
                 this.getJobDataList(startSeqId, endSeqId, 100).then(dataList => {
                     if (dataList.length > 0) {
-                        this.taskQueue.push(dataList)
+                        settlementTimerTaskQueue.push(dataList)
                         getTaskQueue(dataList[dataList.length - 1].seqId + 1, endSeqId)
                     }
                 })
             }
-            cycleSettlementDataProvider.getMaxAndMinSeqId({}, '2017-9-21', '2017-9-22').then(startAndEndSeq => {
+            cycleSettlementDataProvider.getMaxAndMinSeqId({}, '2017-9-21', '2017-9-25').then(startAndEndSeq => {
                 getTaskQueue(startAndEndSeq.minSeqId, startAndEndSeq.maxSeqId)
             })
         })
@@ -48,15 +47,6 @@ const handler = {
             status: 0,
             cycleType: 1
         }, startSeqId, endSeqId, count)
-    },
-
-    /**
-     * 触发周期到达事件
-     */
-    triggerEvent(events){
-        events.forEach(item => {
-            fsmEventHandler.contractEventTriggerHandler(item.eventParams.eventNo)
-        })
     }
 }
 

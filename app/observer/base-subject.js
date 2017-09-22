@@ -4,7 +4,6 @@
 
 'use strict'
 
-const baseObserver = require('./base-observer')
 
 module.exports = class Subject {
 
@@ -16,12 +15,7 @@ module.exports = class Subject {
      * 注册观察者
      */
     registerObserver(observer) {
-        if (observer instanceof baseObserver) {
-            this.observers.push(observer);
-        }
-        else {
-            console.error('Error: observer must be extends base-observer')
-        }
+        this.observers.push(observer);
     }
 
     /**
@@ -35,7 +29,9 @@ module.exports = class Subject {
     /**
      * 通知观察者
      */
-    notifyObservers() {
-        throw new Error("This method must be overwritten!");
+    notifyObservers(...args) {
+        this.observers.forEach(observer => {
+            observer.update(...args)
+        })
     }
 }

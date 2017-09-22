@@ -19,8 +19,16 @@ module.exports = {
         contractExpireEvent: {
             routingKey: 'event.register.contractExpire',
             eventName: 'registerEvent'
-        }
+        },
+        /**
+         * 取消注册事件
+         */
+        unRegisterEvent: {
+            routingKey: 'event.register.unregister',
+            eventName: 'unRegisterEvent'
+        },
     },
+
 
     /**
      * 授权服务自身的事件

@@ -13,15 +13,6 @@ module.exports = class ContractStateSubject extends baseSubject {
     }
 
     /**
-     * 通知观察者
-     */
-    notifyObservers(fsmLifeCycle) {
-        this.observers.forEach(observer => {
-            observer.update(fsmLifeCycle)
-        })
-    }
-
-    /**
      * 合同状态机状态转移
      * @param model
      */

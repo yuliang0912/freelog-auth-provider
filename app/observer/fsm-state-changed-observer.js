@@ -8,15 +8,13 @@ const baseObserver = require('./base-observer')
 
 module.exports = class FsmStateChangedObserver extends baseObserver {
     constructor(subject) {
-        super()
-        this.subject = subject
+        super(subject)
         this.fsmLifeCycle = {}
-        this.subject.registerObserver(this)
     }
 
-    async update(lifeCycle) {
+    update(lifeCycle) {
         this.fsmLifeCycle = lifeCycle
         console.log(`合同状态变更,from:${lifeCycle.from}, to:${lifeCycle.to}`)
-        lifeCycle.fsm.contract.status = lifeCycle.to
+        lifeCycle.fsm.contract.state = lifeCycle.to
     }
 }

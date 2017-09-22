@@ -17,9 +17,7 @@ const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-d
 module.exports = class FsmEventRegisterObserver extends baseObserver {
 
     constructor(subject) {
-        super()
-        this.subject = subject
-        this.subject.registerObserver(this)
+        super(subject)
     }
 
     /**
@@ -36,8 +34,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             .filter(item => item.current_state === state && registerEventTypes.some(type => type === item.event.type))
             .forEach(item => {
                 let handlerName = `${item.event.type}Handler`
-                this[handlerName](item.event, contract)
-                console.log(item.event.eventName + '注册成功!')
+                Reflect.get(this, handlerName).call(this, item.event, contract)
             })
     }
 
@@ -46,13 +43,17 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      *周期结算时间点到达事件注册
      * @param contractInfo
      */
-    async settlementForwardHandler(event, contractInfo) {
-        await cycleSettlementDataProvider.createCycleSettlementEvent({
-            eventId: event.eventNo,
+    settlementForwardHandler(event, contractInfo) {
+        return cycleSettlementDataProvider.createCycleSettlementEvent({
+            eventId: event.eventId,
             contractId: contractInfo.contractId,
             eventParams: JSON.stringify({
-                eventNo: event.eventNo
+                eventId: event.eventId
             })
+        }).then((data) => {
+            if (data[0].affectedRows > 0) {
+                console.log('settlementForward注册成功!')
+            }
         }).catch(console.error)
     }
 
@@ -61,15 +62,15 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param event
      * @param contractInfo
      */
-    async contractExpireHandler(event, contractInfo) {
-        this.registerToEventCenter({
+    contractExpireHandler(event, contractInfo) {
+        return this.registerToEventCenter({
             event: mqEventType.register.contractExpireEvent,
             message: {
-                eventId: event.eventNo,
+                eventId: event.eventId,
                 eventType: 1, //contractExpire
                 eventParams: {
                     expireDate: event.params[0],
-                    eventNo: event.eventNo
+                    eventId: event.eventId
                 },
                 triggerLimit: 1,
                 contractId: contractInfo.contractId
@@ -83,9 +84,9 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param eventName
      * @param message
      */
-    async registerToEventCenter({event, message}) {
+    registerToEventCenter({event, message}) {
         message.eventParams.routingKey = 'event.contract.trigger'
-        await eggApp.rabbitClient.publish({
+        return eggApp.rabbitClient.publish({
             routingKey: event.routingKey,
             eventName: event.eventName,
             body: message

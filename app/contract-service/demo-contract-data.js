@@ -12,88 +12,88 @@ module.exports = {
     "contractType": 3,
     "createDate": "2017-08-30T09:15:56.969Z",
     "expireDate": "2018-12-31T16:00:00.000Z",
-    "status": "activatetwo",
+    "state": "activatetwo",
     "policy": [
         {
-            "eventNo": "3e5e1f66e72e434e935898153f21f7e4",
+            "eventId": "3e5e1f66e72e434e935898153f21f7e4",
             "eventName": "tbd",
             "currentState": "begining",
             "nextState": "6iaxcwmk"
         },
         {
-            "eventNo": "0e4233ed86be4cf0b4a1f3669bc1a53a",
+            "eventId": "0e4233ed86be4cf0b4a1f3669bc1a53a",
             "eventName": "signing_licenseA",
             "currentState": "6iaxcwmk",
             "nextState": "activatetwo"
         },
         {
-            "eventNo": "d714478c2d0d41fc80087a0b131ea11b",
+            "eventId": "d714478c2d0d41fc80087a0b131ea11b",
             "eventName": "signing_licenseA",
             "currentState": "begining",
             "nextState": "hw5xc2p8"
         },
         {
-            "eventNo": "549f84b313984213b741f5a86dbb6ae2",
+            "eventId": "549f84b313984213b741f5a86dbb6ae2",
             "eventName": "tbd",
             "currentState": "hw5xc2p8",
             "nextState": "activatetwo"
         },
         {
-            "eventNo": "dc789bba60c14f8781fc9c9d03833757",
+            "eventId": "dc789bba60c14f8781fc9c9d03833757",
             "eventName": "pricingAgreement",
             "currentState": "activatetwo",
             "nextState": "activate"
         },
         {
-            "eventNo": "ffdcf1f9f8eb42c4ab7cc47fecee41d6",
+            "eventId": "ffdcf1f9f8eb42c4ab7cc47fecee41d6",
             "eventName": "contractExpire_12_12_2012_03_30",
             "currentState": "begining",
             "nextState": "terminated_state"
         },
         {
-            "eventNo": "3ed595a9509f4599861c6bfde5c0d90c",
+            "eventId": "3ed595a9509f4599861c6bfde5c0d90c",
             "eventName": "contractExpire_12_12_2012_03_30",
             "currentState": "6iaxcwmk",
             "nextState": "terminated_state"
         },
         {
-            "eventNo": "8c1cfa6a00184aecbd7bc320750d60da",
+            "eventId": "8c1cfa6a00184aecbd7bc320750d60da",
             "eventName": "contractExpire_12_12_2012_03_30",
             "currentState": "hw5xc2p8",
             "nextState": "terminated_state"
         },
         {
-            "eventNo": "6339388f7a5e4dddaa1fac2f9c335ce8",
+            "eventId": "6339388f7a5e4dddaa1fac2f9c335ce8",
             "eventName": "contractExpire_12_12_2012_03_30",
             "currentState": "activatetwo",
             "nextState": "terminated_state"
         },
         {
-            "eventNo": "2870a6a52b4e4ae1a0b451370022e697",
+            "eventId": "2870a6a52b4e4ae1a0b451370022e697",
             "eventName": "contractExpire_12_12_2012_03_30",
             "currentState": "activate",
             "nextState": "terminated_state"
         },
         {
-            "eventNo": "529c5345bfec44bf9b7405e83c5ef2c0",
+            "eventId": "529c5345bfec44bf9b7405e83c5ef2c0",
             "eventName": "settlementForward_3_day",
             "currentState": "activate",
             "nextState": "settlement"
         },
         {
-            "eventNo": "6549dd7567b045589fab0ea300500c03",
+            "eventId": "6549dd7567b045589fab0ea300500c03",
             "eventName": "accountSettled",
             "currentState": "settlement",
             "nextState": "activate"
         },
         {
-            "eventNo": "6c65aac5b6f543efa0a432c5602c045f",
+            "eventId": "6c65aac5b6f543efa0a432c5602c045f",
             "eventName": "settlementForward_3_day",
             "currentState": "activatetwo",
             "nextState": "settlement"
         },
         {
-            "eventNo": "b4c64ebb1ea740eb8d52a42500dced1b",
+            "eventId": "b4c64ebb1ea740eb8d52a42500dced1b",
             "eventName": "accountSettled",
             "currentState": "settlement",
             "nextState": "activatetwo"
@@ -106,7 +106,7 @@ module.exports = {
                 "type": "guarantyEvent",
                 "params": "tbd",
                 "eventName": "tbd",
-                "eventNo": "3e5e1f66e72e434e935898153f21f7e4"
+                "eventId": "3e5e1f66e72e434e935898153f21f7e4"
             },
             "next_state": "6iaxcwmk"
         },
@@ -118,7 +118,7 @@ module.exports = {
                     "licenseA"
                 ],
                 "eventName": "signing_licenseA",
-                "eventNo": "0e4233ed86be4cf0b4a1f3669bc1a53a"
+                "eventId": "0e4233ed86be4cf0b4a1f3669bc1a53a"
             },
             "next_state": "activatetwo"
         },
@@ -130,7 +130,7 @@ module.exports = {
                     "licenseA"
                 ],
                 "eventName": "signing_licenseA",
-                "eventNo": "d714478c2d0d41fc80087a0b131ea11b"
+                "eventId": "d714478c2d0d41fc80087a0b131ea11b"
             },
             "next_state": "hw5xc2p8"
         },
@@ -140,7 +140,7 @@ module.exports = {
                 "type": "guarantyEvent",
                 "params": "tbd",
                 "eventName": "tbd",
-                "eventNo": "549f84b313984213b741f5a86dbb6ae2"
+                "eventId": "549f84b313984213b741f5a86dbb6ae2"
             },
             "next_state": "activatetwo"
         },
@@ -150,7 +150,7 @@ module.exports = {
                 "type": "pricingAgreement",
                 "params": "tbd",
                 "eventName": "pricingAgreement",
-                "eventNo": "dc789bba60c14f8781fc9c9d03833757"
+                "eventId": "dc789bba60c14f8781fc9c9d03833757"
             },
             "next_state": "activate"
         },
@@ -163,7 +163,7 @@ module.exports = {
                     "03:30"
                 ],
                 "eventName": "contractExpire_12_12_2012_03_30",
-                "eventNo": "ffdcf1f9f8eb42c4ab7cc47fecee41d6"
+                "eventId": "ffdcf1f9f8eb42c4ab7cc47fecee41d6"
             },
             "next_state": "terminated_state"
         },
@@ -176,7 +176,7 @@ module.exports = {
                     "03:30"
                 ],
                 "eventName": "contractExpire_12_12_2012_03_30",
-                "eventNo": "3ed595a9509f4599861c6bfde5c0d90c"
+                "eventId": "3ed595a9509f4599861c6bfde5c0d90c"
             },
             "next_state": "terminated_state"
         },
@@ -189,7 +189,7 @@ module.exports = {
                     "03:30"
                 ],
                 "eventName": "contractExpire_12_12_2012_03_30",
-                "eventNo": "8c1cfa6a00184aecbd7bc320750d60da"
+                "eventId": "8c1cfa6a00184aecbd7bc320750d60da"
             },
             "next_state": "terminated_state"
         },
@@ -202,7 +202,7 @@ module.exports = {
                     "03:30"
                 ],
                 "eventName": "contractExpire_12_12_2012_03_30",
-                "eventNo": "6339388f7a5e4dddaa1fac2f9c335ce8"
+                "eventId": "6339388f7a5e4dddaa1fac2f9c335ce8"
             },
             "next_state": "terminated_state"
         },
@@ -215,7 +215,7 @@ module.exports = {
                     "03:30"
                 ],
                 "eventName": "contractExpire_12_12_2012_03_30",
-                "eventNo": "2870a6a52b4e4ae1a0b451370022e697"
+                "eventId": "2870a6a52b4e4ae1a0b451370022e697"
             },
             "next_state": "terminated_state"
         },
@@ -228,7 +228,7 @@ module.exports = {
                     "day"
                 ],
                 "eventName": "settlementForward_3_day",
-                "eventNo": "529c5345bfec44bf9b7405e83c5ef2c0"
+                "eventId": "529c5345bfec44bf9b7405e83c5ef2c0"
             },
             "next_state": "settlement"
         },
@@ -238,7 +238,7 @@ module.exports = {
                 "type": "accountSettled",
                 "params": [],
                 "eventName": "accountSettled",
-                "eventNo": "6549dd7567b045589fab0ea300500c03"
+                "eventId": "6549dd7567b045589fab0ea300500c03"
             },
             "next_state": "activate"
         },
@@ -251,7 +251,7 @@ module.exports = {
                     "day"
                 ],
                 "eventName": "settlementForward_3_day",
-                "eventNo": "6c65aac5b6f543efa0a432c5602c045f"
+                "eventId": "6c65aac5b6f543efa0a432c5602c045f"
             },
             "next_state": "settlement"
         },
@@ -261,7 +261,7 @@ module.exports = {
                 "type": "accountSettled",
                 "params": [],
                 "eventName": "accountSettled",
-                "eventNo": "b4c64ebb1ea740eb8d52a42500dced1b"
+                "eventId": "b4c64ebb1ea740eb8d52a42500dced1b"
             },
             "next_state": "activatetwo"
         }

@@ -5,9 +5,9 @@
 'use strict'
 
 const FsmStateSubject = require('./fsm-state-subject')
-const FsmEventRegsiterObserver = require('./fsm-event-register-observer')
 const FsmStateChangedObserver = require('./fsm-state-changed-observer')
-
+const FsmEventRegsiterObserver = require('./fsm-event-register-observer')
+const FsmEventUnRegsiterObserver = require('./fsm-event-unregister-observer')
 module.exports = {
 
     /**
@@ -19,6 +19,7 @@ module.exports = {
 
         new FsmStateChangedObserver(subject)
         new FsmEventRegsiterObserver(subject)
+        new FsmEventUnRegsiterObserver(subject)
 
         return subject
     }

@@ -2,7 +2,7 @@
  * Created by yuliang on 2017/8/17.
  */
 
-//global.Promise = require('bluebird')
+global.Promise = require('bluebird')
 
 require('egg').startCluster({
     baseDir: __dirname,

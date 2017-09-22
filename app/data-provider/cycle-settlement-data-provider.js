@@ -50,5 +50,33 @@ module.exports = {
             .max('seqId as maxSeqId')
             .min('seqId as minSeqId')
             .first()
+    },
+
+    /**
+     * 更新数据
+     * @param condition
+     * @param model
+     * @returns {*}
+     */
+    updateCycleSettlementEvent(condition, model){
+        if (!eggApp.type.object(condition)) {
+            return Promise.reject(new Error("condition is not object"))
+        }
+        if (!eggApp.type.object(model)) {
+            return Promise.reject(new Error("model is not object"))
+        }
+        return eggApp.knex.contract('cyclesettlementmanger').update(model).where(condition).then()
+    },
+
+    /**
+     * 删除数据
+     * @param condition
+     * @returns {Promise|Promise.<*>}
+     */
+    deleteCycleSettlementEvent(condition){
+        if (!eggApp.type.object(condition)) {
+            return Promise.reject(new Error("condition is not object"))
+        }
+        return eggApp.knex.contract('cyclesettlementmanger').where(condition).delete().then()
     }
 }

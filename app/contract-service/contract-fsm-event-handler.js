@@ -18,13 +18,13 @@ module.exports = {
      * @param eventName
      * @param otherArgs
      */
-    contractEventTriggerHandler(eventName, ...otherArgs){
+    async contractEventTriggerHandler(eventId, ...otherArgs){
 
-        let event = contractInfo.policy.find(item => item.eventNo === eventName || item.eventName === eventName)
+        let event = contractInfo.policy.find(item => item.eventId === eventId || item.eventName === eventId)
 
         let contractFsm = contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
 
-        if (!contractFsm.can(event.eventNo)) {
+        if (!contractFsm.can(event.eventId)) {
             console.log(`合同不能执行${event.eventName}事件`)
             console.log(contractFsm.state, contractFsm.transitions())
             return
