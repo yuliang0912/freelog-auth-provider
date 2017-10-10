@@ -16,7 +16,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
         /**
          * 初始化合同当前状态
          */
-        init: contractInfo.state,
+        init: contractInfo.fsmState,
 
         /**
          * 附加到状态机上的数据与函数
@@ -36,8 +36,8 @@ module.exports.getContractFsm = (contractInfo, events) => {
              */
             execEvent(event, message, ...args){
                 if (Reflect.has(this, event.eventId) && typeof this[event.eventId] === 'function') {
-                    Reflect.get(this, event.eventId).call(this, message, ...args)
                     this.currEvent = event
+                    Reflect.get(this, event.eventId).call(this, message, ...args)
                 } else {
                     console.log('无效的事件:' + eventName)
                 }
@@ -47,9 +47,9 @@ module.exports.getContractFsm = (contractInfo, events) => {
         /**
          * 所有的事件定义与状态流转
          */
-        transitions: contractInfo.policy.map(item => {
+        transitions: contractInfo.policySegment.fsmDescription.map(item => {
             return {
-                name: item.eventId,
+                name: item.event.eventId,
                 from: item.currentState,
                 to: item.nextState
             }
@@ -61,6 +61,34 @@ module.exports.getContractFsm = (contractInfo, events) => {
         methods: events
     })
 }
+
+
+/**
+ * 状态机描述json检查
+ * @param fsmDescription
+ */
+module.exports.checkFsmDescription = (fsmDescription) => {
+
+    if (!Array.isArray(fsm.activatedStates) || fsmDescription.activatedStates.length < 1) {
+        throw new Error('合同必须最少包含一个激活状态')
+    }
+
+    try {
+        let contractFsm = new StateMachine({
+            transitions: fsmDescription.map(item => {
+                return {
+                    name: item.event.eventId,
+                    from: item.currentState,
+                    to: item.nextState
+                }
+            })
+        })
+    } catch (e) {
+        throw new Error('状态机创建失败,请检查授权语言,[detail]:' + e.toString())
+    }
+}
+
+
 
 
 

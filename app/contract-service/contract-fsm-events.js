@@ -5,7 +5,7 @@
 'use strict'
 
 const fsmStateSubject = require('../observer/index').initFsmStateSubject()
-
+const Promise = require('bluebird')
 module.exports = {
 
     /**
@@ -13,11 +13,13 @@ module.exports = {
      * 进入新的状态
      */
     onEnterState(lifecycle){
-        if (lifecycle.to === this.contract.state) {
-            return
+        /**
+         * 只有进入新的状态,才会触发注册事件
+         * 第一次实例化仍然需要注册initial状态上的事件
+         */
+        if (Reflect.has(this.contract, 'isFirst') || lifecycle.from !== 'none') {
+            fsmStateSubject.contractFsmStateChanged(lifecycle)
         }
-
-        fsmStateSubject.contractFsmStateChanged(lifecycle)
     },
     /**
      * 无效的Transition请求

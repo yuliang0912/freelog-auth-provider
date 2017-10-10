@@ -14,11 +14,12 @@ module.exports = {
      */
     register: {
         /**
-         * 合同过期注册事件
+         * 时间到达事件
          */
-        contractExpireEvent: {
-            routingKey: 'event.register.contractExpire',
-            eventName: 'registerEvent'
+        arrivalDateEvent: {
+            routingKey: 'event.register.arrivalDate',
+            eventName: 'registerEvent',
+            eventRegisterType: 1,
         },
         /**
          * 取消注册事件

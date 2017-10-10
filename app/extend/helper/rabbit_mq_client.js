@@ -85,9 +85,9 @@ module.exports = class rabbitMqClient extends Emitter {
             throw new Error("当前exchange上不存在指定的队列名")
         }
 
-        if (toString.call(callback) !== '[object Function]') {
-            throw new Error('callback 必须是function')
-        }
+        // if (toString.call(callback) !== '[object Function]') {
+        //     throw new Error('callback 必须是function')
+        // }
 
         /**
          * 如果已经绑定好队列,则直接订阅

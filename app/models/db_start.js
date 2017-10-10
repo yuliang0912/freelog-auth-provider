@@ -26,6 +26,11 @@ module.exports.connect = app => {
         console.log('Mongoose connection disconnected');
     })
 
+    //转换mongoseDB返回数据格式
+    app.toObject = (data) => {
+        return data ? data.toObject() : data
+    }
+
     return mongoose.connect(app.config.mongo.uri, {
         useMongoClient: true,
         poolSize: 5

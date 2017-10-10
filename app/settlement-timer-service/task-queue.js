@@ -4,15 +4,14 @@
 
 'use strict'
 
-const async = require('async')
+const queue = require('async/queue')
 const fsmEventHandler = require('../contract-service/contract-fsm-event-handler')
-const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-data-provider')
 
 module.exports = class SettlementTimerTaskQueue {
 
     constructor(concurrencyCount = 20) {
         this.concurrencyCount = concurrencyCount
-        this.queue = async.queue(this.taskHandler, concurrencyCount)
+        this.queue = queue(this.taskHandler, concurrencyCount)
     }
 
     /**
@@ -21,7 +20,7 @@ module.exports = class SettlementTimerTaskQueue {
      */
     push(contractEvents) {
         if (Array.isArray(contractEvents)) {
-            contractEvents.forEach(event => this.queue.push(event, this.taskCallback))
+            contractEvents.forEach(event => this.queue.push(event))
         } else if (contractEvents) {
             this.queue.push(event)
         }
@@ -45,7 +44,7 @@ module.exports = class SettlementTimerTaskQueue {
      * 获取队列状态
      * @returns {{started: (*|boolean), paused: (*|boolean), saturated: (*|Function)}}
      */
-    get queueStatus() {
+    get queueState() {
         return {
             started: this.queue.started,
             paused: this.queue.paused,
@@ -58,23 +57,8 @@ module.exports = class SettlementTimerTaskQueue {
      * @param task
      * @param callback
      */
-    taskHandler(contractEvent, taskCallback) {
-        (async () => {
-            try {
-                await  fsmEventHandler.contractEventTriggerHandler(contractEvent.eventId, contractEvent.eventParams)
-                taskCallback(null)
-            } catch (err) {
-                taskCallback(err)
-            }
-        })()
-    }
-
-    /**
-     *  任务回调函数
-     * @param err
-     */
-    taskCallback(err) {
-
+    async taskHandler(contractEvent) {
+        await fsmEventHandler.contractEventTriggerHandler(contractEvent.eventId, contractEvent.contractId, contractEvent.eventParams)
     }
 }
 

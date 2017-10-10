@@ -16,4 +16,6 @@ module.exports = app => {
 
     //资源商引用其他资源的resource合约列表
     app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
+
+    app.post('/v1/contracts/test', controller.v1.testContractFsm)
 };

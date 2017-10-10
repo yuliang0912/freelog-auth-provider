@@ -10,7 +10,7 @@ const mongoose = require('mongoose')
 const toObjectOptions = {
     transform: function (doc, ret, options) {
         return {
-            contractId: ret._id,
+            contractId: ret._id.toString(),
             targetId: ret.targetId,
             resourceId: ret.resourceId,
             partyOne: ret.partyOne,
@@ -22,7 +22,8 @@ const toObjectOptions = {
             expireDate: ret.expireDate,
             languageType: ret.languageType,
             policyCounterpart: ret.policyCounterpart,
-            status: ret.status
+            status: ret.status,
+            fsmState: ret.fsmState
         }
     }
 }
@@ -36,13 +37,16 @@ const ContractSchema = new mongoose.Schema({
     segmentId: {type: String, required: true},
     policySegment: {  //预览策略
         users: {type: Array, required: true},
-        license: {type: Array, required: true},
-        payments: {type: Array, required: true}
+        fsmDescription: {type: Array, required: true},
+        initialState: {type: String, required: true},
+        teminateState: {type: String, required: true},
+        activatedStates: {type: [String], required: true}
     },
     policyCounterpart: {type: String, required: true},
     languageType: {type: String, required: true},
     expireDate: {type: Date, required: true}, //合同过期时间
     status: {type: Number, required: true, default: 0},
+    fsmState: {type: String, required: true, default: 'none'},
 }, {
     versionKey: false,
     timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},

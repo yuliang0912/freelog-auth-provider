@@ -8,6 +8,7 @@ const FsmStateSubject = require('./fsm-state-subject')
 const FsmStateChangedObserver = require('./fsm-state-changed-observer')
 const FsmEventRegsiterObserver = require('./fsm-event-register-observer')
 const FsmEventUnRegsiterObserver = require('./fsm-event-unregister-observer')
+
 module.exports = {
 
     /**

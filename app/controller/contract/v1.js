@@ -4,6 +4,8 @@
 
 'use strict'
 
+const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
+
 module.exports = app => {
     return class ContractController extends app.Controller {
 
@@ -16,10 +18,6 @@ module.exports = app => {
             let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
             let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
             let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
-
-            ctx.app.rabbitClient.publish('auth.contract.b', 'accountRechargeEvent', {test: 'test-2'}, {
-                mandatory: true
-            }).catch(console.log)
 
             let condition = {
                 $or: [{partyOne: ctx.request.userId}, {partyTwo: ctx.request.userId}]
@@ -106,8 +104,9 @@ module.exports = app => {
                 contractModel.policyCounterpart = url
             })
 
-            await ctx.service.contractService.createContract(contractModel).bind(ctx).then(buildReturnContract)
-                .then(ctx.success).catch(ctx.error)
+            await ctx.service.contractService.createContract(contractModel).then(contractInfo => {
+                contractFsmEventHandler.initContractFsm(contractInfo.toObject())
+            }).bind(ctx).then(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -166,6 +165,22 @@ module.exports = app => {
                 targetId: resourceId,
                 contractType: ctx.app.contractType.ResourceToResource
             }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }
+
+        /**
+         * 测试状态机事件驱动
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async testContractFsm(ctx) {
+            let contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
+            let events = ctx.checkBody('events').notEmpty().value
+
+            ctx.allowContentType({type: 'json'}).validate()
+
+            await contractFsmEventHandler.contractTest(contractId, events).then(data => {
+                ctx.success(data)
+            })
         }
     }
 }

@@ -6,9 +6,7 @@
 
 const baseObserver = require('./base-observer')
 const mqEventType = require('../contract-service/mq-event-type')
-const registerEventTypes = ['settlementForward', 'contractExpire']
-
-const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-data-provider')
+const registerEventTypes = ['period', 'arrivalDate', 'compoundEvents']
 
 /**
  * 合同状态机事件注册观察者
@@ -30,21 +28,46 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
         let {contract, state} = lifeCycle.fsm
 
         //根据当前状态遍历出所以需要注册到事件中心的事件
-        contract.fsmDescription
-            .filter(item => item.current_state === state && registerEventTypes.some(type => type === item.event.type))
+        contract.policySegment.fsmDescription
+            .filter(item => item.currentState === state && registerEventTypes.some(type => type === item.event.type))
             .forEach(item => {
                 let handlerName = `${item.event.type}Handler`
                 Reflect.get(this, handlerName).call(this, item.event, contract)
+                console.log("事件注册:" + handlerName)
             })
     }
 
-
     /**
-     *周期结算时间点到达事件注册
+     * 组合事件注册
+     * @param event
      * @param contractInfo
      */
-    settlementForwardHandler(event, contractInfo) {
-        return cycleSettlementDataProvider.createCycleSettlementEvent({
+    compoundEventsHandler(event, contractInfo) {
+
+        let groupEventModel = {
+            contractId: contractInfo.contractId,
+            groupEventId: event.eventId,
+            taskEvents: event.params.map(subEvent => subEvent.eventId || subEvent.eventName)
+        }
+
+        return eggApp.provider.contractEventGroupProvider
+            .registerEventGroup(groupEventModel).then(() => {
+                event.params.forEach(subEvent => {
+                    if (registerEventTypes.some(type => type === subEvent.type)) {
+                        let handlerName = `${subEvent.type}Handler`
+                        Reflect.get(this, handlerName).call(this, subEvent, contractInfo)
+                        console.log("事件注册:" + handlerName)
+                    }
+                })
+            }).catch(console.error)
+    }
+
+    /**
+     *周期时间到达事件(目前支持cycle,day,week等自然单位,同意注册到池子里)
+     * @param contractInfo
+     */
+    periodHandler(event, contractInfo) {
+        return eggApp.provider.cycleSettlementProvider.createCycleSettlementEvent({
             eventId: event.eventId,
             contractId: contractInfo.contractId,
             eventParams: JSON.stringify({
@@ -52,29 +75,32 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             })
         }).then((data) => {
             if (data[0].affectedRows > 0) {
-                console.log('settlementForward注册成功!')
+                console.log('period注册成功!')
             }
         }).catch(console.error)
     }
 
     /**
-     * 注册合同过期事件到事件中心
+     * 指定时间达到事件
      * @param event
      * @param contractInfo
      */
-    contractExpireHandler(event, contractInfo) {
+    arrivalDateHandler(event, contractInfo) {
+
         return this.registerToEventCenter({
-            event: mqEventType.register.contractExpireEvent,
+            event: mqEventType.register.arrivalDateEvent,
             message: {
                 eventId: event.eventId,
-                eventType: 1, //contractExpire
+                eventType: mqEventType.register.arrivalDateEvent.eventRegisterType,
                 eventParams: {
-                    expireDate: event.params[0],
-                    eventId: event.eventId
+                    contractId: contractInfo.contractId || contractInfo._id
                 },
                 triggerLimit: 1,
-                contractId: contractInfo.contractId
+                triggerDate: tools.arrivalDateConvert(event.params),
+                contractId: contractInfo.contractId || contractInfo._id
             }
+        }).then(() => {
+            console.log('arrivalDate注册成功')
         })
     }
 
@@ -91,5 +117,22 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             eventName: event.eventName,
             body: message
         }).catch(console.log)
+    }
+}
+
+const tools = {
+    /**
+     * wiki:https://github.com/nergalyang/freelog-policy
+     * @param eventParams
+     * @returns {Date|*}
+     */
+    arrivalDateConvert(eventParams){
+        if (eventParams[0] === '1') {
+            return eggApp.moment(eventParams[1]).toDate().toLocaleString()
+        }
+        /**
+         * 目前是相对事件注册时间.后续有需求,也可以基于合同创建时间.特此备注
+         */
+        return eggApp.moment().add(eventParams[1], eventParams[2]).toDate().toLocaleString()
     }
 }

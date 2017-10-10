@@ -4,7 +4,7 @@
 
 const baseObserver = require('./base-observer')
 const mqEventType = require('../contract-service/mq-event-type')
-const unRegisterEventTypes = ['settlementForward']
+const unRegisterEventTypes = ['period', 'arrivalDate', 'compoundEvents']
 
 const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-data-provider')
 
@@ -26,23 +26,56 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
     update(lifeCycle) {
 
         let contract = lifeCycle.fsm.contract
-        let prevState = lifeCycle.from
 
         //根据前一个状态遍历出所有需要取消注册的事件
-        contract.fsmDescription
-            .filter(item => item.current_state === prevState && unRegisterEventTypes.some(type => type === item.event.type))
+        contract.policySegment.fsmDescription
+            .filter(item => item.currentState === lifeCycle.from && unRegisterEventTypes.some(type => type === item.event.type))
             .forEach(item => {
                 let handlerName = `${item.event.type}UnRegisterHandler`
-                Reflect.get(this, handlerName).call(this, item.event.eventId, contract.contractId)
+                Reflect.get(this, handlerName).call(this, item.event, contract.contractId)
+                console.log("事件取消注册:" + handlerName)
             })
     }
+
+    /**
+     * 组合事件注册
+     * @param event
+     * @param contractInfo
+     */
+    compoundEventsUnRegisterHandler(event, contractId) {
+
+        return eggApp.provider.contractEventGroupProvider
+            .deletEventGroup(contractId, event.eventId).then(() => {
+                event.params.forEach(subEvent => {
+                    if (unRegisterEventTypes.some(type => type === subEvent.type)) {
+                        let handlerName = `${subEvent.type}UnRegisterHandler`
+                        Reflect.get(this, handlerName).call(this, subEvent, contractId)
+                        console.log("事件取消注册:" + handlerName)
+                    }
+                })
+            }).catch(console.error)
+    }
+
 
     /**
      *周期结算时间点到达事件取消
      * @param contractInfo
      */
-    settlementForwardUnRegisterHandler(eventId, contractId) {
-        return cycleSettlementDataProvider.deleteCycleSettlementEvent({eventId, contractId}).catch(console.error)
+    periodUnRegisterHandler(event, contractId) {
+        return cycleSettlementDataProvider.deleteCycleSettlementEvent({
+            eventId: event.eventId,
+            contractId
+        }).catch(console.error)
+    }
+
+
+    /**
+     * 事件到达事件取消
+     * @param eventId
+     * @param contractId
+     */
+    arrivalDateUnRegisterHandler(event, contractId) {
+        this.unRegisterFromEventCenter(event, contractId)
     }
 
     /**
@@ -51,11 +84,11 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      * @param eventName
      * @param message
      */
-    unRegisterFromEventCenter(eventId, contractId) {
+    unRegisterFromEventCenter(event, contractId) {
         return eggApp.rabbitClient.publish({
             routingKey: mqEventType.register.unRegisterEvent.routingKey,
             eventName: mqEventType.register.unRegisterEvent.eventName,
-            body: {eventId, contractId}
+            body: {eventId: event.eventId, contractId}
         }).catch(console.log)
     }
 }
