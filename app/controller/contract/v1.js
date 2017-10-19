@@ -18,17 +18,32 @@ module.exports = app => {
             let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
             let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
             let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
+            let partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
+            let partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
 
-            let condition = {
-                $or: [{partyOne: ctx.request.userId}, {partyTwo: ctx.request.userId}]
-            }
+            ctx.validate()
 
+            let condition = {}
             if (contractType) {
                 condition.contractType = contractType
             }
+            if (partyOne) {
+                condition.partyOne = partyOne
+            }
+            if (partyTwo) {
+                condition.partyTwo = partyTwo
+            }
 
-            await ctx.validate().service.contractService.getContractList(condition).bind(ctx).map(buildReturnContract)
-                .then(ctx.success).catch(ctx.error)
+            let dataList = []
+            let totalItem = await ctx.service.contractService.getCount(condition)
+
+            let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
+            if (totalItem > (page - 1) * pageSize) {
+                dataList = await ctx.service.contractService.getContractList(condition, projection, page, pageSize).bind(ctx)
+                    .catch(ctx.error)
+            }
+
+            ctx.success({page, pageSize, totalItem, dataList})
         }
 
         /**
@@ -53,16 +68,26 @@ module.exports = app => {
             let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
             let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
             let policyId = ctx.checkBody('policyId').exist().notEmpty().isMongoObjectId().value
+            let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
 
-            await ctx.validate().service.contractService.getContract({
+            ctx.validate()
+
+            await ctx.service.contractService.getContract({
                 targetId: policyId,
-                partyTwo: ctx.request.userId,
+                partyTwo: partyTwo,
                 segmentId: segmentId,
-                expireDate: {$gt: new Date()},
                 status: 0
             }).then(oldContract => {
                 oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订"})
             })
+
+            if (contractType === ctx.app.contractType.ResourceToNode) {
+                let nodeInfo = await ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
+                if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
+                    ctx.errors.push({partyTwo: '未找到节点或者用户与节点信息不匹配'})
+                }
+                ctx.validate()
+            }
 
             let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
                 ? `${ctx.app.config.gatewayUrl}/api/v1/presentables/${policyId}`
@@ -74,10 +99,7 @@ module.exports = app => {
             if (policyInfo.serialNumber !== serialNumber) {
                 ctx.error({msg: 'serialNumber不匹配,policy已变更,变更时间' + new Date(policyInfo.updateDate).toLocaleString()})
             }
-            policyInfo.expireDate = new Date(policyInfo.expireDate)
-            if (policyInfo.expireDate < new Date()) {
-                ctx.error({msg: '策略已过期'})
-            }
+
             let policySegment = policyInfo.policy.find(t => t.segmentId === segmentId)
             if (!policySegment) {
                 ctx.error({msg: 'segmentId错误,未找到策略段'})
@@ -87,8 +109,7 @@ module.exports = app => {
                 segmentId, policySegment, contractType,
                 targetId: policyId,
                 resourceId: policyInfo.resourceId,
-                partyTwo: ctx.request.userId,
-                expireDate: policyInfo.expireDate,
+                partyTwo: partyTwo,
                 languageType: policyInfo.languageType,
                 partyOne: contractType === ctx.app.contractType.PresentableToUer
                     ? policyInfo.nodeId
@@ -106,6 +127,7 @@ module.exports = app => {
 
             await ctx.service.contractService.createContract(contractModel).then(contractInfo => {
                 contractFsmEventHandler.initContractFsm(contractInfo.toObject())
+                return contractInfo
             }).bind(ctx).then(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 

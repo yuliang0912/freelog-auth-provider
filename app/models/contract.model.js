@@ -19,7 +19,6 @@ const toObjectOptions = {
             policySegment: ret.policySegment,
             contractType: ret.contractType,
             createDate: ret.createDate,
-            expireDate: ret.expireDate,
             languageType: ret.languageType,
             policyCounterpart: ret.policyCounterpart,
             status: ret.status,
@@ -44,7 +43,6 @@ const ContractSchema = new mongoose.Schema({
     },
     policyCounterpart: {type: String, required: true},
     languageType: {type: String, required: true},
-    expireDate: {type: Date, required: true}, //合同过期时间
     status: {type: Number, required: true, default: 0},
     fsmState: {type: String, required: true, default: 'none'},
 }, {

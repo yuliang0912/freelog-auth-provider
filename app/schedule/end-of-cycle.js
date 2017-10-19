@@ -23,7 +23,7 @@ module.exports = app => {
     return {
         schedule: {
             type: 'worker',
-            cron: '*/30 * * * * * *', //测试阶段30秒一个周期
+            cron: '*/300 * * * * * *', //测试阶段30秒一个周期
         },
         async task () {
             let getTaskQueue = (startSeqId, endSeqId) => {
