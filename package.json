@@ -24,7 +24,7 @@
     "node": ">=6.0.0"
   },
   "scripts": {
-    "start": "egg-scripts start --daemon",
+    "start": "node index.js",
     "stop": "egg-scripts stop",
     "dev": "egg-bin dev",
     "test": "npm run lint -- --fix && npm run test-local",
