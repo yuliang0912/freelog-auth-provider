@@ -20,6 +20,11 @@ module.exports = app => {
             let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
             let partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
             let partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
+            let resourceIds = ctx.checkQuery('resourceIds').value
+
+            if (resourceIds !== undefined && !/^[0-9a-zA-Z]{40}(,[0-9a-zA-Z]{40})*$/.test(resourceIds)) {
+                ctx.errors.push({resourceIds: 'resourceIds格式错误'})
+            }
 
             ctx.validate()
 
@@ -32,6 +37,12 @@ module.exports = app => {
             }
             if (partyTwo) {
                 condition.partyTwo = partyTwo
+            }
+            if (resourceIds) {
+                condition.resourceId = {$in: resourceIds.split(',')}
+            }
+            if (!Object.keys(condition).length) {
+                ctx.error({msg: '最少需要一个查询条件'})
             }
 
             let dataList = []
@@ -67,18 +78,19 @@ module.exports = app => {
             let contractType = ctx.checkBody('contractType').in([1, 2, 3]).value
             let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
             let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
-            let policyId = ctx.checkBody('policyId').exist().notEmpty().isMongoObjectId().value
+            // 此处为资源ID或者presentableId
+            let targetId = ctx.checkBody('targetId').exist().notEmpty().value
             let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
 
             ctx.validate()
 
             await ctx.service.contractService.getContract({
-                targetId: policyId,
+                targetId: targetId,
                 partyTwo: partyTwo,
                 segmentId: segmentId,
                 status: 0
             }).then(oldContract => {
-                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订"})
+                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105})
             })
 
             if (contractType === ctx.app.contractType.ResourceToNode) {
@@ -90,11 +102,11 @@ module.exports = app => {
             }
 
             let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
-                ? `${ctx.app.config.gatewayUrl}/api/v1/presentables/${policyId}`
-                : `${ctx.app.config.gatewayUrl}/api/v1/resources/policies/${policyId}`)
+                ? `${ctx.app.config.gatewayUrl}/api/v1/presentables/${targetId}`
+                : `${ctx.app.config.gatewayUrl}/api/v1/resources/policies/${targetId}`)
 
             if (!policyInfo) {
-                ctx.error({msg: 'policyId错误'})
+                ctx.error({msg: 'targetId错误'})
             }
             if (policyInfo.serialNumber !== serialNumber) {
                 ctx.error({msg: 'serialNumber不匹配,policy已变更,变更时间' + new Date(policyInfo.updateDate).toLocaleString()})
@@ -107,7 +119,7 @@ module.exports = app => {
 
             let contractModel = {
                 segmentId, policySegment, contractType,
-                targetId: policyId,
+                targetId: targetId,
                 resourceId: policyInfo.resourceId,
                 partyTwo: partyTwo,
                 languageType: policyInfo.languageType,
@@ -203,6 +215,36 @@ module.exports = app => {
             await contractFsmEventHandler.contractTest(contractId, events).then(data => {
                 ctx.success(data)
             })
+        }
+
+        /**
+         * 合同记录
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async contractRecords(ctx) {
+
+            let resourceIds = ctx.checkQuery('resourceIds').value
+
+            if (resourceIds !== undefined && !/^[0-9a-zA-Z]{40}(,[0-9a-zA-Z]{40})*$/.test(resourceIds)) {
+                ctx.errors.push({resourceIds: 'resourceIds格式错误'})
+            }
+            ctx.validate()
+
+            let condition = {}
+            if (resourceIds) {
+                condition.resourceId = {
+                    $in: resourceIds.split(',')
+                }
+            }
+            if (!Object.keys(condition).length) {
+                ctx.error({msg: '最少需要一个可选查询条件'})
+            }
+
+            let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
+
+            await ctx.service.contractService.getContracts(condition, projection)
+                .bind(ctx).then(ctx.success)
         }
     }
 }

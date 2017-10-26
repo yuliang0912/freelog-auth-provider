@@ -38,6 +38,21 @@ module.exports = app => {
         }
 
         /**
+         * 获取合同
+         * @param condition
+         * @param projection
+         * @returns {*}
+         */
+        getContracts(condition, projection) {
+
+            if (!this.app.type.object(condition)) {
+                return Promise.reject(new Error("condition must be object"))
+            }
+
+            return mongoModels.contract.find(condition, projection).exec()
+        }
+
+        /**
          * 查询合约
          * @param condition
          * @returns {*}

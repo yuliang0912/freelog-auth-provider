@@ -18,4 +18,9 @@ module.exports = app => {
     app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
 
     app.post('/v1/contracts/test', controller.v1.testContractFsm)
+
+    /**
+     * 获取合同记录
+     */
+    app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
 };

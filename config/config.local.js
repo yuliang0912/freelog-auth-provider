@@ -6,7 +6,7 @@
 
 module.exports = appInfo => {
     return {
-
+        middleware: ['errorHandler'],
     }
 }
 
