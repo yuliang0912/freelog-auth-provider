@@ -226,7 +226,7 @@ module.exports = app => {
 
             let resourceIds = ctx.checkQuery('resourceIds').value
 
-            if (resourceIds !== undefined && !/^[0-9a-zA-Z]{40}(,[0-9a-zA-Z]{40})*$/.test(resourceIds)) {
+            if (resourceIds && !ctx.helper.commonRegex.splitResourceId.test(resourceIds)) {
                 ctx.errors.push({resourceIds: 'resourceIds格式错误'})
             }
             ctx.validate()
