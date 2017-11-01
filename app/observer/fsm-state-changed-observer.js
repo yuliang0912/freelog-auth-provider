@@ -22,9 +22,9 @@ module.exports = class FsmStateChangedObserver extends baseObserver {
 
         let contractId = lifeCycle.fsm.contract.contractId
 
-        let task1 = eggApp.provider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, 0)
+        let task1 = eggApp.dataProvider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, 0)
 
-        let task2 = eggApp.provider.contractChangeHisoryProvider.addHistory(contractId, {
+        let task2 = eggApp.dataProvider.contractChangedHistoryProvider.addHistory(contractId, {
             fromState: lifeCycle.from,
             toState: lifeCycle.to,
             eventId: lifeCycle.fsm.currEvent.eventId || 'init',

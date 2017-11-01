@@ -6,8 +6,6 @@ const baseObserver = require('./base-observer')
 const mqEventType = require('../contract-service/mq-event-type')
 const unRegisterEventTypes = ['period', 'arrivalDate', 'compoundEvents']
 
-const cycleSettlementDataProvider = require('../data-provider/cycle-settlement-data-provider')
-
 /**
  * 合同状态机事件取消注册观察者
  * @type {FsmEventRegisterObserver}
@@ -44,7 +42,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      */
     compoundEventsUnRegisterHandler(event, contractId) {
 
-        return eggApp.provider.contractEventGroupProvider
+        return eggApp.dataProvider.contractEventGroupProvider
             .deletEventGroup(contractId, event.eventId).then(() => {
                 event.params.forEach(subEvent => {
                     if (unRegisterEventTypes.some(type => type === subEvent.type)) {
@@ -62,7 +60,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      * @param contractInfo
      */
     periodUnRegisterHandler(event, contractId) {
-        return cycleSettlementDataProvider.deleteCycleSettlementEvent({
+        return eggApp.dataProvider.cycleSettlementProvider.deleteCycleSettlementEvent({
             eventId: event.eventId,
             contractId
         }).catch(console.error)

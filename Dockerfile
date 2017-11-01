@@ -1,6 +1,6 @@
 FROM daocloud.io/node:8.1.2
 
-MAINTAINER yuliang <yuliang@ciwong.com>
+MAINTAINER yuliang <yu.liang@freelog.com>
 
 RUN mkdir -p /data/freelog-auth-provider
 
@@ -13,7 +13,7 @@ RUN npm install
 #ENV
 #VOLUME ['/opt/logs','/opt/logs/db','/opt/logs/koa','/opt/logs/track']
 
-ENV NODE_ENV production
+ENV EGG_SERVER_ENV prod
 ENV PORT 7008
 
 EXPOSE 7008

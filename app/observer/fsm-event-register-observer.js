@@ -50,7 +50,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             taskEvents: event.params.map(subEvent => subEvent.eventId || subEvent.eventName)
         }
 
-        return eggApp.provider.contractEventGroupProvider
+        return eggApp.dataProvider.contractEventGroupProvider
             .registerEventGroup(groupEventModel).then(() => {
                 event.params.forEach(subEvent => {
                     if (registerEventTypes.some(type => type === subEvent.type)) {
@@ -67,7 +67,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param contractInfo
      */
     periodHandler(event, contractInfo) {
-        return eggApp.provider.cycleSettlementProvider.createCycleSettlementEvent({
+        return eggApp.dataProvider.cycleSettlementProvider.createCycleSettlementEvent({
             eventId: event.eventId,
             contractId: contractInfo.contractId,
             eventParams: JSON.stringify({

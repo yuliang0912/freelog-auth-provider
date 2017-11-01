@@ -27,7 +27,7 @@ module.exports = {
             client.subscribe('auth-contract-event-receive-queue', async (message, headers, deliveryInfo, messageObject) => {
                 //直接驱动合同状态机改变的事件或者无法判断是否子事件的事件
                 if (messageObject.routingKey === 'event.contract.trigger') {
-                    await fsmEventHandler.contractEventTriggerHandler(headers.eventName, message.contractId, message)
+                    await fsmEventHandler.contractEventTriggerHandler(headers.eventName, message.contractId, message).catch(console.error)
                 }
                 messageObject.acknowledge(false)
             })

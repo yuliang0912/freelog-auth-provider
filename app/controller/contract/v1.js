@@ -7,6 +7,9 @@
 const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
 
 module.exports = app => {
+
+    const dataProvider = app.dataProvider
+
     return class ContractController extends app.Controller {
 
         /**
@@ -46,11 +49,11 @@ module.exports = app => {
             }
 
             let dataList = []
-            let totalItem = await ctx.service.contractService.getCount(condition)
+            let totalItem = await dataProvider.contractProvider.getCount(condition)
 
             let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
             if (totalItem > (page - 1) * pageSize) {
-                dataList = await ctx.service.contractService.getContractList(condition, projection, page, pageSize).bind(ctx)
+                dataList = await dataProvider.contractProvider.getContractList(condition, projection, page, pageSize).bind(ctx)
                     .catch(ctx.error)
             }
 
@@ -64,8 +67,9 @@ module.exports = app => {
          */
         async show(ctx) {
             let contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
+            ctx.validate()
 
-            await ctx.validate().service.contractService.getContractById(contractId).bind(ctx).then(buildReturnContract)
+            await dataProvider.contractProvider.getContractById(contractId).bind(ctx).then(buildReturnContract)
                 .then(ctx.success).catch(ctx.error)
         }
 
@@ -84,7 +88,7 @@ module.exports = app => {
 
             ctx.validate()
 
-            await ctx.service.contractService.getContract({
+            await dataProvider.contractProvider.getContract({
                 targetId: targetId,
                 partyTwo: partyTwo,
                 segmentId: segmentId,
@@ -137,7 +141,7 @@ module.exports = app => {
                 contractModel.policyCounterpart = url
             })
 
-            await ctx.service.contractService.createContract(contractModel).then(contractInfo => {
+            await dataProvider.contractProvider.createContract(contractModel).then(contractInfo => {
                 contractFsmEventHandler.initContractFsm(contractInfo.toObject())
                 return contractInfo
             }).bind(ctx).then(buildReturnContract).then(ctx.success).catch(ctx.error)
@@ -154,13 +158,15 @@ module.exports = app => {
             let userId = ctx.checkParams("userId").exist().isInt().value
             let presentableId = ctx.checkQuery("presentableId").isMongoObjectId().value
 
-            await ctx.validate().service.contractService.getContractList({
+            ctx.validate()
+
+            await dataProvider.contractProvider.getContractList({
                 partyTwo: userId,
                 targetId: presentableId,
                 contractType: ctx.app.contractType.PresentableToUer,
                 expireDate: {$gt: new Date()},
                 status: 0
-            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+            }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -174,13 +180,15 @@ module.exports = app => {
             let nodeId = ctx.checkParams("nodeId").exist().isInt().value
             let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
 
-            await ctx.validate().service.contractService.getContractList({
+            ctx.validate()
+
+            await dataProvider.contractProvider.getContractList({
                 partyTwo: nodeId,
                 targetId: resourceId,
                 contractType: ctx.app.contractType.ResourceToNode,
                 expireDate: {$gt: new Date()},
                 status: 0
-            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+            }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -194,11 +202,13 @@ module.exports = app => {
             let authorId = ctx.checkParams("authorId").exist().isInt().value
             let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
 
-            await ctx.validate().service.contractService.getContractList({
+            ctx.validate()
+
+            await dataProvider.contractProvider.getContractList({
                 partyTwo: authorId,
                 targetId: resourceId,
                 contractType: ctx.app.contractType.ResourceToResource
-            }, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+            }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -207,13 +217,16 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async testContractFsm(ctx) {
+
             let contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
-            let events = ctx.checkBody('events').notEmpty().value
+            let eventId = ctx.checkBody('eventId').exist().notEmpty().value
 
             ctx.allowContentType({type: 'json'}).validate()
 
-            await contractFsmEventHandler.contractTest(contractId, events).then(data => {
+            await contractFsmEventHandler.contractEventTriggerHandler(eventId, contractId).then(data => {
                 ctx.success(data)
+            }).catch(error => {
+                ctx.error(error)
             })
         }
 
@@ -243,7 +256,7 @@ module.exports = app => {
 
             let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
 
-            await ctx.service.contractService.getContracts(condition, projection)
+            await dataProvider.contractProvider.getContracts(condition, projection)
                 .bind(ctx).then(ctx.success)
         }
     }

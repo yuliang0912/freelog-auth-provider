@@ -4,6 +4,11 @@
 
 'use strict'
 
+const moment = require('moment')
+const resourceAuth = require('../../authorization-service/resource-auth')
+const presentableAuth = require('../../authorization-service/presentable-auth')
+
+
 module.exports = app => {
     return class HomeController extends app.Controller {
 
@@ -12,27 +17,30 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async presentableAuthorization() {
-            let contractId = ctx.checkQuery('contractId').exist().isMongoObjectId().value
-            let presentableId = ctx.checkQuery('presentableId').exist().isMongoObjectId().value
-            ctx.validate()
 
-            let userContract = ctx.service.contractService.getContract({
-                _id: contractId,
-                targetId: presentableId,
-                partyTwo: ctx.request.userId,
-                contractType: ctx.app.contractType.PresentableToUer,
+            let presentable = ctx.request.body
+
+            let presentableAuthResult = await presentableAuth.authorization(presentable, ctx.request.userId)
+            let contractInfo = await ctx.service.contractService.getContract({_id: presentable.contractId})
+            let resourceAuthResult = await resourceAuth.authorization(contractInfo)
+
+            if ((presentableAuthResult.authCode === 1 || presentableAuthResult.authCode === 2) &&
+                (resourceAuthResult.authCode === 1 || resourceAuthResult.authCode === 2)) {
+
+                ctx.success({authCode: presentableAuthResult.authCode})
+
+                ctx.cookies.set('authToken', '', {
+                    httpOnly: true,
+                    expires: moment().add(7, 'days').toDate()
+                })
+                return
+            }
+
+            ctx.success({
+                authCode: 3,
+                presentableAuthResult,
+                resourceAuthResult
             })
-
-            if (!userContract) {
-                ctx.error({msg: '未找到有效的合约'})
-            }
-
-            if (userContract.status !== 0 || userContract.expireDate < new Date()) {
-                ctx.error({msg: '合约已失效'})
-            }
-
-            //TODO:exec contract
-            // userContract.policySegment
         }
     }
 }

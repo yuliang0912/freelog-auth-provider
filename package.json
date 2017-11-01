@@ -9,13 +9,13 @@
     "async": "^2.5.0",
     "bluebird": "^3.5.1",
     "egg": "^1.10.0",
-    "egg-freelog-base": "^1.0.37",
+    "egg-freelog-base": "^1.1.4",
     "egg-scripts": "^1.2.0",
     "javascript-state-machine": "^3.0.1",
     "knex": "^0.13.0",
     "lodash": "^4.17.4",
     "moment": "^2.19.1",
-    "mongoose": "^4.12.4",
+    "mongoose": "^4.12.5",
     "mysql2": "^1.4.2",
     "node-schedule": "^1.2.5",
     "node-uuid": "^1.4.8"
@@ -24,7 +24,7 @@
     "node": ">=6.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "set EGG_SERVER_ENV=prod && node index.js",
     "stop": "egg-scripts stop",
     "dev": "egg-bin dev",
     "test": "npm run lint -- --fix && npm run test-local",

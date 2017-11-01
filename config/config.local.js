@@ -6,7 +6,17 @@
 
 module.exports = appInfo => {
     return {
-        middleware: ['errorHandler'],
+
+        middleware: ['errorHandler', 'localUserIdentity'],
+
+        /**
+         * 本地开发环境身份信息
+         */
+        localIdentity: {
+            userId: 10022,
+            userName: "余亮",
+            tokenType: "local"
+        }
     }
 }
 
