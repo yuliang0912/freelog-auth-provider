@@ -78,7 +78,7 @@ module.exports = appInfo => {
             errCodeEnum: {}
         },
 
-        gatewayUrl: "http://192.168.0.3:1201",
+        gatewayUrl: "http://api.freelog.com",
 
         rabbitMq: {
             connOptions: {

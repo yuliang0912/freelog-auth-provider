@@ -13,6 +13,4 @@ module.exports = async (app) => {
     await contractService.runContractService(app)
 
     global.eggApp = app
-
-    console.log(app.config.env)
 }

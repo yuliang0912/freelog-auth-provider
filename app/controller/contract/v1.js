@@ -23,12 +23,7 @@ module.exports = app => {
             let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
             let partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
             let partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
-            let resourceIds = ctx.checkQuery('resourceIds').value
-
-            if (resourceIds !== undefined && !/^[0-9a-zA-Z]{40}(,[0-9a-zA-Z]{40})*$/.test(resourceIds)) {
-                ctx.errors.push({resourceIds: 'resourceIds格式错误'})
-            }
-
+            let resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
             ctx.validate()
 
             let condition = {}
@@ -91,8 +86,7 @@ module.exports = app => {
             await dataProvider.contractProvider.getContract({
                 targetId: targetId,
                 partyTwo: partyTwo,
-                segmentId: segmentId,
-                status: 0
+                segmentId: segmentId
             }).then(oldContract => {
                 oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105})
             })
@@ -237,18 +231,24 @@ module.exports = app => {
          */
         async contractRecords(ctx) {
 
-            let resourceIds = ctx.checkQuery('resourceIds').value
+            let resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
+            let contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
+            let partyTwo = ctx.checkQuery('partyTwo').optional().toInt().gt(0).value
 
-            if (resourceIds && !ctx.helper.commonRegex.splitResourceId.test(resourceIds)) {
-                ctx.errors.push({resourceIds: 'resourceIds格式错误'})
-            }
             ctx.validate()
 
             let condition = {}
             if (resourceIds) {
-                condition.resourceId = {
-                    $in: resourceIds.split(',')
+                if (!partyTwo) {
+                    ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
                 }
+                condition.resourceId = {$in: resourceIds}
+            }
+            if (contractIds) {
+                condition._id = {$in: contractIds}
+            }
+            if (partyTwo) {
+                condition.partyTwo = partyTwo
             }
             if (!Object.keys(condition).length) {
                 ctx.error({msg: '最少需要一个可选查询条件'})
@@ -258,6 +258,127 @@ module.exports = app => {
 
             await dataProvider.contractProvider.getContracts(condition, projection)
                 .bind(ctx).then(ctx.success)
+        }
+
+        /**
+         * 节点创建pb类型资源的合同
+         * @returns {Promise.<void>}
+         */
+        async createPageBuildContracts(ctx) {
+
+            let nodeId = ctx.checkBody('nodeId').isInt().gt(0).value
+            let pbContracts = ctx.checkBody('contracts').exist().isArray().len(2, 999).value
+
+            ctx.allowContentType({type: 'json'}).validate().validatePbContractList(pbContracts)
+
+            let resourceIds = [...new Set(pbContracts.map(item => item.resourceId))]
+
+            if (resourceIds.length !== pbContracts.length) {
+                ctx.error({msg: 'post-body数据中不允许有重复的resourceId'})
+            }
+
+            let resourcesTask = ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/resources/list?resourceIds=${resourceIds.toString()}`)
+            let policiesTask = ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/resources/policies?resourceIds=${resourceIds.toString()}`)
+
+            await Promise.all([resourcesTask, policiesTask]).then(([resourceInfos, policyInfos]) => {
+                let errors = []
+                pbContracts.forEach(item => {
+                    item.resourceInfo = resourceInfos.find(t => t.resourceId === item.resourceId)
+                    item.policyInfo = policyInfos.find(t => t.resourceId === item.resourceId)
+                    if (!item.resourceInfo) {
+                        errors.push(`资源(${errorResourceIds.toString()})没有源数据信息`)
+                    }
+                    if (!item.policyInfo) {
+                        errors.push(`资源(${item.resourceId})没有授权策略信息`)
+                        return
+                    }
+
+                    item.policySegment = item.policyInfo.policy.find(t => t.segmentId === item.segmentId)
+                    if (item.policyInfo.serialNumber !== item.serialNumber) {
+                        errors.push(`serialNumber(${item.serialNumber})不匹配,policy已变更`)
+                    }
+                    if (!item.policySegment) {
+                        errors.push(`segmentId(${item.segmentId})错误`)
+                    }
+                })
+
+                resourceInfos.forEach(item => {
+                    if (item.resourceType !== ctx.app.resourceType.PAGE_BUILD && item.resourceType !== ctx.app.resourceType.WIDGET) {
+                        errors.push(`resourceId(${item.resourceId})资源类型错误`)
+                    }
+                })
+
+                if (errors.length) {
+                    return Promise.reject(Object.assign(new Error('数据校验失败'), {data: errors}))
+                }
+            }).catch(err => ctx.error(err))
+
+            let pageBuilds = pbContracts.filter(item => item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD)
+
+            if (pageBuilds.length != 1) {
+                ctx.error({msg: 'page_build类型的资源有且只能有一个', data: pageBuilds})
+            }
+
+            let oldContracts = await dataProvider.contractProvider.getContracts({
+                resourceId: {$in: resourceIds},
+                segmentId: {$in: pbContracts.map(t => t.segmentId)},
+                partyTwo: nodeId,
+                contractType: ctx.app.contractType.ResourceToNode
+            }, '_id resourceId status').map(item => {
+                return {
+                    contractId: item._id.toString(),
+                    resourceId: item.resourceId,
+                    status: item.status
+                }
+            })
+
+            if (oldContracts.some(t => t.resourceId === pageBuilds[0].resourceId)) {
+                ctx.error({
+                    msg: `pageBuild资源(${pageBuilds[0].resourceId})不能创建多个合约`,
+                    data: oldContracts.find(t => t.resourceId === pageBuilds[0].resourceId)
+                })
+            }
+
+            let awaitCreateContracts = pbContracts.filter(t => !oldContracts.some(x => x.resourceId === t.resourceId)).map(item => {
+                let model = {
+                    targetId: item.resourceId,
+                    resourceId: item.resourceId,
+                    segmentId: item.segmentId,
+                    partyOne: item.policyInfo.userId,
+                    partyTwo: nodeId,
+                    contractType: ctx.app.contractType.ResourceToNode,
+                    languageType: item.policyInfo.languageType,
+                    policyInfo: item.policyInfo,
+                    policySegment: item.policySegment
+                }
+                if (item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD) {
+                    model.subsidiaryInfo = {
+                        relevanceContractIds: oldContracts.map(t => t.contractId)
+                    }
+                }
+                return model
+            })
+
+            let uploadTasks = awaitCreateContracts.map(item => {
+                let policyTextBuffer = new Buffer(item.policyInfo.policyText, 'utf8')
+                return ctx.app.upload.putBuffer(`contracts/${item.policyInfo.serialNumber}.txt`, policyTextBuffer).then(url => {
+                    item.policyCounterpart = url
+                    Reflect.deleteProperty(item, 'policyInfo')
+                })
+            })
+
+            await Promise.all(uploadTasks)
+
+            await dataProvider.contractProvider.createPageBuildContract(awaitCreateContracts).bind(ctx).then(dataList => {
+                ctx.success({
+                    oldContracts: oldContracts.map(t => {
+                        return {contractId: t.contractId, resourceId: t.resourceId}
+                    }),
+                    newContracts: dataList.map(t => {
+                        return {contractId: t._id.toString(), resourceId: t.resourceId}
+                    })
+                })
+            }).catch(ctx.error)
         }
     }
 }

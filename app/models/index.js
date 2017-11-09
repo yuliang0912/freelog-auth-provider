@@ -6,7 +6,7 @@
 
 const mongoose = require('mongoose')
 const contract = require('./contract.model')
-const resorceToken = require('./resource.token')
+const resorceToken = require('./presentable.token')
 const contractEventGroup = require('./contract.event.group.model')
 const contractChangeHistroy = require('./contract.change.history.model')
 

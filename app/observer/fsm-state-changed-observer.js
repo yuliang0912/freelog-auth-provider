@@ -11,6 +11,7 @@ const baseObserver = require('./base-observer')
  */
 
 module.exports = class FsmStateChangedObserver extends baseObserver {
+
     constructor(subject) {
         super(subject)
     }

@@ -26,6 +26,32 @@ module.exports = app => {
             return mongoModels.contract.create(model)
         },
 
+
+        /**
+         * 创建pageBuild类型资源的合同
+         * @param contracts
+         * @returns {*}
+         */
+        createPageBuildContract(contracts){
+
+            if (!Array.isArray(contracts)) {
+                return Promise.reject(new Error("contracts must be array"))
+            }
+
+            if (!contracts.length) {
+                return Promise.resolve([])
+            }
+
+            contracts.forEach(model => {
+                model._id = mongoModels.ObjectId
+                if (model.subsidiaryInfo && model.subsidiaryInfo.relevanceContractIds) {
+                    model.subsidiaryInfo.relevanceContractIds.push(model._id)
+                }
+            })
+
+            return mongoModels.contract.insertMany(contracts)
+        },
+
         /**
          * 查询合约
          * @param condition

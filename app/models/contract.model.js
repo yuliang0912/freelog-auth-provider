@@ -22,7 +22,8 @@ const toObjectOptions = {
             languageType: ret.languageType,
             policyCounterpart: ret.policyCounterpart,
             status: ret.status,
-            fsmState: ret.fsmState
+            fsmState: ret.fsmState,
+            subsidiaryInfo: ret.subsidiaryInfo
         }
     }
 }
@@ -45,6 +46,9 @@ const ContractSchema = new mongoose.Schema({
     languageType: {type: String, required: true},
     status: {type: Number, required: true, default: 0},
     fsmState: {type: String, required: true, default: 'none'},
+    subsidiaryInfo: { //系统附加的一些信息
+        relevanceContractIds: {type: Array, default: []} //pb关联的widget合同ID
+    }
 }, {
     versionKey: false,
     timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},

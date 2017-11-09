@@ -8,7 +8,6 @@ const moment = require('moment')
 const resourceAuth = require('../../authorization-service/resource-auth')
 const presentableAuth = require('../../authorization-service/presentable-auth')
 
-
 module.exports = app => {
     return class HomeController extends app.Controller {
 
@@ -16,9 +15,21 @@ module.exports = app => {
          * presentable授权检测
          * @returns {Promise.<void>}
          */
-        async presentableAuthorization() {
+        async presentableAuthorization(ctx) {
 
             let presentable = ctx.request.body
+            let presentableId = ctx.checkBody('presentableId').exist().isMongoObjectId().value
+            let resourceId = ctx.checkBody('resourceId').exist().isResourceId().value
+
+            ctx.validate()
+
+            let resourceInfo = await ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/resources/${resourceId}`)
+
+            ctx.success(resourceInfo)
+
+            return
+
+            //假设presentable和node-resource-contract都能通过.直接返回资源
 
             let presentableAuthResult = await presentableAuth.authorization(presentable, ctx.request.userId)
             let contractInfo = await ctx.service.contractService.getContract({_id: presentable.contractId})

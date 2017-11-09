@@ -8,6 +8,9 @@ module.exports = app => {
      */
     app.resources('/v1/contracts', '/v1/contracts', controller.v1)
 
+    //创建pb资源的合同
+    app.post('/v1/contracts/createPageBuildContracts', controller.v1.createPageBuildContracts)
+
     //消费客户的presentable合约列表
     app.get('/v1/contracts/user/:userId', controller.v1.userContracts)
 
@@ -23,4 +26,9 @@ module.exports = app => {
      * 获取合同记录
      */
     app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
+
+    /**
+     * 授权
+     */
+    app.post('/v1/auth/presentableAuthorization', app.controller.home.index.presentableAuthorization)
 };
