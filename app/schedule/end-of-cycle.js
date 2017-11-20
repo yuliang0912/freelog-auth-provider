@@ -16,7 +16,8 @@ module.exports = app => {
     return {
         schedule: {
             type: 'worker',
-            cron: '*/60 * * * * * *', //测试阶段60秒一个周期
+            cron: '*/60 * * * * * *', //测试阶段60秒一个周期,
+            immediate: true, //立即执行一次
         },
         async task () {
             let getTaskQueue = (startSeqId, endSeqId) => {

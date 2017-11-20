@@ -6,7 +6,7 @@
 
 const mongoose = require('mongoose')
 const contract = require('./contract.model')
-const resorceToken = require('./presentable.token')
+const presentable = require('./presentable.model')
 const contractEventGroup = require('./contract.event.group.model')
 const contractChangeHistroy = require('./contract.change.history.model')
 
@@ -28,9 +28,9 @@ module.exports = {
     contractEventGroup,
 
     /**
-     * 资源授权token
+     * 展示方案
      */
-    resorceToken,
+    presentable,
 
     /**
      * 自动生成mongose-objectId

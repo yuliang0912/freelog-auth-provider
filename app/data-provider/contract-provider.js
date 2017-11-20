@@ -42,12 +42,19 @@ module.exports = app => {
                 return Promise.resolve([])
             }
 
+            let subContractIds = []
+
             contracts.forEach(model => {
                 model._id = mongoModels.ObjectId
-                if (model.subsidiaryInfo && model.subsidiaryInfo.relevanceContractIds) {
-                    model.subsidiaryInfo.relevanceContractIds.push(model._id)
+                if (!model.isPbContract) {
+                    subContractIds.push(model._id.toString())
                 }
             })
+
+            if (subContractIds.length) {
+                let pbContract = contracts.find(t => t.isPbContract)
+                pbContract.subsidiaryInfo.relevanceContractIds = pbContract.subsidiaryInfo.relevanceContractIds.concat(subContractIds)
+            }
 
             return mongoModels.contract.insertMany(contracts)
         },
@@ -64,6 +71,20 @@ module.exports = app => {
             }
 
             return mongoModels.contract.findOne(condition).exec()
+        },
+
+        /**
+         * 根据合同ID查询合同
+         * @param contractId
+         * @returns {*}
+         */
+        getContractById(contractId) {
+
+            if (!type.string(contractId)) {
+                return Promise.reject(new Error("contractId must be string"))
+            }
+
+            return mongoModels.contract.findOne({_id: contractId}).exec()
         },
 
         /**

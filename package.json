@@ -8,18 +8,19 @@
     "amqp": "^0.2.6",
     "async": "^2.6.0",
     "bluebird": "^3.5.1",
-    "egg": "^1.10.0",
-    "egg-freelog-base": "^1.1.10",
+    "egg": "^1.11.0",
+    "egg-freelog-base": "^1.1.12",
     "egg-scripts": "^1.2.0",
     "javascript-state-machine": "^3.0.1",
     "jsonschema": "^1.2.0",
     "knex": "^0.13.0",
     "lodash": "^4.17.4",
-    "moment": "^2.19.1",
-    "mongoose": "^4.13.0",
-    "mysql2": "^1.4.2",
+    "moment": "^2.19.2",
+    "mongoose": "^4.13.3",
+    "mysql2": "^1.5.0",
     "node-schedule": "^1.2.5",
-    "node-uuid": "^1.4.8"
+    "node-uuid": "^1.4.8",
+    "presentable_policy_compiler": "0.0.4"
   },
   "engines": {
     "node": ">=6.0.0"

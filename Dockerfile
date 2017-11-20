@@ -1,4 +1,4 @@
-FROM daocloud.io/node:8.1.2
+FROM daocloud.io/node:8.5-alpine
 
 MAINTAINER yuliang <yu.liang@freelog.com>
 

@@ -23,8 +23,12 @@ module.exports = class FsmStateChangedObserver extends baseObserver {
 
         let contractId = lifeCycle.fsm.contract.contractId
 
-        let task1 = eggApp.dataProvider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, 0)
+        //如果状态是激活状态,则合同未生效状态,否则为执行中状态
+        let contractStatus =
+            lifeCycle.fsm.contract.policySegment.activatedStates.some(t => t === lifeCycle.to) ? 3  //激活状态,则生效中
+                : lifeCycle.fsm.contract.policySegment.teminateState === lifeCycle.to ? 6 : 2   //终止状态,则合同终止.否则执行中
 
+        let task1 = eggApp.dataProvider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, contractStatus)
         let task2 = eggApp.dataProvider.contractChangedHistoryProvider.addHistory(contractId, {
             fromState: lifeCycle.from,
             toState: lifeCycle.to,

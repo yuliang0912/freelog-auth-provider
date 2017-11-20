@@ -30,5 +30,5 @@ module.exports = app => {
     /**
      * 授权
      */
-    app.post('/v1/auth/presentableAuthorization', app.controller.home.index.presentableAuthorization)
+    app.get('/v1/auths/presentableAuthorization', app.controller.home.index.presentableAuthorization)
 };

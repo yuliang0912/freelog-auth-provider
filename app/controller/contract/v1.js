@@ -88,11 +88,11 @@ module.exports = app => {
                 partyTwo: partyTwo,
                 segmentId: segmentId
             }).then(oldContract => {
-                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105})
+                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
             })
 
             if (contractType === ctx.app.contractType.ResourceToNode) {
-                let nodeInfo = await ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
+                let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
                 if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
                     ctx.errors.push({partyTwo: '未找到节点或者用户与节点信息不匹配'})
                 }
@@ -100,8 +100,8 @@ module.exports = app => {
             }
 
             let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
-                ? `${ctx.app.config.gatewayUrl}/api/v1/presentables/${targetId}`
-                : `${ctx.app.config.gatewayUrl}/api/v1/resources/policies/${targetId}`)
+                ? `${this.config.gatewayUrl}/api/v1/presentables/${targetId}`
+                : `${this.config.gatewayUrl}/api/v1/resources/policies/${targetId}`)
 
             if (!policyInfo) {
                 ctx.error({msg: 'targetId错误'})
@@ -277,17 +277,21 @@ module.exports = app => {
                 ctx.error({msg: 'post-body数据中不允许有重复的resourceId'})
             }
 
-            let resourcesTask = ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/resources/list?resourceIds=${resourceIds.toString()}`)
-            let policiesTask = ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/resources/policies?resourceIds=${resourceIds.toString()}`)
+            let resourcesTask = ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/list?resourceIds=${resourceIds.toString()}`)
+            let policiesTask = ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/policies?resourceIds=${resourceIds.toString()}`)
 
             await Promise.all([resourcesTask, policiesTask]).then(([resourceInfos, policyInfos]) => {
                 let errors = []
                 pbContracts.forEach(item => {
                     item.resourceInfo = resourceInfos.find(t => t.resourceId === item.resourceId)
                     item.policyInfo = policyInfos.find(t => t.resourceId === item.resourceId)
+
                     if (!item.resourceInfo) {
                         errors.push(`资源(${errorResourceIds.toString()})没有源数据信息`)
+                    } else {
+                        item.isPbContract = item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD
                     }
+
                     if (!item.policyInfo) {
                         errors.push(`资源(${item.resourceId})没有授权策略信息`)
                         return
@@ -313,10 +317,16 @@ module.exports = app => {
                 }
             }).catch(err => ctx.error(err))
 
-            let pageBuilds = pbContracts.filter(item => item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD)
+            let pageBuilds = pbContracts.filter(item => item.isPbContract)
 
             if (pageBuilds.length != 1) {
                 ctx.error({msg: 'page_build类型的资源有且只能有一个', data: pageBuilds})
+            }
+
+            let pbContract = pageBuilds[0]
+
+            if (pbContract.resourceInfo.systemMeta.widgets.some(x => !pbContracts.some(t => t.resourceId === x.resourceId))) {
+                ctx.error({msg: 'PB对应的widget-resource-id与传入的合同数据不匹配', data: pbContract.resourceInfo.systemMeta.widgets})
             }
 
             let oldContracts = await dataProvider.contractProvider.getContracts({
@@ -332,10 +342,10 @@ module.exports = app => {
                 }
             })
 
-            if (oldContracts.some(t => t.resourceId === pageBuilds[0].resourceId)) {
+            if (oldContracts.some(t => t.resourceId === pbContract.resourceId)) {
                 ctx.error({
-                    msg: `pageBuild资源(${pageBuilds[0].resourceId})不能创建多个合约`,
-                    data: oldContracts.find(t => t.resourceId === pageBuilds[0].resourceId)
+                    msg: `pageBuild资源(${pbContract.resourceId})不能创建多个合约`,
+                    data: oldContracts.find(t => t.resourceId === pbContract.resourceId)
                 })
             }
 
@@ -349,12 +359,11 @@ module.exports = app => {
                     contractType: ctx.app.contractType.ResourceToNode,
                     languageType: item.policyInfo.languageType,
                     policyInfo: item.policyInfo,
-                    policySegment: item.policySegment
+                    policySegment: item.policySegment,
+                    isPbContract: item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD
                 }
-                if (item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD) {
-                    model.subsidiaryInfo = {
-                        relevanceContractIds: oldContracts.map(t => t.contractId)
-                    }
+                if (model.isPbContract) {
+                    model.subsidiaryInfo = {relevanceContractIds: oldContracts.map(t => t.contractId)}
                 }
                 return model
             })
@@ -363,13 +372,16 @@ module.exports = app => {
                 let policyTextBuffer = new Buffer(item.policyInfo.policyText, 'utf8')
                 return ctx.app.upload.putBuffer(`contracts/${item.policyInfo.serialNumber}.txt`, policyTextBuffer).then(url => {
                     item.policyCounterpart = url
-                    Reflect.deleteProperty(item, 'policyInfo')
+                    //Reflect.deleteProperty(item, 'policyInfo')
                 })
             })
 
             await Promise.all(uploadTasks)
 
             await dataProvider.contractProvider.createPageBuildContract(awaitCreateContracts).bind(ctx).then(dataList => {
+                dataList.forEach(item => {
+                    contractFsmEventHandler.initContractFsm(item.toObject())
+                })
                 ctx.success({
                     oldContracts: oldContracts.map(t => {
                         return {contractId: t.contractId, resourceId: t.resourceId}

@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs')
 const dbConfig = require('./db_config/dbconfig_local')
 
 module.exports = appInfo => {
@@ -43,6 +44,10 @@ module.exports = appInfo => {
          */
         mongo: {
             uri: "mongodb://192.168.0.3:27017/auth"
+        },
+
+        mongoNode: {
+            uri: "mongodb://192.168.0.3:27017/node"
         },
 
         /**
@@ -117,6 +122,13 @@ module.exports = appInfo => {
                 }
             ]
         },
+
+        rasSha256Key: {
+            resourceAuth: {
+                privateKey: fs.readFileSync('config/auth_key/private_key.pem').toString(),
+                publickKey: fs.readFileSync('config/auth_key/public_key.pem').toString()
+            }
+        }
     }
 
     return config;
