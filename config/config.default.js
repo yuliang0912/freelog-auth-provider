@@ -66,10 +66,6 @@ module.exports = appInfo => {
             uri: "mongodb://192.168.0.99:27017/auth"
         },
 
-        mongoNode: {
-            uri: "mongodb://192.168.0.99:27017/node"
-        },
-
         /**
          * 上传文件相关配置
          */
