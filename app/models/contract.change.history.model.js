@@ -17,4 +17,4 @@ const ContractChangeHistorySchema = new mongoose.Schema({
 
 ContractChangeHistorySchema.index({contractId: 1});
 
-module.exports = mongoose.model('contractChangeHistory', ContractChangeHistorySchema)
+module.exports = mongoose.model('contract-changed-history', ContractChangeHistorySchema)

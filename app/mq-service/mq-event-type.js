@@ -42,6 +42,22 @@ module.exports = {
         presentableContractEffectiveAuthEvent: {
             routingKey: 'contract.active.contract',
             eventName: 'firstActiveContractEvent'
+        },
+
+        /**
+         * 合同事件处理结果
+         */
+        contractEventHandleEvent: {
+            routingKey: 'contract.event.handle',
+            eventName: 'contractEventHandle'
+        },
+
+        /**
+         * 消息队列事件处理结果事件
+         */
+        mqEventHandleResultEvent: {
+            routingKey: 'auth.event.handle.result',
+            eventName: 'authEventHandleResultEvent'
         }
     }
 }

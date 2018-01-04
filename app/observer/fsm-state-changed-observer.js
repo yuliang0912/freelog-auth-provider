@@ -4,7 +4,7 @@
 'use strict'
 
 const baseObserver = require('./base-observer')
-
+const globalInfo = require('egg-freelog-base/globalInfo')
 /**
  * 合约状态变更观察者
  * @type {FsmStateChangedObserver}
@@ -26,14 +26,14 @@ module.exports = class FsmStateChangedObserver extends baseObserver {
         //如果状态是激活状态,则合同未生效状态,否则为执行中状态
         let contractStatus =
             lifeCycle.fsm.contract.policySegment.activatedStates.some(t => t === lifeCycle.to) ? 3  //激活状态,则生效中
-                : lifeCycle.fsm.contract.policySegment.teminateState === lifeCycle.to ? 6 : 2   //终止状态,则合同终止.否则执行中
+                : lifeCycle.fsm.contract.policySegment.terminateState === lifeCycle.to ? 6 : 2   //终止状态,则合同终止.否则执行中
 
-        let task1 = eggApp.dataProvider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, contractStatus)
-        let task2 = eggApp.dataProvider.contractChangedHistoryProvider.addHistory(contractId, {
+        let task1 = globalInfo.app.dataProvider.contractProvider.updateContractFsmState(contractId, lifeCycle.to, contractStatus)
+        let task2 = globalInfo.app.dataProvider.contractChangedHistoryProvider.addHistory(contractId, {
             fromState: lifeCycle.from,
             toState: lifeCycle.to,
             eventId: lifeCycle.fsm.currEvent.eventId || 'init',
-            triggerDate: eggApp.moment().toDate()
+            triggerDate: globalInfo.app.moment().toDate()
         })
 
         await Promise.all([task1, task2]).then(() => {

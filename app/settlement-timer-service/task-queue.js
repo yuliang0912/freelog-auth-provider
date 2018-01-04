@@ -55,10 +55,11 @@ module.exports = class SettlementTimerTaskQueue {
     /**
      * 处理函数
      * @param task
-     * @param callback
+     * @param doneCallBack doneCallBack
      */
-    async taskHandler(contractEvent) {
+    async taskHandler(contractEvent, doneCallBack) {
         await fsmEventHandler.contractEventTriggerHandler(contractEvent.eventId, contractEvent.contractId, contractEvent.eventParams)
+        doneCallBack()
     }
 }
 

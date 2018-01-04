@@ -33,7 +33,11 @@ module.exports.connect = app => {
 
     return mongoose.connect(app.config.mongo.uri, {
         useMongoClient: true,
-        poolSize: 5
+        autoReconnect: true,
+        reconnectTries: Number.MAX_VALUE,
+        reconnectInterval: 1000,
+        poolSize: 5,
+        bufferMaxEntries: 0,
     })
 }
 

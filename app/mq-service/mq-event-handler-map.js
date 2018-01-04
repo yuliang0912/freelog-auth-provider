@@ -42,17 +42,10 @@ const eventHandlerMap = {
  * @param messageObject
  */
 module.exports.execEvent = (message, headers, deliveryInfo, messageObject) => {
-    try {
-        let eventName = headers.eventName
-        if (Reflect.has(eventHandlerMap, eventName)) {
-            eventHandlerMap[eventName](message, headers, deliveryInfo, messageObject)
-        } else {
-            console.log(`未找到事件handler,eventName:${eventName}`)
-        }
-        messageObject.acknowledge(false)
-    } catch (e) {
-        console.error('=========event-hander-error-start==============')
-        console.error(e)
-        console.error('=========event-hander-error-end==============')
+    let eventName = headers.eventName
+    if (Reflect.has(eventHandlerMap, eventName)) {
+        return eventHandlerMap[eventName](message, headers, deliveryInfo, messageObject)
+    } else {
+        return Promise.reject(`未找到事件handler,eventName:${eventName}`)
     }
 }

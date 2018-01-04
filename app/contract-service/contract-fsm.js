@@ -38,8 +38,9 @@ module.exports.getContractFsm = (contractInfo, events) => {
                 if (Reflect.has(this, event.eventId) && typeof this[event.eventId] === 'function') {
                     this.currEvent = event
                     Reflect.get(this, event.eventId).call(this, message, ...args)
+                    return Promise.resolve(true)
                 } else {
-                    console.log('无效的事件:' + eventName)
+                    return Promise.reject(('无效的事件:' + event.eventId))
                 }
             }
         },

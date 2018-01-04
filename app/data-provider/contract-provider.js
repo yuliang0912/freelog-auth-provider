@@ -32,7 +32,7 @@ module.exports = app => {
          * @param contracts
          * @returns {*}
          */
-        createPageBuildContract(contracts){
+        createPageBuildContract(contracts) {
 
             if (!Array.isArray(contracts)) {
                 return Promise.reject(new Error("contracts must be array"))
@@ -135,8 +135,8 @@ module.exports = app => {
         /**
          * 更新合约状态
          */
-        updateContractFsmState(contractId, fsmState, status){
-            return mongoModels.contract.update({_id: contractId}, {fsmState})
+        updateContractFsmState(contractId, fsmState, status) {
+            return mongoModels.contract.update({_id: contractId}, {fsmState, status})
         },
 
         /**

@@ -5,8 +5,8 @@
 
 'use strict'
 
-const commonAuthResult = require('./common-auth-result')
 const authCodeEnum = require('../enum/auth_code')
+const commonAuthResult = require('./common-auth-result')
 const authErrorCodeEnum = require('../enum/auth_err_code')
 
 module.exports = app => {

@@ -4,7 +4,9 @@
 
 'use strict'
 
-const rabbitClient = require('../extend/helper/rabbit_mq_client')
+const mqEventType = require('./mq-event-type')
+const globalInfo = require('egg-freelog-base/globalInfo')
+const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 
 module.exports = {
     /**
@@ -14,13 +16,25 @@ module.exports = {
      * @param deliveryInfo
      * @param messageObject
      */
-    paymentContractHandler(message, headers, deliveryInfo, messageObject){
+    async paymentContractHandler(message, headers, deliveryInfo, messageObject) {
         /**
          * 此处直接调用contract-fsm的payment事件.
          * 信息经过支付中心加密处理,此处考虑不再校验数据
          */
-        console.log("合同支付事件", headers.eventName)
-        //messageObject.acknowledge(false)
+            //  message-object
+            // {
+            //     transferId: '0xfcb99049bb7317d936833b60e9644d9369915d7a4a35ecbb8678527cd244bbb8',
+            //     accountFrom: '',
+            //     accountTo: 'feth20922f43e78',
+            //     fromUserId: 0,
+            //     toUserId: 10022,
+            //     accountType: 1,
+            //     amount: '2000000000',
+            //     contractId: '5a0d4dfb1babc5001fbb768d'
+            // }
+        let payEventName = `transaction_${message.accountTo}_${message.amount}_event`
+
+        return contractFsmEventHandler.contractEventTriggerHandler(payEventName, message.contractId)
     },
 
     /**
@@ -30,7 +44,7 @@ module.exports = {
      * @param deliveryInfo
      * @param messageObject
      */
-    accountRechargeHandler(message, headers, deliveryInfo, messageObject){
+    accountRechargeHandler(message, headers, deliveryInfo, messageObject) {
         /**
          * 此处需要系统自动检索 自动扣费的合同.
          * 然后把需要自动扣费的合同发送到支付中心的执行付款队列中
@@ -39,8 +53,11 @@ module.exports = {
          */
         console.log("账户充值事件", headers.eventName)
 
-        rabbitClient.Instance.publish({routingKey: 'pay.tryPaymentContract', eventName: 'tryPaymentContractEvent', body: {test: '去试试支付合同'}})
-            .catch(console.log)
+        globalInfo.app.rabbitClient.publish({
+            routingKey: 'pay.tryPaymentContract',
+            eventName: 'tryPaymentContractEvent',
+            body: {test: '去试试支付合同'}
+        }).catch(console.log)
     },
 
     /**
@@ -50,7 +67,7 @@ module.exports = {
      * @param deliveryInfo
      * @param messageObject
      */
-    contractTimeoutHandler(message, headers, deliveryInfo, messageObject){
+    contractTimeoutHandler(message, headers, deliveryInfo, messageObject) {
         /**
          * 合同超过限期依然未成功执行.
          * 此处调用contract-fsm的expire事件.

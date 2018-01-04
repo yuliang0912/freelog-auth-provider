@@ -4,8 +4,8 @@
 
 'use strict'
 
-const commonAuthResult = require('./common-auth-result')
 const authCodeEnum = require('../enum/auth_code')
+const commonAuthResult = require('./common-auth-result')
 const authErrorCodeEnum = require('../enum/auth_err_code')
 
 /***
@@ -47,6 +47,9 @@ module.exports = app => {
             }
             if (!allUserContracts.length) {
                 result.addError('未找到有效的用户合同')
+                result.addError(presentableId)
+                result.addError(nodeId)
+                result.addError(userId)
                 result.authErrCode = authErrorCodeEnum.notFoundUserContract
                 result.data = {presentableId, contracts: allUserContracts}
                 return result

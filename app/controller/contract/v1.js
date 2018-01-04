@@ -4,6 +4,7 @@
 
 'use strict'
 
+const _ = require('lodash')
 const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
 
 module.exports = app => {
@@ -11,6 +12,14 @@ module.exports = app => {
     const dataProvider = app.dataProvider
 
     return class ContractController extends app.Controller {
+
+
+        async test(ctx) {
+
+            await ctx.curlFromClient('http://api.freelog.com/test/v1/contracts/5a0d5aaebf7d86002046999a')
+                .then(data => ctx.success(data))
+                .catch(err => ctx.error(err))
+        }
 
         /**
          * 当前登录用户的合约列表(作为甲方和作为乙方)
@@ -86,7 +95,7 @@ module.exports = app => {
             await dataProvider.contractProvider.getContract({
                 targetId: targetId,
                 partyTwo: partyTwo,
-                segmentId: segmentId
+                segmentId: segmentId,
             }).then(oldContract => {
                 oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
             })
@@ -131,8 +140,8 @@ module.exports = app => {
             /**
              * 保持策略原文副本,以备以后核查
              */
-            await ctx.app.upload.putBuffer(`contracts/${serialNumber}.txt`, policyTextBuffer).then(url => {
-                contractModel.policyCounterpart = url
+            await ctx.app.upload.putBuffer(`contracts/${serialNumber}.txt`, policyTextBuffer).then(data => {
+                contractModel.policyCounterpart = data.url
             })
 
             await dataProvider.contractProvider.createContract(contractModel).then(contractInfo => {
@@ -267,6 +276,9 @@ module.exports = app => {
         async createPageBuildContracts(ctx) {
 
             let nodeId = ctx.checkBody('nodeId').isInt().gt(0).value
+
+            // pb与需要展示的widget资源 此处允许widget后续再创建presentable.
+            // 目前不支持presentable合同创建以后在动态新增widget
             let pbContracts = ctx.checkBody('contracts').exist().isArray().len(2, 999).value
 
             ctx.allowContentType({type: 'json'}).validate().validatePbContractList(pbContracts)
@@ -370,8 +382,8 @@ module.exports = app => {
 
             let uploadTasks = awaitCreateContracts.map(item => {
                 let policyTextBuffer = new Buffer(item.policyInfo.policyText, 'utf8')
-                return ctx.app.upload.putBuffer(`contracts/${item.policyInfo.serialNumber}.txt`, policyTextBuffer).then(url => {
-                    item.policyCounterpart = url
+                return ctx.app.upload.putBuffer(`contracts/${item.policyInfo.serialNumber}.txt`, policyTextBuffer).then(data => {
+                    item.policyCounterpart = data.url
                     //Reflect.deleteProperty(item, 'policyInfo')
                 })
             })
@@ -391,6 +403,80 @@ module.exports = app => {
                     })
                 })
             }).catch(ctx.error)
+        }
+
+        /**
+         * 给合同签协议
+         * @param ctx
+         * @returns {Promise.<void>}
+         */
+        async signingLicenses(ctx) {
+            let contractId = ctx.checkBody('contractId').exist().isContractId().value
+            let eventId = ctx.checkBody('eventId').exist().isEventId().value
+            let licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
+            let userId = ctx.request.userId
+
+            ctx.allowContentType({type: 'json'}).validate()
+
+            let contractInfo = await dataProvider.contractProvider.getContract({_id: contractId}).then(app.toObject)
+
+            if (!contractInfo || contractInfo.partyTwo !== userId) {
+                ctx.error({msg: '未找到有效的合同'})
+            }
+
+            if (contractInfo.status === 4 || contractInfo.status === 5) {
+                ctx.error({msg: '合同已经终止', data: {contractStatus: contractInfo.status}})
+            }
+
+            let eventModel = contractInfo.policySegment.fsmDescription.find(item => {
+                return item.event.eventId === eventId && item.event.type === 'signing' ||
+                    item.currentState === contractInfo.fsmState && item.event.type === 'compoundEvents' &&
+                    item.event.params.some(subEvent => subEvent.eventId === eventId && subEvent.type === 'signing')
+            })
+
+            if (!eventModel) {
+                ctx.error({msg: '未找到事件'})
+            }
+
+            eventModel = eventModel.event
+
+            if (eventModel.type === 'compoundEvents') {
+                let eventParams = eventModel.params.find(subEvent => subEvent.eventId === eventId).params
+                let diffLicenseIds = _.difference(eventParams, licenseIds)
+                if (diffLicenseIds.length || eventParams.length !== licenseIds.length) {
+                    ctx.error({
+                        msg: '参数licenseIds与事件中的协议参数不匹配', data: {
+                            contractLicenseIds: eventParams, licenseIds
+                        }
+                    })
+                }
+            }
+
+            await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel, eventId).then(data => {
+                ctx.success(data)
+            }).catch(err => ctx.error(err))
+        }
+
+        /**
+         * 是否能执行指定事件
+         * @returns {Promise<void>}
+         */
+        async isCanExecEvent(ctx) {
+
+            let contractId = ctx.checkQuery('contractId').exist().isContractId().value
+            let eventId = ctx.checkQuery('eventId').exist().value
+
+            ctx.validate()
+
+            let contractInfo = await dataProvider.contractProvider.getContractById(contractId)
+
+            if (!contractInfo) {
+                ctx.error({msg: '未找到合同'})
+            }
+
+            let result = await contractFsmEventHandler.isCanExecEvent(eventId, contractInfo)
+
+            ctx.success({contractInfo, eventId, isCanExec: result})
         }
     }
 }

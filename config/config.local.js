@@ -16,7 +16,7 @@ module.exports = appInfo => {
          * 本地开发环境身份信息
          */
         localIdentity: {
-            userId: 10022,
+            userId: 10026,
             userName: "余亮",
             nickname: "烟雨落叶",
             email: "4896819@qq.com",
@@ -26,7 +26,7 @@ module.exports = appInfo => {
             status: 1,
             createDate: "2017-10-20T16:38:17.000Z",
             updateDate: "2017-11-01T15:53:29.000Z",
-            tokenType: "local"
+            tokenType: "jwt"
         }
     }
 }

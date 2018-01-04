@@ -1,7 +1,6 @@
 'use strict';
 
 const fs = require('fs')
-const dbConfig = require('./db_config/dbconfig_local')
 
 module.exports = appInfo => {
 
@@ -37,17 +36,38 @@ module.exports = appInfo => {
         /**
          * DB-mysql相关配置
          */
-        dbConfig: dbConfig,
+        dbConfig: {
+            contract: {
+                client: 'mysql2',
+                connection: {
+                    host: '192.168.0.99',
+                    user: 'root',
+                    password: 'yuliang@@',
+                    database: 'fr_contract',
+                    charset: 'utf8',
+                    timezone: '+08:00',
+                    bigNumberStrings: true,
+                    supportBigNumbers: true,
+                    connectTimeout: 10000
+                },
+                pool: {
+                    maxConnections: 50,
+                    minConnections: 2,
+                },
+                acquireConnectionTimeout: 10000,
+                debug: false
+            },
+        },
 
         /**
          * mongoDB配置
          */
         mongo: {
-            uri: "mongodb://192.168.0.3:27017/auth"
+            uri: "mongodb://192.168.0.99:27017/auth"
         },
 
         mongoNode: {
-            uri: "mongodb://192.168.0.3:27017/node"
+            uri: "mongodb://192.168.0.99:27017/node"
         },
 
         /**
@@ -87,7 +107,7 @@ module.exports = appInfo => {
 
         rabbitMq: {
             connOptions: {
-                host: '192.168.99.100',
+                host: '192.168.164.129',
                 port: 5672,
                 login: 'guest',
                 password: 'guest',
@@ -102,21 +122,26 @@ module.exports = appInfo => {
             },
             queues: [
                 {
-                    name: 'auth-contract-queue',
-                    options: {autoDelete: false, durable: true},
-                    routingKeys: [
-                        {
-                            exchange: 'freelog-pay-exchange',
-                            routingKey: 'pay.recharge'
-                        }
-                    ]
-                }, {
                     name: 'auth-contract-event-receive-queue',
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
                         {
                             exchange: 'freelog-event-exchange',
                             routingKey: 'event.contract.trigger'
+                        },
+                        {
+                            exchange: 'freelog-pay-exchange',
+                            routingKey: 'pay.payment.contract'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth-event-handle-result',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'auth.event.handle.result.#'
                         }
                     ]
                 }
@@ -128,6 +153,12 @@ module.exports = appInfo => {
                 privateKey: fs.readFileSync('config/auth_key/private_key.pem').toString(),
                 publickKey: fs.readFileSync('config/auth_key/public_key.pem').toString()
             }
+        },
+
+        clientCredentialInfo: {
+            clientId: 1003,
+            publicKey: 'a4fc45596a8ef4f6c65b0b6620811ead',
+            privateKey: 'e394b36cd66c9c205f1e3304058ba4d4'
         }
     }
 

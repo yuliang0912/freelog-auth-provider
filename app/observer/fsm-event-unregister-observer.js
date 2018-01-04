@@ -3,8 +3,9 @@
  */
 
 const baseObserver = require('./base-observer')
-const mqEventType = require('../contract-service/mq-event-type')
+const mqEventType = require('../mq-service/mq-event-type')
 const unRegisterEventTypes = ['period', 'arrivalDate', 'compoundEvents']
+const globalInfo = require('egg-freelog-base/globalInfo')
 
 /**
  * 合同状态机事件取消注册观察者
@@ -42,7 +43,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      */
     compoundEventsUnRegisterHandler(event, contractId) {
 
-        return eggApp.dataProvider.contractEventGroupProvider
+        return globalInfo.app.dataProvider.contractEventGroupProvider
             .deletEventGroup(contractId, event.eventId).then(() => {
                 event.params.forEach(subEvent => {
                     if (unRegisterEventTypes.some(type => type === subEvent.type)) {
@@ -60,7 +61,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      * @param contractInfo
      */
     periodUnRegisterHandler(event, contractId) {
-        return eggApp.dataProvider.cycleSettlementProvider.deleteCycleSettlementEvent({
+        return globalInfo.app.dataProvider.cycleSettlementProvider.deleteCycleSettlementEvent({
             eventId: event.eventId,
             contractId
         }).catch(console.error)
@@ -83,7 +84,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      * @param message
      */
     unRegisterFromEventCenter(event, contractId) {
-        return eggApp.rabbitClient.publish({
+        return globalInfo.app.rabbitClient.publish({
             routingKey: mqEventType.register.unRegisterEvent.routingKey,
             eventName: mqEventType.register.unRegisterEvent.eventName,
             body: {eventId: event.eventId, contractId}

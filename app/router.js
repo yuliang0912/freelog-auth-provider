@@ -21,14 +21,21 @@ module.exports = app => {
     app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
 
     app.post('/v1/contracts/test', controller.v1.testContractFsm)
+    app.post('/v1/contracts/signingLicenses', controller.v1.signingLicenses)
 
     /**
      * 获取合同记录
      */
     app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
 
+    app.get('/v1/contracts/test', controller.v1.test)
+
+    app.get('/v1/contracts/isCanExecEvent', controller.v1.isCanExecEvent)
+
     /**
      * 授权
      */
     app.get('/v1/auths/presentableAuthorization', app.controller.home.index.presentableAuthorization)
+
+
 };

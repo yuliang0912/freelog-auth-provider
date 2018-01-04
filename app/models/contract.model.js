@@ -37,9 +37,10 @@ const ContractSchema = new mongoose.Schema({
     segmentId: {type: String, required: true},
     policySegment: {  //预览策略
         users: {type: Array, required: true},
+        segmentText: {type: String, required: false},
         fsmDescription: {type: Array, required: true},
         initialState: {type: String, required: true},
-        teminateState: {type: String, required: true},
+        terminateState: {type: String, required: true},
         activatedStates: {type: [String], required: true}
     },
     policyCounterpart: {type: String, required: true},

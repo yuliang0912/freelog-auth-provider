@@ -6,18 +6,13 @@
 
 const path = require('path')
 const mongoDb = require('./app/models/db_start')
-const contractService = require('./app/contract-service/index')
+const subscribe = require('./app/mq-service/subscribe')
 
 module.exports = async (app) => {
 
-    await mongoDb.connect(app).catch(console.log)
-    await contractService.runContractService(app)
+    await mongoDb.connect(app)
+    await subscribe(app)
 
-    global.eggApp = app
-
-    app.loader.loadToApp(path.join(app.config.baseDir, 'app/authorization-service'), 'authService', {
-        initializer: (obj, opt) => {
-            return obj
-        }
-    });
+    app.loader.loadToApp(path.join(app.config.baseDir, 'app/authorization-service'), 'authService');
 }
+

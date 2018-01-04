@@ -25,7 +25,9 @@ module.exports = app => {
 
             ctx.validate()
 
-            let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+            let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`).catch(err=>{
+                ctx.error(err)
+            })
 
             if (!presentableInfo || presentableInfo.nodeId != nodeId || presentableInfo.status != 0) {
                 ctx.error({msg: '未找到有效的presentable', data: presentableInfo})

@@ -6,9 +6,9 @@
 
 const mongoose = require('mongoose')
 const contract = require('./contract.model')
-const presentable = require('./presentable.model')
 const contractEventGroup = require('./contract.event.group.model')
 const contractChangeHistroy = require('./contract.change.history.model')
+const authEventHandleResult = require('./auth.event.handle.result.model')
 
 module.exports = {
 
@@ -28,9 +28,9 @@ module.exports = {
     contractEventGroup,
 
     /**
-     * 展示方案
+     * 授权事件处理结果保存
      */
-    presentable,
+    authEventHandleResult,
 
     /**
      * 自动生成mongose-objectId

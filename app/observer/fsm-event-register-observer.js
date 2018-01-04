@@ -5,8 +5,9 @@
 'use strict'
 
 const baseObserver = require('./base-observer')
-const mqEventType = require('../contract-service/mq-event-type')
+const mqEventType = require('../mq-service/mq-event-type')
 const registerEventTypes = ['period', 'arrivalDate', 'compoundEvents']
+const globalInfo = require('egg-freelog-base/globalInfo')
 
 /**
  * 合同状态机事件注册观察者
@@ -50,13 +51,13 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             taskEvents: event.params.map(subEvent => subEvent.eventId || subEvent.eventName)
         }
 
-        return eggApp.dataProvider.contractEventGroupProvider
+        return globalInfo.app.dataProvider.contractEventGroupProvider
             .registerEventGroup(groupEventModel).then(() => {
                 event.params.forEach(subEvent => {
                     if (registerEventTypes.some(type => type === subEvent.type)) {
                         let handlerName = `${subEvent.type}Handler`
                         Reflect.get(this, handlerName).call(this, subEvent, contractInfo)
-                        console.log("事件注册:" + handlerName)
+                        //console.log("事件注册:" + handlerName)
                     }
                 })
             }).catch(console.error)
@@ -67,7 +68,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param contractInfo
      */
     periodHandler(event, contractInfo) {
-        return eggApp.dataProvider.cycleSettlementProvider.createCycleSettlementEvent({
+        return globalInfo.app.dataProvider.cycleSettlementProvider.createCycleSettlementEvent({
             eventId: event.eventId,
             contractId: contractInfo.contractId,
             eventParams: JSON.stringify({
@@ -111,8 +112,9 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param message
      */
     registerToEventCenter({event, message}) {
+        console.log(message)
         message.eventParams.routingKey = 'event.contract.trigger'
-        return eggApp.rabbitClient.publish({
+        return globalInfo.app.rabbitClient.publish({
             routingKey: event.routingKey,
             eventName: event.eventName,
             body: message
@@ -128,11 +130,11 @@ const tools = {
      */
     arrivalDateConvert(eventParams){
         if (eventParams[0] === '1') {
-            return eggApp.moment(eventParams[1]).toDate().toLocaleString()
+            return globalInfo.app.moment(eventParams[1]).toDate().toLocaleString()
         }
         /**
          * 目前是相对事件注册时间.后续有需求,也可以基于合同创建时间.特此备注
          */
-        return eggApp.moment().add(eventParams[1], eventParams[2]).toDate().toLocaleString()
+        return globalInfo.app.moment().add(eventParams[1], eventParams[2]).toDate().toLocaleString()
     }
 }

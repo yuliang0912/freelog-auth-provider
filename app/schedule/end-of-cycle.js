@@ -13,11 +13,19 @@ const settlementTimerTaskQueue = new (require('../settlement-timer-service/task-
  */
 
 module.exports = app => {
+
+    const getJobDataList = (startSeqId, endSeqId, count) => {
+        return app.dataProvider.cycleSettlementProvider.getCycleSettlementEvents({
+            status: 0,
+            cycleType: 1
+        }, startSeqId, endSeqId, count)
+    }
+
     return {
         schedule: {
             type: 'worker',
-            cron: '*/60 * * * * * *', //测试阶段60秒一个周期,
-            immediate: true, //立即执行一次
+            cron: '0 0 0 */1 * * *', //每天0点0分0秒
+            //immediate: true, //立即执行一次
         },
         async task () {
             let getTaskQueue = (startSeqId, endSeqId) => {
@@ -31,16 +39,12 @@ module.exports = app => {
                     }
                 })
             }
-            await app.dataProvider.cycleSettlementProvider.getMaxAndMinSeqId({}, '2017-9-21', '2017-10-31').then(startAndEndSeq => {
+            let beginDate = app.moment().add(-1, "days").toDate().toLocaleString()
+            let endDate = app.moment().toDate().toLocaleString()
+
+            await app.dataProvider.cycleSettlementProvider.getMaxAndMinSeqId({}, beginDate, endDate).then(startAndEndSeq => {
                 getTaskQueue(startAndEndSeq.minSeqId, startAndEndSeq.maxSeqId)
             })
         }
-    }
-
-    const getJobDataList = (startSeqId, endSeqId, count) => {
-        return app.dataProvider.cycleSettlementProvider.getCycleSettlementEvents({
-            status: 0,
-            cycleType: 1
-        }, startSeqId, endSeqId, count)
     }
 }
