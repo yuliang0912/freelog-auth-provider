@@ -7,7 +7,7 @@
 module.exports = appInfo => {
     return {
 
-        gatewayUrl: "http://39.108.77.211",
+        gatewayUrl: "http://172.18.215.224:8895",
 
         mongo: {
             uri: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
