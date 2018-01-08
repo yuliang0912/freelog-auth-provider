@@ -144,13 +144,15 @@ const handler = {
             return false
         }
 
+        event = event.event
+
         let contractFsm = contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
         if (event.type !== 'compoundEvents') {
             return contractFsm.can(event.eventId)
         }
 
         if (event.eventId === eventId) {
-            return Promise.resolve(false)
+            return false
         }
 
         let envetGroup = await globalInfo.app.dataProvider.contractEventGroupProvider.getEventGroup({

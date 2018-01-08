@@ -25,7 +25,7 @@ module.exports = app => {
 
             ctx.validate()
 
-            let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`).catch(err=>{
+            let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`).catch(err => {
                 ctx.error(err)
             })
 
@@ -85,6 +85,15 @@ module.exports = app => {
                 token.signature = resourceAuthJwt.createJwt(token, 1296000)
                 ctx.success(token)
             }).catch(err => ctx.error(err))
+        }
+
+        /**
+         * 针对资源直接授权
+         * @param ctx
+         * @returns {Promise<void>}
+         */
+        async resourceAuthorization(ctx) {
+
         }
     }
 }
