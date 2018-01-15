@@ -47,7 +47,7 @@ module.exports = app => {
             let dataList = []
             let totalItem = await dataProvider.contractProvider.getCount(condition)
 
-            let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
+            let projection = "_id segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
             if (totalItem > (page - 1) * pageSize) {
                 dataList = await dataProvider.contractProvider.getContractList(condition, projection, page, pageSize).bind(ctx)
                     .catch(ctx.error)
