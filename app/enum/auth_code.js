@@ -11,6 +11,8 @@
 
 module.exports = {
 
+    Default: 0,
+
     /**
      * 基于用户合约授权 (user to node contract)
      */
@@ -32,6 +34,21 @@ module.exports = {
     BasedOnResourcePolicy: 4,
 
     /**
+     * 基于个人用户认证
+     */
+    BasedOnIndividuals: 5,
+
+    /**
+     * 基于用户组策略
+     */
+    BasedOnGroup: 5,
+
+    /**
+     * 基于用户组或用户组策略
+     */
+    BasedOnUserObjectAuth: 6,
+
+    /**
      * 用户合同不满足
      */
     UserContractUngratified: 11,
@@ -50,4 +67,14 @@ module.exports = {
      * 资源策略不满足
      */
     ResourcePolicyUngratified: 14,
+
+    /**
+     * 用户对象不满足
+     */
+    UserObjectUngratified: 15,
+
+    /**
+     * 未知的异常
+     */
+    Exception: 100
 }

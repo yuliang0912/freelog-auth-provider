@@ -13,14 +13,6 @@ module.exports = app => {
 
     return class ContractController extends app.Controller {
 
-
-        async test(ctx) {
-
-            await ctx.curlFromClient('http://api.freelog.com/test/v1/contracts/5a0d5aaebf7d86002046999a')
-                .then(data => ctx.success(data))
-                .catch(err => ctx.error(err))
-        }
-
         /**
          * 当前登录用户的合约列表(作为甲方和作为乙方)
          * @param ctx
@@ -62,6 +54,26 @@ module.exports = app => {
             }
 
             ctx.success({page, pageSize, totalItem, dataList})
+        }
+
+        /**
+         * 批量获取合同
+         * @param ctx
+         * @returns {Promise<void>}
+         */
+        async list(ctx) {
+            let contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 100).value
+
+            ctx.validate()
+
+            let condition = {
+                _id: {$in: contractIds}
+            }
+
+            let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
+
+            await dataProvider.contractProvider.getContracts(condition, projection)
+                .bind(ctx).then(ctx.success).catch(ctx.error)
         }
 
         /**
@@ -269,11 +281,14 @@ module.exports = app => {
                 .bind(ctx).then(ctx.success)
         }
 
+
         /**
          * 节点创建pb类型资源的合同
          * @returns {Promise.<void>}
          */
         async createPageBuildContracts(ctx) {
+
+            ctx.error({msg: '此接口已停止使用'})
 
             let nodeId = ctx.checkBody('nodeId').isInt().gt(0).value
 

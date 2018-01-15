@@ -14,5 +14,6 @@ module.exports = async (app) => {
     await subscribe(app)
 
     app.loader.loadToApp(path.join(app.config.baseDir, 'app/authorization-service'), 'authService');
+
 }
 

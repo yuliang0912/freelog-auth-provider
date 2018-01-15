@@ -10,7 +10,7 @@ module.exports = app => {
 
     return {
         async authorization(resourcePolicy, userInfo, contractInfo) {
-
+            
         }
     }
 }

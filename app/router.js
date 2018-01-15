@@ -17,18 +17,21 @@ module.exports = app => {
     //节点商的resource合约列表
     app.get('/v1/contracts/node/:nodeId', controller.v1.nodeContracts)
 
+    app.get('/v1/contracts/list', controller.v1.list)
+
     //资源商引用其他资源的resource合约列表
     app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
 
     app.post('/v1/contracts/test', controller.v1.testContractFsm)
     app.post('/v1/contracts/signingLicenses', controller.v1.signingLicenses)
 
+
+
     /**
      * 获取合同记录
      */
     app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
 
-    app.get('/v1/contracts/test', controller.v1.test)
 
     app.get('/v1/contracts/isCanExecEvent', controller.v1.isCanExecEvent)
 

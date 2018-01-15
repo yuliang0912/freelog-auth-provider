@@ -76,5 +76,6 @@ module.exports = class CommonAuthResult {
             || this.authCode === authCodeEnum.BasedOnNodeContract
             || this.authCode === authCodeEnum.BasedOnNodePolicy
             || this.authCode === authCodeEnum.BasedOnResourcePolicy
+            || this.authCode === authCodeEnum.Default
     }
 }

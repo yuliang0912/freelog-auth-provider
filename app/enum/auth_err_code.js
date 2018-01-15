@@ -46,5 +46,20 @@ module.exports = {
     /**
      * 节点合同授权异常
      */
-    "nodeContractAuthException": 70080203
+    "nodeContractAuthException": 70080203,
+
+    /**
+     * 未登陆用户
+     */
+    "notFoundUser": 70080301,
+
+    /**
+     * 个人身份授权不通过
+     */
+    "individualsRefuse": 70080302,
+
+    /**
+     * 用户分组策认证不通过
+     */
+    "groupRefuse": 70080303,
 }
