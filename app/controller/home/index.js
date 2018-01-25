@@ -45,7 +45,7 @@ module.exports = app => {
 
                 if (!userContractAuthResult.isAuth) {
                     return Promise.reject({
-                        msg: '用户与节点之间的合约授权失败',
+                        msg: 'presentable授权失败',
                         errCode: userContractAuthResult.authErrCode,
                         data: {
                             authResult: {

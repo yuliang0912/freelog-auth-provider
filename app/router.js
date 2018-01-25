@@ -3,10 +3,6 @@
 module.exports = app => {
 
     const controller = app.controller.contract
-    /**
-     * 资源合约相关REST-API
-     */
-    app.resources('/v1/contracts', '/v1/contracts', controller.v1)
 
     //创建pb资源的合同
     app.post('/v1/contracts/createPageBuildContracts', controller.v1.createPageBuildContracts)
@@ -26,12 +22,10 @@ module.exports = app => {
     app.post('/v1/contracts/signingLicenses', controller.v1.signingLicenses)
 
 
-
     /**
      * 获取合同记录
      */
     app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
-
 
     app.get('/v1/contracts/isCanExecEvent', controller.v1.isCanExecEvent)
 
@@ -40,5 +34,12 @@ module.exports = app => {
      */
     app.get('/v1/auths/presentableAuthorization', app.controller.home.index.presentableAuthorization)
 
+    //请求获取presentable资源
+    app.get('/v1/presentables/resource/:presentableId.:extName', app.controller.auth.v1.presentable)
+    app.get('/v1/presentables/resource/:presentableId', app.controller.auth.v1.presentable)
 
+    /**
+     * 资源合约相关REST-API
+     */
+    app.resources('/v1/contracts', '/v1/contracts', controller.v1)
 };

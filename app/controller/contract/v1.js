@@ -95,7 +95,7 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async create(ctx) {
-            let contractType = ctx.checkBody('contractType').in([1, 2, 3]).value
+            let contractType = ctx.checkBody('contractType').toInt().in([1, 2, 3]).value
             let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
             let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
             // 此处为资源ID或者presentableId

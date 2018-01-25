@@ -28,7 +28,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
 
         //根据前一个状态遍历出所有需要取消注册的事件
         contract.policySegment.fsmDescription
-            .filter(item => item.currentState === lifeCycle.from && unRegisterEventTypes.some(type => type === item.event.type))
+            .filter(item => item.event && item.currentState === lifeCycle.from && unRegisterEventTypes.some(type => type === item.event.type))
             .forEach(item => {
                 let handlerName = `${item.event.type}UnRegisterHandler`
                 Reflect.get(this, handlerName).call(this, item.event, contract.contractId)

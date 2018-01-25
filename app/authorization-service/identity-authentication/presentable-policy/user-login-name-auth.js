@@ -3,11 +3,11 @@
  */
 'use strict'
 
-const AuthResult = require('../common-auth-result')
-const authCodeEnum = require('../../enum/auth_code')
-const authErrorCodeEnum = require('../../enum/auth_err_code')
+const AuthResult = require('../../common-auth-result')
+const authCodeEnum = require('../../../enum/auth_code')
+const authErrorCodeEnum = require('../../../enum/auth_err_code')
 
-module.exports.auth = (policyAuthUsers, userInfo) => {
+module.exports.auth = ({policyAuthUsers, userInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
     let individualsUserPolicy = policyAuthUsers.find(t => t.userType === 'individuals')

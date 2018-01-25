@@ -1,179 +1,172 @@
 'use strict'
 
-const groupAuth = require('./authentication/group-auth')
-const individualsAuth = require('./authentication/individuals-auth')
-const userContractAuth = require('./authentication/user-contract-auth')
-const nodeContractAuth = require('./authentication/node-contract-auth')
+const authCodeEnum = require('../enum/auth_code')
+const errAuthCodeEnum = require('../enum/auth_err_code')
+const commonAuthResult = require('./common-auth-result')
+const globalInfo = require('egg-freelog-base/globalInfo')
+const identityAuthentication = require('./identity-authentication/index')
+const userContractAuthorization = require('./contract-authorization/user-contract-auth')
+const nodeContractAuthorization = require('./contract-authorization/node-contract-auth')
+const presentablePolicyAuthorization = require('./policy-authentication/presentable-policy-auth')
+const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
+const resourceAuthJwt = new JsonWebToken()
 
-class AuthProcessManager {
 
-    constructor(app) {
-        this.app = app
-        this.dataProvider = app.dataProvider
+let AuthProcessManager = class AuthProcessManager {
+
+    constructor() {
+        this.app = globalInfo.app
+        this.dataProvider = globalInfo.app.dataProvider
+        resourceAuthJwt.publicKey = globalInfo.app.config.rasSha256Key.resourceAuth.publicKey
+        resourceAuthJwt.privateKey = globalInfo.app.config.rasSha256Key.resourceAuth.privateKey
     }
 
     /**
-     * 授权接口
-     * @param resourceId 资源ID
-     * @param presentableId 展示方案ID
-     * @param userId 登录用户ID
-     * @param nodeId  节点ID
-     * @param userContractId 用户主动选择执行的合同ID
+     * presentable授权
+     * @param presentableInfo
+     * @param userInfo
+     * @param nodeInfo
+     * @param userContractInfo
+     * @returns {Promise<void>}
      */
-    async authorization(ctx, {resourceId, presentableId, userId, nodeId, userContractId}) {
-
-        let result = new commonAuthResult(authCodeEnum.Default)
+    async presentableAuthorization({presentableInfo, userInfo, nodeInfo, userContract}) {
 
         try {
-            let presentableInfo = await ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+            if (!presentableInfo || !nodeInfo) {
+                throw new Error('授权服务接口presentable接收到的参数错误')
+            }
+            //如果有登陆用户,则使用用户的合同,否则尝试使用虚拟合同授权
+            let userContractAuthorizationResult = !userInfo
+                ? this.virtualContractAuthorization({presentableInfo})
+                : this.userContractAuthorization({userContract, userInfo})
 
-            if (!presentableInfo) {
-                throw new Error('presentable is not found')
+            if (!userContractAuthorizationResult.isAuth) {
+                return userContractAuthorizationResult
             }
 
-            let userInfo = userId ?
-                await ctx.curlIntranetApi(`${ctx.app.config.gatewayUrl}/api/v1/userinfos/${userId}`) : undefined
+            let nodeContract = await this.dataProvider.contractProvider.getContractById(presentableInfo.contractId)
+            let nodeContractAuthorizationResult = this.nodeContractAuthorization({nodeContract, nodeInfo})
+            if (!nodeContractAuthorizationResult.isAuth) {
+                return nodeContractAuthorizationResult
+            }
 
-        } catch (exception) {
-            result.authCode = authCodeEnum.Exception
-            result.addError(exception)
+            userContractAuthorizationResult.data.authToken = {
+                userId: userInfo ? userInfo.userId : 0,
+                nodeId: nodeInfo.nodeId,
+                presentableId: presentableInfo.presentableId,
+                nodeContractId: presentableInfo.contractId,
+                userContractId: userContract ? userContract.contractId : null,
+                resourceId: presentableInfo.resourceId
+            }
+
+            userContractAuthorizationResult.data.authToken.signature = resourceAuthJwt.createJwt(userContractAuthorizationResult.data.authToken, 1296000)
+
+            return userContractAuthorizationResult
+        } catch (e) {
+            let result = new commonAuthResult(authCodeEnum.Exception)
+            result.authErrCode = errAuthCodeEnum.exception
+            result.addError(e.toString())
             return result
         }
     }
 
     /**
-     * 用户认证
-     * @param policyAuthUserObject 策略规定的授权用户对象
-     * @param userInfo
-     */
-    userAuthentication(policyAuthUsers, userInfo) {
-
-        let authResult1 = individualsAuth.auth(policyAuthUsers, userInfo)
-        if (!authResult1.isAuth) {
-            return authResult1
-        }
-
-        let authResult2 = groupAuth.auth(policyAuthUsers, userInfo)
-        if (!authResult2.isAuth) {
-            return authResult2
-        }
-
-        return new commonAuthResult(authCodeEnum.BasedOnUserObjectAuth)
-    }
-
-    /**
-     * 节点-资源合同认证
+     * 用户合同身份认证与授权
      * @param policy
-     * @param resourcePolicy
+     * @param userInfo
      */
-    async nodeToResourceContractAuthentication(contractId, nodeInfo, userInfo) {
+    userContractAuthorization({userContract, userInfo}) {
 
-        let result = new commonAuthResult(authCodeEnum.NodeContractUngratified)
+        let userContractAuthorizationResult = userContractAuthorization.auth({userContract})
 
-        let contractInfo = await this.dataProvider.contractProvider.getContract({
-            _id: contractId,
-            partyTwo: nodeInfo.nodeId,
-            contractType: this.app.contractType.ResourceToNode,
-        }).catch(err => {
-            result.authErrCode = authErrorCodeEnum.nodeContractAuthException
-            result.addError(err.toString())
-            return result
+        if (!userContractAuthorizationResult.isAuth) {
+            return userContractAuthorizationResult
+        }
+
+        if (!userInfo || userContract.partyTwo !== userInfo.userId || userContract.contractType !== this.app.contractType.PresentableToUer) {
+            throw new Error('参数错误,数据不匹配')
+        }
+
+        let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
+            userInfo,
+            policy: userContract.policySegment
         })
 
-        if (result.errors.length) {
-            return result
-        }
-        if (!contractInfo) {
-            result.authErrCode = authErrorCodeEnum.notFoundNodeContract
-            result.addError('未找到节点的合同数据')
-        }
-        else if (contractInfo.status === 3) {
-            result.authCode = authCodeEnum.BasedOnNodeContract
-        }
-        else {
-            result.authErrCode = authErrorCodeEnum.nodeContractNotActivate
-            result.addError(`资源与节点的合同未生效,当前合同状态:${contractInfo.status}`)
+        if (!identityAuthenticationResult.isAuth) {
+            return identityAuthenticationResult
         }
 
-        if (contractInfo) {
-            let nodeInfoAuthResult = this.userAuthentication(contractInfo.policySegment.users, nodeInfo)
-            if (!nodeInfoAuthResult.isAuth) {
-                return nodeInfoAuthResult
-            }
-        }
-
-        result.data.contract = contractInfo
-
-        return result
+        return userContractAuthorizationResult
     }
 
     /**
-     * 用户-节点合同认证
-     * @param presentablePolicy
-     * @param userInfo
-     * @param userContractId
+     * 节点合同身份认证与授权
+     * @param nodeContract
+     * @param nodeInfo
      */
-    async userToNodeContractAuthentication(presentableId, nodeInfo, userInfo, userContractId) {
+    nodeContractAuthorization({nodeContract, nodeInfo}) {
 
-        let result = new commonAuthResult(authCodeEnum.UserContractUngratified)
+        let nodeContractAuthorizationResult = nodeContractAuthorization.auth({nodeContract})
 
-        let allUserContracts = await dataProvider.contractProvider.getContracts({
-            targetId: presentableId,
-            partyOne: nodeInfo.nodeId,
-            partyTwo: userInfo.userId,
-            contractType: this.app.contractType.PresentableToUer,
-            status: {$in: [1, 2, 3]}
-        }).catch(err => {
-            result.addError(err.toString())
-            result.authErrCode = authErrorCodeEnum.userContractAuthException
-            return result
+        if (!nodeContractAuthorizationResult.isAuth) {
+            return nodeContractAuthorizationResult
+        }
+
+        if (!nodeInfo || nodeContract.partyTwo !== nodeInfo.nodeId || nodeContract.contractType !== this.app.contractType.ResourceToNode) {
+            throw new Error('参数错误,数据不匹配')
+        }
+
+        let nodeIdentityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
+            nodeInfo,
+            policy: nodeContract.policySegment
         })
 
-        if (result.errors.length) {
-            return result
+        if (!nodeIdentityAuthenticationResult.isAuth) {
+            return nodeIdentityAuthenticationResult
         }
 
-        if (!allUserContracts.length) {
-            result.addError('未找到有效的用户合同')
-            result.authErrCode = authErrorCodeEnum.notFoundUserContract
-            result.data = {presentableId, contracts: allUserContracts}
-            return result
+        return nodeContractAuthorizationResult
+    }
+
+    /**
+     * 基于虚拟合同授权,即满足initial-terminate模式
+     * @param presentableInfo
+     * @param userInfo
+     * @param nodeInfo
+     */
+    virtualContractAuthorization({presentableInfo, userInfo}) {
+
+        let result = new commonAuthResult(authCodeEnum.BasedOnNodePolicy)
+
+        let authPolicySegment = presentableInfo.policy.find(policySegment => {
+
+            //调试使用
+            result.data.policySegment = policySegment
+
+            let presentablePolicyAuthorizationResult = presentablePolicyAuthorization.auth({policySegment})
+            if (!presentablePolicyAuthorizationResult.isAuth) {
+                return false
+            }
+
+            let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
+                userInfo: userInfo, policy: policySegment
+            })
+            if (!identityAuthenticationResult.isAuth) {
+                return false
+            }
+
+            result.data.policySegment = policySegment
+            return true
+        })
+
+        if (!authPolicySegment) {
+            result.authCode = authCodeEnum.NodePolicyUngratified
+            result.authErrCode = result.authErrCode || errAuthCodeEnum.presentablePolicyRefuse
+            result.addError('未能通过presentable策略授权')
         }
-
-        if (allUserContracts.length > 1 && !userContractId) {
-            result.addError('请选择需要执行的合同')
-            result.authErrCode = authErrorCodeEnum.chooseUserContract
-            result.data = {presentableId, contracts: allUserContracts}
-            return result
-        }
-
-        let contractInfo = userContractId ? allUserContracts.find(x => x.contractId === userContractId) : allUserContracts[0]
-        if (!contractInfo) {
-            result.addError('参数userContractId错误,未能找到有效的用户合同')
-            result.authErrCode = authErrorCodeEnum.userContractIdError
-            result.data = {userContractId, contracts: allUserContracts}
-            return result
-        }
-
-        result.data.contract = contractInfo
-
-        //用户对象认证检查(先检查用户身份,再检查合同状态)
-        let userAuth = this.userAuthentication(contractInfo.policySegment.users, userInfo)
-        if (!userAuth.isAuth) {
-            return userAuth
-        }
-
-        if (contractInfo.status !== 3) {
-            result.addError(`用户合同未生效,当前合同状态:${contractInfo.status}`)
-            result.authErrCode = authErrorCodeEnum.userContractNotActivate
-            return result
-        }
-
-        //授权通过[基于用户合同授权]
-        result.authCode = authCodeEnum.BasedOnUserContract
 
         return result
     }
 }
 
-module.exports = app => new AuthProcessManager(app)
+module.exports = new AuthProcessManager()

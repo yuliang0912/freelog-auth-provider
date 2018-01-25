@@ -11,7 +11,6 @@ const authErrCodeEnum = require('../enum/auth_err_code')
 
 const allAuthCodeEnumValues = Object.values(authCodeEnum)
 const allAuthErrorEnumValues = Object.values(authErrCodeEnum)
-
 module.exports = class CommonAuthResult {
 
     constructor(authCode) {
@@ -76,6 +75,18 @@ module.exports = class CommonAuthResult {
             || this.authCode === authCodeEnum.BasedOnNodeContract
             || this.authCode === authCodeEnum.BasedOnNodePolicy
             || this.authCode === authCodeEnum.BasedOnResourcePolicy
-            || this.authCode === authCodeEnum.Default
+            || this.authCode === authCodeEnum.BasedOnIndividuals
+            || this.authCode === authCodeEnum.BasedOnGroup
+            || this.authCode === authCodeEnum.BasedOnUserObjectAuth
+    }
+
+    toObject() {
+        return {
+            isAuth: this.isAuth,
+            authCode: this.authCode,
+            authErrCode: this.authErrCode,
+            data: this.data,
+            errors: this.errors
+        }
     }
 }

@@ -30,7 +30,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
 
         //根据当前状态遍历出所以需要注册到事件中心的事件
         contract.policySegment.fsmDescription
-            .filter(item => item.currentState === state && registerEventTypes.some(type => type === item.event.type))
+            .filter(item => item.event && item.currentState === state && registerEventTypes.some(type => type === item.event.type))
             .forEach(item => {
                 let handlerName = `${item.event.type}Handler`
                 Reflect.get(this, handlerName).call(this, item.event, contract)
@@ -128,7 +128,7 @@ const tools = {
      * @param eventParams
      * @returns {Date|*}
      */
-    arrivalDateConvert(eventParams){
+    arrivalDateConvert(eventParams) {
         if (eventParams[0] === '1') {
             return globalInfo.app.moment(eventParams[1]).toDate().toLocaleString()
         }

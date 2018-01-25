@@ -6,7 +6,7 @@
 
 let instance = null
 const amqp = require('amqp')
-const uuid = require('node-uuid')
+const uuid = require('uuid')
 const Emitter = require('events')
 const Promise = require("bluebird")
 

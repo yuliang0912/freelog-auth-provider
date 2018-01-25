@@ -34,7 +34,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
              * @param eventNasme
              * @param message
              */
-            execEvent(event, message, ...args){
+            execEvent(event, message, ...args) {
                 if (Reflect.has(this, event.eventId) && typeof this[event.eventId] === 'function') {
                     this.currEvent = event
                     Reflect.get(this, event.eventId).call(this, message, ...args)
@@ -48,7 +48,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
         /**
          * 所有的事件定义与状态流转
          */
-        transitions: contractInfo.policySegment.fsmDescription.map(item => {
+        transitions: contractInfo.policySegment.fsmDescription.filter(t => t.event).map(item => {
             return {
                 name: item.event.eventId,
                 from: item.currentState,

@@ -62,4 +62,29 @@ module.exports = {
      * 用户分组策认证不通过
      */
     "groupRefuse": 70080303,
+
+    /**
+     * 未找到节点
+     */
+    "notFoundNode": 70080304,
+
+    /**
+     * 资源策略拒绝
+     */
+    "resourcePolicyRefuse": 70080305,
+
+    /**
+     * presentable策略拒绝
+     */
+    "presentablePolicyRefuse": 70080306,
+
+    /**
+     * 身份认证失败
+     */
+    "identityAuthenticationRefuse": 70080307,
+
+    /**
+     * 未知异常
+     */
+    "exception": 70080307
 }
