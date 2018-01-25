@@ -10,10 +10,10 @@ const authErrorCodeEnum = require('../../../enum/auth_err_code')
 module.exports.auth = ({policyAuthUsers, userInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
-    let individualsUserPolicy = policyAuthUsers.find(t => t.userType === 'individuals')
+    let individualUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() ==='INDIVIDUAL')
 
     //如果没有个人认证的策略,则默认返回
-    if (!individualsUserPolicy) {
+    if (!individualUserPolicy) {
         return authResult
     }
 
@@ -26,9 +26,10 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
     }
 
     //如果匹配到当前登录用户的邮件或者手机号,则通过认证
-    if (!individualsUserPolicy.users.some(item => userInfo.email.toLowerCase() === item || userInfo.mobile === item)) {
+    if (!individualUserPolicy.users.some(item => userInfo.email.toLowerCase() === item || userInfo.mobile === item)) {
         authResult.authCode = authCodeEnum.UserObjectUngratified
         authResult.authErrCode = authErrorCodeEnum.individualsRefuse
+        authResult.data.individualUserPolicy = individualUserPolicy
         authResult.addError('不满足个人认证策略')
         return authResult
     }

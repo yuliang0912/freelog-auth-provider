@@ -10,7 +10,7 @@ const authErrorCodeEnum = require('../../../enum/auth_err_code')
 module.exports.auth = ({policyAuthUsers, userInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
-    let groupUserPolicy = policyAuthUsers.find(t => t.userType.toLowerCase() === 'groups')
+    let groupUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'GROUP')
 
     //如果没有分组认证的策略,则默认返回
     if (!groupUserPolicy) {
@@ -27,6 +27,7 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
     if (!userInfo) {
         authResult.authCode = authCodeEnum.UserObjectUngratified
         authResult.authErrCode = authErrorCodeEnum.notFoundUser
+        authResult.data.groupUserPolicy = groupUserPolicy
         authResult.addError('未登陆的用户')
         return authResult
     }
@@ -37,7 +38,7 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
         return authResult
     }
 
-    let customGroups = groupUserPolicy.users.filter(item => /^group_user_[a-zA-Z0-9-]{4,20}$/.test(item))
+    let customGroups = groupUserPolicy.users.filter(item => /^group_user_[a-zA-Z0-9-]{4,20}$/i.test(item))
 
     return authResult
 }

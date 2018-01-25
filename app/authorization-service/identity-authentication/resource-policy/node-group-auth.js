@@ -10,7 +10,7 @@ const authErrorCodeEnum = require('../../../enum/auth_err_code')
 module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
-    let groupUserPolicy = policyAuthUsers.find(t => t.userType.toLowerCase() === 'groups')
+    let groupUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'GROUP')
 
     //如果没有分组认证的策略,则默认返回
     if (!groupUserPolicy) {
@@ -41,6 +41,7 @@ module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
 
     //其他分组默认不通过
     authResult.authCode = authCodeEnum.UserObjectUngratified
+    authResult.data.groupUserPolicy = groupUserPolicy
     return authResult
 }
 

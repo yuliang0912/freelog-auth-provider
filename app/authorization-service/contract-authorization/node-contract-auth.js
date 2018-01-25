@@ -19,6 +19,7 @@ module.exports.auth = ({nodeContract}) => {
     else {
         result.addError(`用户合同未生效,当前合同状态:${nodeContract.status}`)
         result.authErrCode = authErrorCodeEnum.nodeContractNotActivate
+        result.data.nodeContract = nodeContract
     }
 
     result.data.contract = nodeContract
