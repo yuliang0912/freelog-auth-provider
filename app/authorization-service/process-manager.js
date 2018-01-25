@@ -40,6 +40,7 @@ let AuthProcessManager = class AuthProcessManager {
                 ? this.virtualContractAuthorization({presentableInfo})
                 : this.userContractAuthorization({userContract, userInfo})
 
+            userContractAuthorizationResult.data.presentableId = presentableInfo.presentableId
             if (!userContractAuthorizationResult.isAuth) {
                 return userContractAuthorizationResult
             }

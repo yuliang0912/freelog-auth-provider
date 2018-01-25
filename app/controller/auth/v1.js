@@ -44,6 +44,8 @@ module.exports = class PresentableController extends Controller {
             headers: response
                 ? {authorization: "bearer " + authToken.signature, response: JSON.stringify(response)}
                 : {authorization: "bearer " + authToken.signature}
+        }).catch(err => {
+            console.log()
         })
 
         if (!extName) {

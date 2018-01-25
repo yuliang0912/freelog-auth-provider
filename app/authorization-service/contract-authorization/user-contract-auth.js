@@ -17,7 +17,7 @@ module.exports.auth = ({userContract}) => {
 
     if (!userContract) {
         result.authErrCode = authErrorCodeEnum.notFoundUserContract
-        result.data.userContract = userContract
+        result.data.contract = userContract
         result.addError('用户未签约合同')
         return result
     }
@@ -28,7 +28,7 @@ module.exports.auth = ({userContract}) => {
     else {
         result.addError(`用户合同未生效,当前合同状态:${userContract.status}`)
         result.authErrCode = authErrorCodeEnum.userContractNotActivate
-        result.data.userContract = userContract
+        result.data.contract = userContract
     }
     result.data.contract = userContract
 
