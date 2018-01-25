@@ -59,7 +59,7 @@ module.exports = class PresentableController extends Controller {
             }
             ctx.attachment(presentableId)
             ctx.set('content-type', 'application/octet-stream')
-            ctx.set('content-length', result.headers['content-length'])
+            //ctx.set('content-length', result.headers['content-length'])
             ctx.set('freelog-resource-type', resourceInfo.resourceType)
             ctx.set('freelog-meta', JSON.stringify(resourceInfo.meta))
             ctx.set('freelog-system-meta', JSON.stringify(resourceInfo.systemMeta))

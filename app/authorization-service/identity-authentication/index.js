@@ -74,6 +74,8 @@ module.exports = {
             throw new Error('策略中存在系统未知的身份认证方式')
         }
 
+
+
         //如果未登陆用户并且PUBLIC分组认证失败,则默认为用户登录名策略不通过
         return userLoginNameAuthResult.authCode === authCodeEnum.Default ? userGroupAuthResult : userLoginNameAuthResult
     }
