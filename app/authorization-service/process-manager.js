@@ -204,7 +204,7 @@ let AuthProcessManager = class AuthProcessManager {
 
         result.data.authToken = {
             userId: userInfo ? userInfo.userId : 0,
-            nodeId: nodeInfo.nodeId,
+            nodeId: nodeInfo ? nodeInfo.nodeId : 0,
             resourceId: resourcePolicy.resourceId,
             segmentId: result.data.policySegment.segmentId
         }
