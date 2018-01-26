@@ -109,7 +109,7 @@ module.exports = app => {
                 partyTwo: partyTwo,
                 segmentId: segmentId,
             }).then(oldContract => {
-                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
+                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订1", errCode: 105, data: oldContract})
             })
 
             if (contractType === ctx.app.contractType.ResourceToNode) {
@@ -161,10 +161,18 @@ module.exports = app => {
                 contractModel.status = 3
             }
 
-            await dataProvider.contractProvider.createContract(contractModel).then(contractInfo => {
+            let contractInfo = await dataProvider.contractProvider.createContract(contractModel).then(contractInfo => {
+                let awaitIninial = new Promise((resolve) => {
+                    this.app.once(`${app.event.contractEvent.initialContractEvent}_${contractInfo._id.toString()}`, function () {
+                        resolve(contractInfo.toObject())
+                    })
+                })
                 contractFsmEventHandler.initContractFsm(contractInfo.toObject())
-                return contractInfo
-            }).bind(ctx).then(buildReturnContract).then(ctx.success).catch(ctx.error)
+                return awaitIninial
+            }).bind(ctx).catch(ctx.error)
+
+            return await dataProvider.contractProvider.getContractById(contractInfo.contractId)
+                .bind(ctx).then(buildReturnContract).then(ctx.success).catch(ctx.error)
         }
 
         /**
