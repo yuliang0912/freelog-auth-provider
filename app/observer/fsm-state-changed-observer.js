@@ -38,6 +38,11 @@ module.exports = class FsmStateChangedObserver extends baseObserver {
 
         await Promise.all([task1, task2]).then(() => {
             console.log(`合同状态变更, from:${lifeCycle.from}, to:${lifeCycle.to}, contractId:${lifeCycle.fsm.contract.contractId}`)
+            // 暂时先不用
+            // if (lifeCycle.from === 'none' && lifeCycle.fsm.contract.isFirst) {
+            //     let eventName = `${globalInfo.app.event.contractEvent.initialContractEvent}_${contractId}`
+            //     globalInfo.app.emit(eventName)
+            // }
         }).catch(console.error)
     }
 }

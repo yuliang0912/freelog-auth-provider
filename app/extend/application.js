@@ -4,14 +4,19 @@
 
 const moment = require('moment')
 const rabbitClient = require('./helper/rabbit_mq_client')
+const freelogContractEvent = require('./event/freelog-contract-event')
 
 module.exports = {
     get rabbitClient() {
         return rabbitClient.Instance
     },
 
-    initRabbitClient(){
+    initRabbitClient() {
         return new rabbitClient(this.config.rabbitMq)
+    },
+
+    event: {
+        contractEvent: freelogContractEvent
     },
 
     moment

@@ -156,6 +156,11 @@ module.exports = app => {
                 contractModel.policyCounterpart = data.url
             })
 
+            //如果初始态就是激活态
+            if (contractModel.policySegment.activatedStates.some(t => t === contractModel.initialState)) {
+                contractModel.status = 3
+            }
+
             await dataProvider.contractProvider.createContract(contractModel).then(contractInfo => {
                 contractFsmEventHandler.initContractFsm(contractInfo.toObject())
                 return contractInfo
