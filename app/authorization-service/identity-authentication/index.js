@@ -36,9 +36,11 @@ module.exports = {
             return nodeGroupAuthResult
         }
 
-        //如果都是默认的,则代表没有存在第三种未知的方式
+        //如果都是默认的,则代表存在第三种未知的方式
         if (nodeDomainAuthResult.authCode === authCodeEnum.Default && nodeGroupAuthResult.authCode === authCodeEnum.Default) {
-            throw new Error('策略中存在系统未知的身份认证方式')
+            throw Object.assign(new Error('策略中存在系统未知的身份认证方式'), {
+                data: {users: policy.users}
+            })
         }
 
         return nodeDomainAuthResult.authCode === authCodeEnum.Default ? nodeGroupAuthResult : nodeDomainAuthResult
@@ -73,7 +75,6 @@ module.exports = {
         if (userLoginNameAuthResult.authCode === authCodeEnum.Default && userGroupAuthResult.authCode === authCodeEnum.Default) {
             throw new Error('策略中存在系统未知的身份认证方式')
         }
-
 
 
         //如果未登陆用户并且PUBLIC分组认证失败,则默认为用户登录名策略不通过

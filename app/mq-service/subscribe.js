@@ -10,7 +10,6 @@ const fsmEventHandler = require('../contract-service/contract-fsm-event-handler'
 const mqEventType = require('./mq-event-type').authService
 const Promise = require('bluebird')
 
-
 module.exports = async (app) => {
     //连接rabbitMQ,并且订阅指定的队列
     await new rabbit(app.config.rabbitMq).connect().then((client) => {

@@ -21,7 +21,7 @@ module.exports = {
             fsmStateSubject.contractFsmStateChanged(lifecycle)
         }
     },
-    
+
     /**
      * 无效的Transition请求
      * @param transition

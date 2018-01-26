@@ -26,19 +26,13 @@ module.exports = app => {
      * 获取合同记录
      */
     app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
-
     app.get('/v1/contracts/isCanExecEvent', controller.v1.isCanExecEvent)
-
-    /**
-     * 授权
-     */
-    app.get('/v1/auths/presentableAuthorization', app.controller.home.index.presentableAuthorization)
 
     //请求获取presentable资源
     app.get('/v1/presentables/resource/:presentableId.:extName', app.controller.auth.v1.presentable)
     app.get('/v1/presentables/resource/:presentableId', app.controller.auth.v1.presentable)
 
-    //直接请求资源
+    //直接请求授权资源
     app.get('/v1/auths/resource/:resourceId.:extName', app.controller.auth.v1.resource)
     app.get('/v1/auths/resource/:resourceId', app.controller.auth.v1.resource)
 

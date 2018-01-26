@@ -9,9 +9,9 @@ module.exports = appInfo => {
 
         middleware: ['errorHandler', 'localUserIdentity'],
 
-        mongo: {
-            uri: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
-        },
+        // mongo: {
+        //     uri: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
+        // },
 
         /**
          * 本地开发环境身份信息

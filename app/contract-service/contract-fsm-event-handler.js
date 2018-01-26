@@ -35,7 +35,7 @@ const handler = {
                 item.event.params.some(subEvent => subEvent.eventId === eventId || subEvent.eventName === eventId)
         })
 
-        if (!event) {
+        if (!event && event.event) {
             return Promise.reject("事件ID错误")
         }
 
@@ -111,8 +111,8 @@ const handler = {
     async contractEventExecute(contractInfo, event, eventId, ...otherArgs) {
 
         //组合事件的子事件交给组合事件handler处理
-        if (event.type === 'compoundEvents') {
-            return contractEventGroupHandler.EventGroupHandler(contractInfo, event, eventId, ...otherArgs)
+        if (event.type.toLowerCase() === 'compoundevents') {
+            return contractEventGroupHandler.eventGroupHandler(contractInfo, event, eventId, ...otherArgs)
         }
 
         let contractFsm = contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
@@ -147,7 +147,7 @@ const handler = {
         event = event.event
 
         let contractFsm = contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
-        if (event.type !== 'compoundEvents') {
+        if (event.type.toLowerCase() !== 'compoundevents') {
             return contractFsm.can(event.eventId)
         }
 
@@ -160,13 +160,7 @@ const handler = {
             groupEventId: event.eventId
         })
 
-        if (!envetGroup) {
-            return false
-        }
-
-        let hasExec = envetGroup.executedEvents.some(t => t === eventId)
-
-        return !hasExec
+        return envetGroup ? !envetGroup.executedEvents.some(t => t === eventId) : false
     },
 }
 

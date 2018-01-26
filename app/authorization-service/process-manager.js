@@ -67,6 +67,7 @@ let AuthProcessManager = class AuthProcessManager {
         } catch (e) {
             let result = new commonAuthResult(authCodeEnum.Exception)
             result.authErrCode = errAuthCodeEnum.exception
+            e.data && Object.assign(result.data, e.data)
             result.addError(e.toString())
             return result
         }

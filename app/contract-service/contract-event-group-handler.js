@@ -19,7 +19,7 @@ module.exports = {
      * @param otherArgs
      * @returns {Promise.<void>}
      */
-    async EventGroupHandler(contractInfo, compoundEvent, subEventId, ...otherArgs) {
+    async eventGroupHandler(contractInfo, compoundEvent, subEventId, ...otherArgs) {
 
         let condition = {
             contractId: contractInfo.contractId,
