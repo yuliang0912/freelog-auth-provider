@@ -112,18 +112,18 @@ class PresentableAuthService extends Service {
 
         //如果用户只有一个合同,则直接返回当前合同
         if (allUserContracts.length === 1) {
-            return allUserContracts[0]
+            return allUserContracts[0].toObject()
         }
 
         //如果用户有多个合同.默认找激活态的合同
         let activatedContracts = allUserContracts.filter(t => t.status === 3)
         if (activatedContracts.length === 1) {
-            return activatedContracts[0]
+            return activatedContracts[0].toObject()
         }
 
         let result = new commonAuthResult(authCodeEnum.NodeContractUngratified)
         result.authErrCode = authErrCodeEnum.chooseUserContract
-        result.data.contractList = allUserContracts
+        result.data.contracts = allUserContracts
 
         this.ctx.error({msg: "请选择一个合同执行", data: result.toObject()})
     }

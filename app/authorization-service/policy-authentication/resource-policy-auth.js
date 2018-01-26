@@ -16,9 +16,9 @@ module.exports.auth = ({policySegment}) => {
 
     let authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy)
     if (!isInitialTerminatMode) {
-        authResult.authCode = authCodeEnum.PresentablePolicyUngratified
-        authResult.authErrCode = authErrorCodeEnum.presentablePolicyRefuse
-        authResult.addError('presentable策略不满足initial-terminate模式')
+        authResult.authCode = authCodeEnum.ResourcePolicyUngratified
+        authResult.authErrCode = authErrorCodeEnum.resourcePolicyRefuse
+        authResult.addError('资源策略不满足initial-terminate模式')
     }
 
     return authResult

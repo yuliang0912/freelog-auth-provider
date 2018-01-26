@@ -17,6 +17,12 @@ module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
         return authResult
     }
 
+    //如果存在所有访问者分组,则通过
+    if (groupUserPolicy.users.some(item => item.toUpperCase() === 'PUBLIC')) {
+        authResult.authCode = authCodeEnum.BasedOnGroup
+        return authResult
+    }
+
     if (!nodeInfo) {
         authResult.authCode = authCodeEnum.UserObjectUngratified
         authResult.authErrCode = authErrorCodeEnum.notFoundNode

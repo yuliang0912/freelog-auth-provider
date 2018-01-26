@@ -7,6 +7,7 @@ const globalInfo = require('egg-freelog-base/globalInfo')
 const identityAuthentication = require('./identity-authentication/index')
 const userContractAuthorization = require('./contract-authorization/user-contract-auth')
 const nodeContractAuthorization = require('./contract-authorization/node-contract-auth')
+const resourcePolicyAuthorization = require('./policy-authentication/resource-policy-auth')
 const presentablePolicyAuthorization = require('./policy-authentication/presentable-policy-auth')
 const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
 const resourceAuthJwt = new JsonWebToken()
@@ -141,9 +142,6 @@ let AuthProcessManager = class AuthProcessManager {
 
         let authPolicySegment = presentableInfo.policy.find(policySegment => {
 
-            //调试使用
-            result.data.policySegment = policySegment
-
             let presentablePolicyAuthorizationResult = presentablePolicyAuthorization.auth({policySegment})
             if (!presentablePolicyAuthorizationResult.isAuth) {
                 return false
@@ -165,6 +163,53 @@ let AuthProcessManager = class AuthProcessManager {
             result.authErrCode = result.authErrCode || errAuthCodeEnum.presentablePolicyRefuse
             result.addError('未能通过presentable策略授权')
         }
+
+        return result
+    }
+
+    /**
+     * 基于资源策略对资源进行直接授权(非presentable模式)
+     * 用户资源预览或者类似于license的资源
+     * @param presentableInfo
+     * @param userInfo
+     */
+    resourcePolicyAuthorization({resourcePolicy, nodeInfo, userInfo}) {
+
+        let result = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
+
+        let authPolicySegment = resourcePolicy.policy.find(policySegment => {
+
+            let resourcePolicyAuthorizationResult = resourcePolicyAuthorization.auth({policySegment})
+            if (!resourcePolicyAuthorizationResult.isAuth) {
+                return false
+            }
+
+            let identityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
+                nodeInfo: nodeInfo, policy: policySegment
+            })
+            if (!identityAuthenticationResult.isAuth) {
+                return false
+            }
+
+            result.data.policySegment = policySegment
+            return true
+        })
+
+        if (!authPolicySegment) {
+            result.authCode = authCodeEnum.ResourcePolicyUngratified
+            result.authErrCode = result.authErrCode || errAuthCodeEnum.resourcePolicyRefuse
+            result.addError('未能通过资源策略授权')
+            return result
+        }
+
+        result.data.authToken = {
+            userId: userInfo ? userInfo.userId : 0,
+            nodeId: nodeInfo.nodeId,
+            resourceId: resourcePolicy.resourceId,
+            segmentId: result.data.policySegment.segmentId
+        }
+
+        result.data.authToken.signature = resourceAuthJwt.createJwt(result.data.authToken, 1296000)
 
         return result
     }

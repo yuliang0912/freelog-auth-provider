@@ -38,6 +38,10 @@ module.exports = app => {
     app.get('/v1/presentables/resource/:presentableId.:extName', app.controller.auth.v1.presentable)
     app.get('/v1/presentables/resource/:presentableId', app.controller.auth.v1.presentable)
 
+    //直接请求资源
+    app.get('/v1/auths/resource/:resourceId.:extName', app.controller.auth.v1.resource)
+    app.get('/v1/auths/resource/:resourceId', app.controller.auth.v1.resource)
+
     /**
      * 资源合约相关REST-API
      */

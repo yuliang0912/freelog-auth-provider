@@ -69,9 +69,14 @@ module.exports = {
     ResourcePolicyUngratified: 14,
 
     /**
+     * 消费策略不满足
+     */
+    PresentablePolicyUngratified: 15,
+
+    /**
      * 用户对象不满足
      */
-    UserObjectUngratified: 15,
+    UserObjectUngratified: 16,
 
     /**
      * 未知的异常
