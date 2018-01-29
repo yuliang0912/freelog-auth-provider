@@ -456,7 +456,7 @@ module.exports = app => {
             let contractId = ctx.checkBody('contractId').exist().isContractId().value
             let eventId = ctx.checkBody('eventId').exist().isEventId().value
             let licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
-            let nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
+            let nodeId = ctx.checkBody('nodeId').optional().toInt().gt(0).value
             let userId = ctx.request.userId
 
             ctx.allowContentType({type: 'json'}).validate()
