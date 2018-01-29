@@ -456,18 +456,32 @@ module.exports = app => {
             let contractId = ctx.checkBody('contractId').exist().isContractId().value
             let eventId = ctx.checkBody('eventId').exist().isEventId().value
             let licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
+            let nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
             let userId = ctx.request.userId
 
             ctx.allowContentType({type: 'json'}).validate()
 
             let contractInfo = await dataProvider.contractProvider.getContract({_id: contractId}).then(app.toObject)
 
-            if (!contractInfo || contractInfo.partyTwo !== userId) {
+            if (!contractInfo) {
                 ctx.error({msg: '未找到有效的合同', data: {contractInfo, userId}})
             }
 
             if (contractInfo.status === 4 || contractInfo.status === 5) {
                 ctx.error({msg: '合同已经终止', data: {contractStatus: contractInfo.status}})
+            }
+
+            //如果是资源-节点合同
+            if (contractInfo.contractType === ctx.app.contractType.ResourceToNode) {
+                let nodeInfo = nodeId ? await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${nodeId}`) : null
+                if (!nodeInfo || nodeInfo.ownerUserId !== userId) {
+                    ctx.error({msg: '参数nodeId错误', data: {nodeId, userId}})
+                }
+                if (nodeId !== contractInfo.partyTwo) {
+                    ctx.error({msg: '没有执行合同的权限', data: {nodeId, userId}})
+                }
+            } else if (contractInfo.partyTwo !== userId) {
+                ctx.error({msg: '没有执行合同的权限', data: {userId}})
             }
 
             let eventModel = contractInfo.policySegment.fsmDescription.find(item => {
