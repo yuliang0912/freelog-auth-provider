@@ -122,6 +122,15 @@ module.exports = app => {
                 ctx.error({msg: 'segmentId错误,未找到策略段'})
             }
 
+            //如果是签订presentable,则校验node-contract合同是否是激活态
+            if (contractType === ctx.app.contractType.PresentableToUer) {
+                await dataProvider.contractProvider.getContractById(policyInfo.contractId).then(resourceContract => {
+                    if (!resourceContract || resourceContract.status !== 3) {
+                        ctx.error({msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约', data: resourceContract})
+                    }
+                })
+            }
+
             let userInfo = ctx.request.identityInfo.userInfo
             if (contractType === ctx.app.contractType.ResourceToNode) {
                 let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
@@ -454,7 +463,7 @@ module.exports = app => {
             let contractInfo = await dataProvider.contractProvider.getContract({_id: contractId}).then(app.toObject)
 
             if (!contractInfo || contractInfo.partyTwo !== userId) {
-                ctx.error({msg: '未找到有效的合同'})
+                ctx.error({msg: '未找到有效的合同', data: {contractInfo, userId}})
             }
 
             if (contractInfo.status === 4 || contractInfo.status === 5) {

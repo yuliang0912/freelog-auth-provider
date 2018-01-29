@@ -23,7 +23,6 @@ const toObjectOptions = {
             policyCounterpart: ret.policyCounterpart,
             status: ret.status,
             fsmState: ret.fsmState,
-            //subsidiaryInfo: ret.subsidiaryInfo
         }
     }
 }
