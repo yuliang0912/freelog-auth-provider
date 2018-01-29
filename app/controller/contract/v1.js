@@ -5,6 +5,7 @@
 'use strict'
 
 const _ = require('lodash')
+const authService = require('../../authorization-service/process-manager')
 const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
 
 module.exports = app => {
@@ -95,7 +96,8 @@ module.exports = app => {
          * @returns {Promise.<void>}
          */
         async create(ctx) {
-            let contractType = ctx.checkBody('contractType').toInt().in([1, 2, 3]).value
+            //目前暂不支持资源商对资源商的合同
+            let contractType = ctx.checkBody('contractType').toInt().in([2, 3]).value
             let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
             let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
             // 此处为资源ID或者presentableId
@@ -103,22 +105,6 @@ module.exports = app => {
             let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
 
             ctx.validate()
-
-            await dataProvider.contractProvider.getContract({
-                targetId: targetId,
-                partyTwo: partyTwo,
-                segmentId: segmentId,
-            }).then(oldContract => {
-                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
-            })
-
-            if (contractType === ctx.app.contractType.ResourceToNode) {
-                let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
-                if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
-                    ctx.errors.push({partyTwo: '未找到节点或者用户与节点信息不匹配'})
-                }
-                ctx.validate()
-            }
 
             let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
                 ? `${this.config.gatewayUrl}/api/v1/presentables/${targetId}`
@@ -135,6 +121,25 @@ module.exports = app => {
             if (!policySegment) {
                 ctx.error({msg: 'segmentId错误,未找到策略段'})
             }
+
+            let userInfo = ctx.request.identityInfo.userInfo
+            if (contractType === ctx.app.contractType.ResourceToNode) {
+                let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
+                if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
+                    ctx.error({msg: '未找到节点或者用户与节点信息不匹配', data: nodeInfo})
+                }
+                if (!authService.resourcePolicyIdentityAuthentication({policySegment, nodeInfo}).isAuth) {
+                    ctx.error({msg: '资源策略段身份认证失败', data: {policyUsers: policySegment.users, nodeInfo}})
+                }
+            } else if (partyTwo !== ctx.request.userId) {
+                ctx.error({msg: '参数partyTwo与当前登录用户身份不符合'})
+            } else if (!authService.presentablePolicyIdentityAuthentication({policySegment, userInfo}).isAuth) {
+                ctx.error({msg: 'presentable策略段身份认证失败', data: {policyUsers: policySegment.users, userInfo}})
+            }
+
+            await dataProvider.contractProvider.getContract({targetId, partyTwo, segmentId}).then(oldContract => {
+                oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
+            })
 
             let contractModel = {
                 segmentId, policySegment, contractType,

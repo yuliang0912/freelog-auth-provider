@@ -12,8 +12,7 @@ const presentablePolicyAuthorization = require('./policy-authentication/presenta
 const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
 const resourceAuthJwt = new JsonWebToken()
 
-
-let AuthProcessManager = class AuthProcessManager {
+const AuthProcessManager = class AuthProcessManager {
 
     constructor() {
         this.app = globalInfo.app
@@ -213,6 +212,29 @@ let AuthProcessManager = class AuthProcessManager {
         result.data.authToken.signature = resourceAuthJwt.createJwt(result.data.authToken, 1296000)
 
         return result
+    }
+
+    /**
+     * 资源策略身份认证
+     * @param policySegment
+     * @param userInfo
+     * @param nodeInfo
+     */
+    resourcePolicyIdentityAuthentication({policySegment, nodeInfo}) {
+        return identityAuthentication.resourcePolicyIdentityAuth({
+            nodeInfo: nodeInfo, policy: policySegment
+        })
+    }
+
+    /**
+     * presentable策略身份认证
+     * @param policySegment
+     * @param userInfo
+     */
+    presentablePolicyIdentityAuthentication({policySegment, userInfo}) {
+        return identityAuthentication.presentablePolicyIdentityAuth({
+            userInfo, policy: policySegment
+        })
     }
 }
 
