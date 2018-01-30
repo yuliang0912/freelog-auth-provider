@@ -86,5 +86,5 @@ module.exports = {
     /**
      * 未知异常
      */
-    "exception": 70080307
+    "exception": 70080000
 }

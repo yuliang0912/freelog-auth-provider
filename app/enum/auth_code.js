@@ -41,12 +41,12 @@ module.exports = {
     /**
      * 基于用户组策略
      */
-    BasedOnGroup: 5,
+    BasedOnGroup: 6,
 
     /**
      * 基于用户组或用户组策略
      */
-    BasedOnUserObjectAuth: 6,
+    BasedOnUserObjectAuth: 7,
 
     /**
      * 用户合同不满足

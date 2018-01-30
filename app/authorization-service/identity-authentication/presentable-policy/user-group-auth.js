@@ -40,6 +40,10 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
 
     let customGroups = groupUserPolicy.users.filter(item => /^group_user_[a-zA-Z0-9-]{4,20}$/i.test(item))
 
+    authResult.authCode = authCodeEnum.UserObjectUngratified
+    authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse
+    authResult.data.groupUserPolicy = groupUserPolicy
+
     return authResult
 }
 

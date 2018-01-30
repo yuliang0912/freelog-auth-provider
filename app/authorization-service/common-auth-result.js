@@ -84,7 +84,7 @@ module.exports = class CommonAuthResult {
         return {
             isAuth: this.isAuth,
             authCode: this.authCode,
-            authErrCode: this.authErrCode,
+            //authErrCode: this.authErrCode,
             data: this.data,
             errors: this.errors
         }

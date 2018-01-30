@@ -47,6 +47,7 @@ module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
 
     //其他分组默认不通过
     authResult.authCode = authCodeEnum.UserObjectUngratified
+    authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse
     authResult.data.groupUserPolicy = groupUserPolicy
     return authResult
 }
