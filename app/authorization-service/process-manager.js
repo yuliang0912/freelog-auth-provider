@@ -44,9 +44,8 @@ const AuthProcessManager = class AuthProcessManager {
 
             if (userInfo && userContractAuthorizationResult.authErrCode === errAuthCodeEnum.notFoundUserContract) {
                 presentableInfo.policy.forEach(policySegment => {
-                    policySegment.isPass = this.presentablePolicyIdentityAuthentication({
-                        policySegment,
-                        userInfo
+                    policySegment.identityAuthenticationResult = this.presentablePolicyIdentityAuthentication({
+                        policySegment, userInfo
                     }).isAuth
                 })
                 userContractAuthorizationResult.data.presentableInfo = presentableInfo

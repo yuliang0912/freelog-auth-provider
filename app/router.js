@@ -35,6 +35,7 @@ module.exports = app => {
     //直接请求授权资源
     app.get('/v1/auths/resource/:resourceId.:extName', app.controller.auth.v1.resource)
     app.get('/v1/auths/resource/:resourceId', app.controller.auth.v1.resource)
+    app.get('/v1/auths/presentablePolicyIdentityAuthentication', app.controller.auth.v1.presentablePolicyIdentityAuthentication)
 
     /**
      * 资源合约相关REST-API

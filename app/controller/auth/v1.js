@@ -2,6 +2,7 @@
 
 const Controller = require('egg').Controller
 const ExtensionNames = ['data', 'js', 'css', 'html']
+const authService = require('../authorization-service/process-manager')
 const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
 
 module.exports = class PresentableController extends Controller {
@@ -147,5 +148,20 @@ module.exports = class PresentableController extends Controller {
      */
     async presentablePolicyIdentityAuthentication(ctx) {
 
+        let presentableId = ctx.checkParams("id").isMongoObjectId().value
+        ctx.validate()
+
+        let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+        if (!presentableInfo) {
+            this.ctx.error({msg: '参数presentableId错误'})
+        }
+
+        presentableInfo.policy.forEach(policySegment => {
+            policySegment.identityAuthenticationResult = authService.presentablePolicyIdentityAuthentication({
+                policySegment, userInfo: ctx.request.identityInfo.userInfo
+            }).isAuth
+        })
+
+        ctx.success(presentableInfo)
     }
 }
