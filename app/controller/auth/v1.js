@@ -148,7 +148,7 @@ module.exports = class PresentableController extends Controller {
      */
     async presentablePolicyIdentityAuthentication(ctx) {
 
-        let presentableId = ctx.checkParams("id").isMongoObjectId().value
+        let presentableId = ctx.checkParams("presentableId").isMongoObjectId().value
         ctx.validate()
 
         let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
