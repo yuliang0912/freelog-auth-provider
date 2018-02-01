@@ -139,4 +139,13 @@ module.exports = class PresentableController extends Controller {
         }
         ctx.success(null)
     }
+
+    /**
+     * presentable-policy策略段身份认证结果
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async presentablePolicyIdentityAuthentication(ctx) {
+
+    }
 }
