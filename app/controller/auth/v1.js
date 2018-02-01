@@ -2,7 +2,7 @@
 
 const Controller = require('egg').Controller
 const ExtensionNames = ['data', 'js', 'css', 'html']
-const authService = require('../authorization-service/process-manager')
+const authService = require('../../authorization-service/process-manager')
 const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
 
 module.exports = class PresentableController extends Controller {
