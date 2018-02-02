@@ -38,7 +38,7 @@ module.exports = appInfo => {
          */
         dbConfig: {
             contract: {
-                client: 'mysql2',
+                client: 'mysql',
                 connection: {
                     host: '192.168.0.99',
                     user: 'root',
@@ -48,13 +48,25 @@ module.exports = appInfo => {
                     timezone: '+08:00',
                     bigNumberStrings: true,
                     supportBigNumbers: true,
-                    connectTimeout: 10000
+                    connectTimeout: 10000,
+                    typeCast: (field, next) => {
+                        if (field.type === 'JSON') {
+                            return JSON.parse(field.string())
+                        }
+                        return next()
+                    }
                 },
                 pool: {
-                    maxConnections: 50,
-                    minConnections: 2,
+                    max: 10, min: 2,
+                    afterCreate: (conn, done) => {
+                        conn.on('error', err => {
+                            console.log(`mysql connection error : ${err.toString()}`)
+                            err.fatal && globalInfo.app.knex.resource.client.pool.destroy(conn)
+                        })
+                        done()
+                    }
                 },
-                acquireConnectionTimeout: 10000,
+                acquireConnectionTimeout: 800,
                 debug: false
             },
         },
