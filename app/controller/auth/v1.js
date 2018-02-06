@@ -28,10 +28,7 @@ module.exports = class PresentableController extends Controller {
         }
 
         let authResult = await ctx.service.presentableAuthService.authProcessHandler({
-            userId,
-            nodeId,
-            presentableId,
-            userContractId
+            userId, nodeId, presentableId, userContractId
         })
 
         if (!authResult.isAuth) {
