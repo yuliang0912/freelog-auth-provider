@@ -15,6 +15,8 @@ RUN npm install
 
 ENV EGG_SERVER_ENV prod
 ENV PORT 7008
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 EXPOSE 7008
 
