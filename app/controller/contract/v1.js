@@ -50,8 +50,7 @@ module.exports = app => {
 
             let projection = "_id segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
             if (totalItem > (page - 1) * pageSize) {
-                dataList = await dataProvider.contractProvider.getContractList(condition, projection, page, pageSize).bind(ctx)
-                    .catch(ctx.error)
+                dataList = await dataProvider.contractProvider.getContractList(condition, projection, page, pageSize)
             }
 
             ctx.success({page, pageSize, totalItem, dataList})
@@ -108,7 +107,7 @@ module.exports = app => {
 
             let policyInfo = await ctx.curlIntranetApi(contractType === ctx.app.contractType.PresentableToUer
                 ? `${this.config.gatewayUrl}/api/v1/presentables/${targetId}`
-                : `${this.config.gatewayUrl}/api/v1/resources/policies/${targetId}`)
+                : `http://127.0.0.1:7001/v1/policies/${targetId}`)
 
             if (!policyInfo) {
                 ctx.error({msg: 'targetId错误'})
@@ -133,13 +132,13 @@ module.exports = app => {
 
             let userInfo = ctx.request.identityInfo.userInfo
             if (contractType === ctx.app.contractType.ResourceToNode) {
-                let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
-                if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
-                    ctx.error({msg: '未找到节点或者用户与节点信息不匹配', data: nodeInfo})
-                }
-                if (!authService.resourcePolicyIdentityAuthentication({policySegment, nodeInfo}).isAuth) {
-                    ctx.error({msg: '资源策略段身份认证失败', data: {policyUsers: policySegment.users, nodeInfo}})
-                }
+                // let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
+                // if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
+                //     ctx.error({msg: '未找到节点或者用户与节点信息不匹配', data: nodeInfo})
+                // }
+                // if (!authService.resourcePolicyIdentityAuthentication({policySegment, nodeInfo}).isAuth) {
+                //     ctx.error({msg: '资源策略段身份认证失败', data: {policyUsers: policySegment.users, nodeInfo}})
+                // }
             } else if (partyTwo !== ctx.request.userId) {
                 ctx.error({msg: '参数partyTwo与当前登录用户身份不符合'})
             } else if (!authService.presentablePolicyIdentityAuthentication({policySegment, userInfo}).isAuth) {

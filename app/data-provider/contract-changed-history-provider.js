@@ -15,7 +15,7 @@ module.exports = app => {
          * @param changeModel
          * @returns {Promise.<T>|Promise}
          */
-        addHistory(contractId, changeModel){
+        addHistory(contractId, changeModel) {
             return mongoModels.contractChangeHistroy.findOneAndUpdate({contractId: contractId}, {
                 $addToSet: {histories: changeModel},
             }).then(changehistory => {

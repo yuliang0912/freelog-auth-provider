@@ -13,7 +13,7 @@ module.exports = appInfo => {
             uri: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
         },
 
-        dbConfig: {
+        knex: {
             contract: {
                 connection: {
                     host: 'rm-wz9wj9435a0428942.mysql.rds.aliyuncs.com',

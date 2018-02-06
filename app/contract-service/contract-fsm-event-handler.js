@@ -22,7 +22,7 @@ const handler = {
      */
     async contractEventTriggerHandler(eventId, contractId, ...otherArgs) {
 
-        let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContract({_id: contractId}).then(globalInfo.app.toObject)
+        let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId).then(globalInfo.app.toObject)
 
         if (!contractInfo) {
             return Promise.reject("未找到有效的合同信息")
@@ -57,50 +57,6 @@ const handler = {
          */
         contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
     },
-
-    /**
-     * 模拟测试状态机运行情况
-     * @param contractId
-     * @param stateChangeDescript
-     * @returns {Promise.<void>}
-     */
-    // async contractTest(contractId, events){
-    //
-    //     let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContract({_id: contractId}).then(globalInfo.app.toObject)
-    //
-    //     if (!contractInfo) {
-    //         console.log('contractInfo is null')
-    //         return Promise.reject("未找到有效的合同信息")
-    //     }
-    //
-    //     let contractFsm = contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
-    //
-    //     let execEvents = events.map(eventId => {
-    //         return contractInfo.policySegment.fsmDescription
-    //             .find(item => item.event.eventId === eventId || item.event.eventName === eventId)
-    //     })
-    //
-    //     let result = []
-    //
-    //     execEvents.forEach(event => {
-    //         if (contractFsm.can(event.event.eventId)) {
-    //             contractFsm.execEvent(event.event)
-    //             result.push({
-    //                 eventId: event.event.eventId,
-    //                 state: `${event.currentState} to ${event.nextState}`,
-    //                 error: null
-    //             })
-    //         } else {
-    //             result.push({
-    //                 eventId: event.event.eventId,
-    //                 state: `${event.currentState} to ${event.nextState}`,
-    //                 error: '不能被执行,currState:' + contractFsm.state
-    //             })
-    //         }
-    //     })
-    //
-    //     return Promise.resolve(result)
-    // },
 
     /**
      * 执行合同事件

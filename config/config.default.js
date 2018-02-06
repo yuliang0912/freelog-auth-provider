@@ -36,7 +36,7 @@ module.exports = appInfo => {
         /**
          * DB-mysql相关配置
          */
-        dbConfig: {
+        knex: {
             contract: {
                 client: 'mysql',
                 connection: {

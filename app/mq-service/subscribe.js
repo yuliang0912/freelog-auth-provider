@@ -4,11 +4,11 @@
 
 'use start'
 
+const Promise = require('bluebird')
 const mqEventHandler = require('./mq-event-handler-map')
 const rabbit = require('../extend/helper/rabbit_mq_client')
 const fsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 const mqEventType = require('./mq-event-type').authService
-const Promise = require('bluebird')
 
 module.exports = async (app) => {
     //连接rabbitMQ,并且订阅指定的队列
@@ -16,7 +16,6 @@ module.exports = async (app) => {
 
         //订阅直接推动合同状态机改变的事件
         client.subscribe('auth-contract-event-receive-queue', async (message, headers, deliveryInfo, messageObject) => {
-            console.log(messageObject.routingKey)
             let handleResult = null
             switch (messageObject.routingKey) {
                 case 'event.contract.trigger':

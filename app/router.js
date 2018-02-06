@@ -2,43 +2,42 @@
 
 module.exports = app => {
 
-    const controller = app.controller.contract
+    const {router, controller} = app;
 
     //创建pb资源的合同
-    app.post('/v1/contracts/createPageBuildContracts', controller.v1.createPageBuildContracts)
+    router.post('/v1/contracts/createPageBuildContracts', controller.contract.v1.createPageBuildContracts)
 
     //消费客户的presentable合约列表
-    app.get('/v1/contracts/user/:userId', controller.v1.userContracts)
+    router.get('/v1/contracts/user/:userId', controller.contract.v1.userContracts)
 
     //节点商的resource合约列表
-    app.get('/v1/contracts/node/:nodeId', controller.v1.nodeContracts)
+    router.get('/v1/contracts/node/:nodeId', controller.contract.v1.nodeContracts)
 
-    app.get('/v1/contracts/list', controller.v1.list)
+    router.get('/v1/contracts/list', controller.contract.v1.list)
 
     //资源商引用其他资源的resource合约列表
-    app.get('/v1/contracts/author/:authorId', controller.v1.authorContracts)
+    router.get('/v1/contracts/author/:authorId', controller.contract.v1.authorContracts)
 
-    app.post('/v1/contracts/test', controller.v1.testContractFsm)
-    app.post('/v1/contracts/signingLicenses', controller.v1.signingLicenses)
-
+    router.post('/v1/contracts/test', controller.contract.v1.testContractFsm)
+    router.post('/v1/contracts/signingLicenses', controller.contract.v1.signingLicenses)
 
     /**
      * 获取合同记录
      */
-    app.get('/v1/contracts/contractRecords', controller.v1.contractRecords)
-    app.get('/v1/contracts/isCanExecEvent', controller.v1.isCanExecEvent)
+    router.get('/v1/contracts/contractRecords', controller.contract.v1.contractRecords)
+    router.get('/v1/contracts/isCanExecEvent', controller.contract.v1.isCanExecEvent)
 
     //请求获取presentable资源
-    app.get('/v1/presentables/resource/:presentableId.:extName', app.controller.auth.v1.presentable)
-    app.get('/v1/presentables/resource/:presentableId', app.controller.auth.v1.presentable)
+    router.get('/v1/presentables/resource/:presentableId.:extName', controller.auth.v1.presentable)
+    router.get('/v1/presentables/resource/:presentableId', controller.auth.v1.presentable)
 
     //直接请求授权资源
-    app.get('/v1/auths/resource/:resourceId.:extName', app.controller.auth.v1.resource)
-    app.get('/v1/auths/resource/:resourceId', app.controller.auth.v1.resource)
-    app.get('/v1/auths/presentablePolicyIdentityAuthentication/:presentableId', app.controller.auth.v1.presentablePolicyIdentityAuthentication)
+    router.get('/v1/auths/resource/:resourceId.:extName', controller.auth.v1.resource)
+    router.get('/v1/auths/resource/:resourceId', controller.auth.v1.resource)
+    router.get('/v1/auths/presentablePolicyIdentityAuthentication/:presentableId', controller.auth.v1.presentablePolicyIdentityAuthentication)
 
     /**
      * 资源合约相关REST-API
      */
-    app.resources('/v1/contracts', '/v1/contracts', controller.v1)
+    router.resources('/v1/contracts', '/v1/contracts', controller.contract.v1)
 };
