@@ -4,42 +4,34 @@
 
 'use strict'
 
-const mongoModels = require('../models/index')
+const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
-module.exports = app => {
+module.exports = class ContractProvider extends MongoBaseOperation {
 
-    const {type} = app
+    constructor(app) {
+        super(app.model.PresentableToken)
+    }
 
-    return {
+    /**
+     * 创建token
+     * @param model
+     * @returns {*}
+     */
+    createResourceToken(model) {
+        return super.create(model)
+    }
 
-        /**
-         * 创建token
-         * @param model
-         * @returns {*}
-         */
-        createResourceToken(model) {
+    /**
+     * 获取最新的token
+     * @param presentable
+     * @param userId
+     */
+    getLatestResourceToken(presentableId, userId) {
 
-            if (!type.object(model)) {
-                return Promise.reject(new Error("model must be object"))
-            }
+        let expire = Math.round(new Date().getTime() / 1000) + 5
 
-            return mongoModels.presentableToken.create(model)
-        },
-
-        /**
-         * 获取最新的token
-         * @param presentable
-         * @param userId
-         */
-        getLatestResourceToken(presentableId, userId) {
-
-            let expire = Math.round(new Date().getTime() / 1000) + 5
-
-            return mongoModels.presentableToken.findOne({
-                presentableId,
-                userId,
-                expire: {$gt: expire}
-            }).sort({exprie: 'desc'}).exec()
-        }
+        return super.model.findOne({
+            presentableId, userId, expire: {$gt: expire}
+        }).sort({exprie: 'desc'})
     }
 }

@@ -1,12 +1,7 @@
 'use strict'
 
-const _ = require('lodash')
+const Controller = require('egg').Controller
 
-module.exports = app => {
+module.exports = class GroupController extends Controller {
 
-    const dataProvider = app.dataProvider
-
-    return class GroupController extends app.Controller {
-
-    }
 }

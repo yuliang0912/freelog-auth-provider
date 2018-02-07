@@ -5,82 +5,75 @@
 'use strict'
 
 const moment = require('moment')
+const KnexBaseOperation = require('egg-freelog-database/lib/database/knex-base-operation')
 
-module.exports = app => {
-    const {knex, type} = app
+module.exports = class CycleSettlementProvider extends KnexBaseOperation {
 
-    return {
-        /**
-         * 注册合同周期触发事件
-         * @param model
-         * @returns {*|string}
-         */
-        createCycleSettlementEvent({eventId, contractId, eventParams}){
-            return knex.contract.raw(
-                `INSERT ignore INTO cyclesettlementmanger(eventId,cycleType,contractId,eventParams,createDate,status)
+    constructor(app) {
+        super(app.knex.contract("cyclesettlementmanger"))
+        this.app = app
+        this.contractKnex = app.knex.contract
+    }
+
+    /**
+     * 注册合同周期触发事件
+     * @param model
+     * @returns {*|string}
+     */
+    createCycleSettlementEvent({eventId, contractId, eventParams}) {
+        return this.contractKnex.raw(
+            `INSERT ignore INTO cyclesettlementmanger(eventId,cycleType,contractId,eventParams,createDate,status)
             VALUES(:eventId,:cycleType,:contractId,:eventParams,:createDate,:status)`, {
-                    eventId, contractId, eventParams,
-                    cycleType: 1,
-                    createDate: moment().toDate(),
-                    status: 0
-                })
-        },
+                eventId, contractId, eventParams,
+                cycleType: 1,
+                createDate: moment().toDate(),
+                status: 0
+            })
+    }
 
-        /**
-         * 分页获取所有待触发结算的合约
-         * @param condition
-         * @param page
-         * @param pageSize
-         */
-        getCycleSettlementEvents(condition, beginSeqId, endSeqId, pageSize){
-            return knex.contract('cyclesettlementmanger')
-                .where(condition)
-                .where('seqId', '>=', beginSeqId)
-                .where('seqId', '<=', endSeqId)
-                .limit(pageSize)
-                .orderBy('seqId', 'ASC')
-                .select()
-        },
+    /**
+     * 分页获取所有待触发结算的合约
+     * @param condition
+     * @param page
+     * @param pageSize
+     */
+    getCycleSettlementEvents(condition, beginSeqId, endSeqId, pageSize) {
+        return super.queryChain.where(condition)
+            .where('seqId', '>=', beginSeqId)
+            .where('seqId', '<=', endSeqId)
+            .limit(pageSize).orderBy('seqId', 'ASC')
+            .select()
+    }
 
-        /**
-         * 获取起始与终止序列号
-         * @param condition
-         */
-        getMaxAndMinSeqId(condition, startDate, endDate){
-            return knex.contract('cyclesettlementmanger')
-                .where('createDate', '>=', startDate)
-                .where('createDate', '<=', endDate)
-                .max('seqId as maxSeqId')
-                .min('seqId as minSeqId')
-                .first()
-        },
+    /**
+     * 获取起始与终止序列号
+     * @param condition
+     */
+    getMaxAndMinSeqId(condition, startDate, endDate) {
+        return super.queryChain
+            .where('createDate', '>=', startDate)
+            .where('createDate', '<=', endDate)
+            .max('seqId as maxSeqId')
+            .min('seqId as minSeqId')
+            .first()
+    }
 
-        /**
-         * 更新数据
-         * @param condition
-         * @param model
-         * @returns {*}
-         */
-        updateCycleSettlementEvent(condition, model){
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition is not object"))
-            }
-            if (!type.object(model)) {
-                return Promise.reject(new Error("model is not object"))
-            }
-            return knex.contract('cyclesettlementmanger').update(model).where(condition).then()
-        },
+    /**
+     * 更新数据
+     * @param condition
+     * @param model
+     * @returns {*}
+     */
+    updateCycleSettlementEvent(condition, model) {
+        return super.update(model, condition)
+    }
 
-        /**
-         * 删除数据
-         * @param condition
-         * @returns {Promise|Promise.<*>}
-         */
-        deleteCycleSettlementEvent(condition){
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition is not object"))
-            }
-            return knex.contract('cyclesettlementmanger').where(condition).delete().then()
-        }
+    /**
+     * 删除数据
+     * @param condition
+     * @returns {Promise|Promise.<*>}
+     */
+    deleteCycleSettlementEvent(condition) {
+        return super.deleteMany(condition)
     }
 }

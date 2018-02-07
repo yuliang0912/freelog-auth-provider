@@ -112,7 +112,6 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param message
      */
     registerToEventCenter({event, message}) {
-        console.log(message)
         message.eventParams.routingKey = 'event.contract.trigger'
         return globalInfo.app.rabbitClient.publish({
             routingKey: event.routingKey,

@@ -1,38 +1,29 @@
 'use strict'
 
-const mongoModels = require('../models/index')
 
-module.exports = app => {
+const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
-    const {type} = app
+module.exports = class EventHandleResultProvider extends MongoBaseOperation {
 
-    return {
-        /**
-         * 创建合约
-         * @param model
-         * @returns {Promise.<TResult>}
-         */
-        create(model) {
+    constructor(app) {
+        super(app.model.AuthEventHandleResult)
+    }
 
-            if (!type.object(model)) {
-                return Promise.reject(new Error("model must be object"))
-            }
+    /**
+     * 创建合约
+     * @param model
+     * @returns {Promise.<TResult>}
+     */
+    create(model) {
+        return super.create(model)
+    }
 
-            return mongoModels.authEventHandleResult.create(model)
-        },
-
-        /**
-         * 获取数量
-         * @param condition
-         * @returns {Promise.<*>|Promise}
-         */
-        getCount(condition) {
-
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition must be object"))
-            }
-
-            return mongoModels.authEventHandleResult.count(condition).exec()
-        }
+    /**
+     * 获取数量
+     * @param condition
+     * @returns {Promise.<*>|Promise}
+     */
+    getCount(condition) {
+        return super.count(condition)
     }
 }

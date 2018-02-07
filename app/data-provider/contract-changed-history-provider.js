@@ -4,29 +4,31 @@
 
 'use strict'
 
-const mongoModels = require('../models/index')
+const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
-module.exports = app => {
-    return {
+module.exports = class ContractChangeHistoryProvider extends MongoBaseOperation {
+    constructor(app) {
+        super(app.model.ContractChangeHistory)
+    }
 
-        /**
-         * 新增记录
-         * @param contractId
-         * @param changeModel
-         * @returns {Promise.<T>|Promise}
-         */
-        addHistory(contractId, changeModel) {
-            return mongoModels.contractChangeHistroy.findOneAndUpdate({contractId: contractId}, {
-                $addToSet: {histories: changeModel},
-            }).then(changehistory => {
-                if (!changehistory) {
-                    return mongoModels.contractChangeHistroy.create({
-                        contractId,
-                        histories: [changeModel]
-                    })
-                }
-                return changehistory
-            }).catch(console.error)
-        }
+    /**
+     * 新增记录
+     * @param contractId
+     * @param changeModel
+     * @returns {Promise.<T>|Promise}
+     */
+    addHistory(contractId, changeModel) {
+
+        return super.findOneAndUpdate({contractId: contractId}, {
+            $addToSet: {histories: changeModel},
+        }).then(changeHistory => {
+            if (!changeHistory) {
+                return super.create({
+                    contractId,
+                    histories: [changeModel]
+                })
+            }
+            return changeHistory
+        })
     }
 }

@@ -2,153 +2,85 @@
  * Created by yuliang on 2017/9/26.
  */
 
-
 'use strict'
 
-const mongoModels = require('../models/index')
+const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
-module.exports = app => {
+module.exports = class ContractProvider extends MongoBaseOperation {
 
-    const {type} = app
+    constructor(app) {
+        super(app.model.Contract)
+    }
 
-    return {
-        /**
-         * 创建合约
-         * @param model
-         * @returns {Promise.<TResult>}
-         */
-        createContract(model) {
-
-            if (!type.object(model)) {
-                return Promise.reject(new Error("model must be object"))
-            }
-
-            return mongoModels.contract.create(model)
-        },
+    /**
+     * 创建合约
+     * @param model
+     * @returns {Promise.<TResult>}
+     */
+    createContract(model) {
+        return super.create(model)
+    }
 
 
-        /**
-         * 创建pageBuild类型资源的合同
-         * @param contracts
-         * @returns {*}
-         */
-        createPageBuildContract(contracts) {
+    /**
+     * 创建pageBuild类型资源的合同
+     * @param contracts
+     * @returns {*}
+     */
+    createPageBuildContract(contracts) {
+        return super.insertMany(contracts)
+    }
 
-            if (!Array.isArray(contracts)) {
-                return Promise.reject(new Error("contracts must be array"))
-            }
+    /**
+     * 查询合约
+     * @param condition
+     * @returns {*}
+     */
+    getContract(condition) {
+        return super.findOne(condition)
+    }
 
-            if (!contracts.length) {
-                return Promise.resolve([])
-            }
+    /**
+     * 根据合同ID查询合同
+     * @param contractId
+     * @returns {*}
+     */
+    getContractById(contractId) {
+        return super.findById(contractId)
+    }
 
-            let subContractIds = []
+    /**
+     * 获取合同
+     * @param condition
+     * @param projection
+     * @returns {*}
+     */
+    getContracts(condition, projection) {
+        return super.find(condition, projection)
+    }
 
-            contracts.forEach(model => {
-                model._id = mongoModels.ObjectId
-                if (!model.isPbContract) {
-                    subContractIds.push(model._id.toString())
-                }
-            })
+    /**
+     * 查询合约
+     * @param condition
+     * @returns {*}
+     */
+    getContractList(condition, projection, page, pageSize) {
+        return super.findPageList(condition, page, pageSize, projection, {createDate: 1})
+    }
 
-            if (subContractIds.length) {
-                let pbContract = contracts.find(t => t.isPbContract)
-                pbContract.subsidiaryInfo.relevanceContractIds = pbContract.subsidiaryInfo.relevanceContractIds.concat(subContractIds)
-            }
+    /**
+     * 更新合约状态
+     */
+    updateContractFsmState(contractId, fsmState, status) {
+        return super.update({_id: contractId}, {fsmState, status})
+    }
 
-            return mongoModels.contract.insertMany(contracts)
-        },
-
-        /**
-         * 查询合约
-         * @param condition
-         * @returns {*}
-         */
-        getContract(condition) {
-
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition must be object"))
-            }
-
-            return mongoModels.contract.findOne(condition).exec()
-        },
-
-        /**
-         * 根据合同ID查询合同
-         * @param contractId
-         * @returns {*}
-         */
-        getContractById(contractId) {
-
-            if (!type.string(contractId)) {
-                return Promise.reject(new Error("contractId must be string"))
-            }
-
-            return mongoModels.contract.findOne({_id: contractId}).exec()
-        },
-
-        /**
-         * 获取合同
-         * @param condition
-         * @param projection
-         * @returns {*}
-         */
-        getContracts(condition, projection) {
-
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition must be object"))
-            }
-
-            return mongoModels.contract.find(condition, projection).exec()
-        },
-
-        /**
-         * 查询合约
-         * @param condition
-         * @returns {*}
-         */
-        getContractList(condition, projection, page, pageSize) {
-
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition must be object"))
-            }
-
-            let options = {}
-            if (type.int32(page) && type.int32(pageSize)) {
-                options = {skip: (page - 1) * pageSize, limit: pageSize}
-            } else if (type.int32(pageSize)) {
-                options = {limit: pageSize}
-            }
-
-            return mongoModels.contract.find(condition, projection, options).exec()
-        },
-
-        /**
-         * 根据ID查询合约
-         * @param contractId
-         * @returns {Promise}
-         */
-        getContractById(contractId) {
-            return mongoModels.contract.findById(contractId).exec()
-        },
-
-        /**
-         * 更新合约状态
-         */
-        updateContractFsmState(contractId, fsmState, status) {
-            return mongoModels.contract.update({_id: contractId}, {fsmState, status})
-        },
-
-        /**
-         * 获取数量
-         * @param condition
-         * @returns {Promise.<*>|Promise}
-         */
-        getCount(condition) {
-            if (!type.object(condition)) {
-                return Promise.reject(new Error("condition must be object"))
-            }
-            return mongoModels.contract.count(condition).exec()
-        }
+    /**
+     * 获取数量
+     * @param condition
+     * @returns {Promise.<*>|Promise}
+     */
+    getCount(condition) {
+        return super.count(condition)
     }
 }
