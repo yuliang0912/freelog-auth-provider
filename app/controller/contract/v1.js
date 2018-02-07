@@ -82,6 +82,8 @@ module.exports = class ContractController extends Controller {
         let contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         ctx.validate()
 
+
+
         await ctx.dal.contractProvider.getContractById(contractId).bind(ctx).then(buildReturnContract)
             .then(ctx.success).catch(ctx.error)
     }
