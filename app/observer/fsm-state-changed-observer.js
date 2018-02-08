@@ -42,9 +42,6 @@ module.exports = class FsmStateChangedObserver extends baseObserver {
                 let eventName = `${globalInfo.app.event.contractEvent.initialContractEvent}_${contractId}`
                 globalInfo.app.emit(eventName)
             }
-        }).catch(error => {
-            console.log(contractId, lifeCycle.fsm.contract)
-            console.error(error)
-        })
+        }).catch(console.error)
     }
 }

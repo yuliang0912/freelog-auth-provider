@@ -68,6 +68,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      * @param contractInfo
      */
     periodHandler(event, contractInfo) {
+
         return globalInfo.app.dataProvider.cycleSettlementProvider.createCycleSettlementEvent({
             eventId: event.eventId,
             contractId: contractInfo.contractId,

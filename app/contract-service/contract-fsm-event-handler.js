@@ -22,11 +22,13 @@ const handler = {
      */
     async contractEventTriggerHandler(eventId, contractId, ...otherArgs) {
 
-        let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId).then(globalInfo.app.toObject)
+        let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId)
 
         if (!contractInfo) {
             return Promise.reject("未找到有效的合同信息")
         }
+
+        contractInfo = contractInfo.toObject()
 
         let event = contractInfo.policySegment.fsmDescription.find(item => {
             return item.event.eventId === eventId ||
