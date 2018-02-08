@@ -17,9 +17,14 @@ class PresentableAuthService extends Service {
      */
     async authProcessHandler({userId, nodeId, presentableId, userContractId}) {
 
-        // let lastAuthResult = userId ? this.getAuthToken({userId, presentableId}) : null
-        // if (lastAuthResult) {
-        //     return lastAuthResult
+        // if (userId) {
+        //     let lastAuthResult = await this.app.dal.authTokenProvider.getLatestAuthToken({
+        //         userId,
+        //         targetId: presentableId
+        //     })
+        //     if (lastAuthResult) {
+        //         return lastAuthResult
+        //     }
         // }
 
         //此处也可以考虑去调用API获取用户信息
@@ -156,8 +161,17 @@ class PresentableAuthService extends Service {
      * @param presentableId
      * @returns {Promise<*>}
      */
-    async getAuthToken({userId, presentableId}) {
-        return await this.app.dataProvider.presentableTokenProvider.getLatestResourceToken(presentableId, userId)
+    async getLatestAuthToken({userId, presentableId}) {
+
+        let latestAuthToken = await this.app.dal.authTokenProvider.getLatestResourceToken({presentableId, userId})
+
+        let result = new commonAuthResult(authCodeEnum.Default)
+        if (latestAuthToken) {
+            result.authCode = latestAuthToken.authCode
+            result.data.authToken = latestAuthToken
+        }
+
+        return result
     }
 }
 

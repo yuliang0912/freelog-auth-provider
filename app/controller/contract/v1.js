@@ -175,7 +175,7 @@ module.exports = class ContractController extends Controller {
 
         let contractInfo = await ctx.dal.contractProvider.createContract(contractModel).then(contractInfo => {
             let awaitIninial = new Promise((resolve) => {
-                this.app.once(`${app.event.contractEvent.initialContractEvent}_${contractInfo._id.toString()}`, function () {
+                ctx.app.once(`${ctx.app.event.contractEvent.initialContractEvent}_${contractInfo._id.toString()}`, function () {
                     resolve(contractInfo.toObject())
                 })
             })

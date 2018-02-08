@@ -7,13 +7,13 @@
 module.exports = app => {
 
     const mongoose = app.mongoose
-    const PresentableAuthTokenSchema = new mongoose.Schema({
+    const AuthTokenSchema = new mongoose.Schema({
         userId: {type: Number, required: true}, //用户ID
         nodeId: {type: Number, required: true}, //节点ID
-        presentableId: {type: String, required: true}, //presentableId
-        nodeContractId: {type: String, required: true}, //节点合同ID
-        userContractId: {type: String}, //用户合同ID
-        resourceId: {type: String, required: true}, //资源ID
+        targetId: {type: String, required: true}, //presentableId or resourceId
+        targetType: {type: Number, required: true},
+        authCode: {type: Number, required: true},
+        extendInfo: {}, //其他数据,混合类型
         signature: {type: String, required: true}, //token签名信息
         expire: {type: Number, required: true}, //合同过期时间
         status: {type: Number, required: true, default: 0},
@@ -22,7 +22,7 @@ module.exports = app => {
         timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},
     })
 
-    PresentableAuthTokenSchema.index({presentableId: 1, userId: 1});
+    AuthTokenSchema.index({targetId: 1, userId: 1});
 
-    return mongoose.model('presentable-auth-token', PresentableAuthTokenSchema)
+    return mongoose.model('auth-token', AuthTokenSchema)
 }
