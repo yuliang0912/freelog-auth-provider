@@ -83,7 +83,6 @@ module.exports = class ContractController extends Controller {
         ctx.validate()
 
 
-
         await ctx.dal.contractProvider.getContractById(contractId).bind(ctx).then(buildReturnContract)
             .then(ctx.success).catch(ctx.error)
     }
@@ -459,7 +458,7 @@ module.exports = class ContractController extends Controller {
 
         ctx.allowContentType({type: 'json'}).validate()
 
-        let contractInfo = await ctx.dal.contractProvider.getContract({_id: contractId}).then(app.toObject)
+        let contractInfo = await ctx.dal.contractProvider.getContract({_id: contractId}).then(ctx.app.toObject)
 
         if (!contractInfo) {
             ctx.error({msg: '未找到有效的合同', data: {contractInfo, userId}})
