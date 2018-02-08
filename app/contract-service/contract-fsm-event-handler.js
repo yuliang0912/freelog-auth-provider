@@ -23,7 +23,7 @@ const handler = {
     async contractEventTriggerHandler(eventId, contractId, ...otherArgs) {
 
         let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId).then(globalInfo.app.toObject)
-        console.log(contractInfo)
+
         if (!contractInfo) {
             return Promise.reject("未找到有效的合同信息")
         }
