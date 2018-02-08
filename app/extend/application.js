@@ -20,7 +20,7 @@ module.exports = {
     },
 
     toObject(data) {
-        return data ? data.toObject() : data
+        return data && data.toObject ? data.toObject() : data
     },
 
     moment,
