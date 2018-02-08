@@ -19,5 +19,9 @@ module.exports = {
         contractEvent: freelogContractEvent
     },
 
-    moment
+    toObject() {
+        return data ? data.toObject() : data
+    },
+    
+    moment,
 }
