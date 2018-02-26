@@ -35,17 +35,18 @@ const AuthProcessManager = class AuthProcessManager {
             if (!presentableInfo || !nodeInfo) {
                 throw new Error('授权服务接口presentable接收到的参数错误')
             }
+
             //如果有登陆用户,则使用用户的合同,否则尝试使用虚拟合同授权
-            let userContractAuthorizationResult = !userInfo
-                ? this.virtualContractAuthorization({presentableInfo})
-                : this.userContractAuthorization({userContract, userInfo})
+            let userContractAuthorizationResult = userInfo
+                ? this.userContractAuthorization({userContract, userInfo, nodeInfo})
+                : this.virtualContractAuthorization({presentableInfo, userInfo, nodeInfo})
 
             userContractAuthorizationResult.data.presentableId = presentableInfo.presentableId
 
             if (userInfo && userContractAuthorizationResult.authErrCode === errAuthCodeEnum.notFoundUserContract) {
                 presentableInfo.policy.forEach(policySegment => {
                     policySegment.identityAuthenticationResult = this.presentablePolicyIdentityAuthentication({
-                        policySegment, userInfo
+                        policySegment, userInfo, nodeInfo
                     }).isAuth
                 })
                 userContractAuthorizationResult.data.presentableInfo = presentableInfo
@@ -56,7 +57,7 @@ const AuthProcessManager = class AuthProcessManager {
             }
 
             let nodeContract = await this.dataProvider.contractProvider.getContractById(presentableInfo.contractId)
-            let nodeContractAuthorizationResult = this.nodeContractAuthorization({nodeContract, nodeInfo})
+            let nodeContractAuthorizationResult = this.nodeContractAuthorization({nodeContract, nodeInfo, userInfo})
             if (!nodeContractAuthorizationResult.isAuth) {
                 return nodeContractAuthorizationResult
             }
@@ -87,7 +88,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param policy
      * @param userInfo
      */
-    userContractAuthorization({userContract, userInfo}) {
+    userContractAuthorization({userContract, userInfo, nodeInfo}) {
 
         let userContractAuthorizationResult = userContractAuthorization.auth({userContract})
 
@@ -100,7 +101,7 @@ const AuthProcessManager = class AuthProcessManager {
         }
 
         let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
-            userInfo,
+            userInfo, nodeInfo,
             policy: userContract.policySegment
         })
 
@@ -116,7 +117,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param nodeContract
      * @param nodeInfo
      */
-    nodeContractAuthorization({nodeContract, nodeInfo}) {
+    nodeContractAuthorization({nodeContract, userInfo, nodeInfo}) {
 
         let nodeContractAuthorizationResult = nodeContractAuthorization.auth({nodeContract})
 
@@ -129,7 +130,8 @@ const AuthProcessManager = class AuthProcessManager {
         }
 
         let nodeIdentityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
-            nodeInfo,
+            nodeInfo, userInfo,
+            policyOwnerId: nodeContract.partyOne,
             policy: nodeContract.policySegment
         })
 
@@ -146,7 +148,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    virtualContractAuthorization({presentableInfo, userInfo}) {
+    virtualContractAuthorization({presentableInfo, userInfo, nodeInfo}) {
 
         let result = new commonAuthResult(authCodeEnum.BasedOnNodePolicy)
 
@@ -158,7 +160,7 @@ const AuthProcessManager = class AuthProcessManager {
             }
 
             let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
-                userInfo: userInfo, policy: policySegment
+                userInfo, nodeInfo, policy: policySegment
             })
             if (!identityAuthenticationResult.isAuth) {
                 return false
@@ -195,7 +197,7 @@ const AuthProcessManager = class AuthProcessManager {
             }
 
             let identityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
-                nodeInfo: nodeInfo, policy: policySegment
+                userInfo, nodeInfo, policyOwnerId: resourcePolicy.userId, policy: policySegment
             })
             if (!identityAuthenticationResult.isAuth) {
                 return false
@@ -230,9 +232,9 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    resourcePolicyIdentityAuthentication({policySegment, nodeInfo}) {
+    resourcePolicyIdentityAuthentication({resourcePolicy, nodeInfo, userInfo}) {
         return identityAuthentication.resourcePolicyIdentityAuth({
-            nodeInfo: nodeInfo, policy: policySegment
+            nodeInfo, userInfo, policyOwnerId: resourcePolicy.userId, policy: resourcePolicy.policySegment
         })
     }
 
@@ -241,9 +243,9 @@ const AuthProcessManager = class AuthProcessManager {
      * @param policySegment
      * @param userInfo
      */
-    presentablePolicyIdentityAuthentication({policySegment, userInfo}) {
+    presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo}) {
         return identityAuthentication.presentablePolicyIdentityAuth({
-            userInfo, policy: policySegment
+            userInfo, nodeInfo, policy: policySegment
         })
     }
 }

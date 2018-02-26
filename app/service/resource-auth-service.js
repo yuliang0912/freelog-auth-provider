@@ -21,7 +21,11 @@ class PublicResourceAuthService extends Service {
             this.ctx.error({msg: '参数resourceId错误,未能找到资源的策略段', data: resourcePolicy})
         }
 
-        return authService.resourcePolicyAuthorization({resourcePolicy, nodeInfo, userInfo})
+        return authService.resourcePolicyAuthorization({
+            resourcePolicy,
+            nodeInfo,
+            userInfo
+        })
     }
 }
 

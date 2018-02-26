@@ -57,7 +57,7 @@ class PresentableAuthService extends Service {
          * B.去模拟调用是否能通过initial-terminate的方式授权
          * C.如果能授权,则默认创建一个合同,再次授权,如果不能授权,则返回之前的授权结果(用户未签约合同)
          */
-        let virtualContractAuthResult = authService.virtualContractAuthorization({presentableInfo, userInfo})
+        let virtualContractAuthResult = authService.virtualContractAuthorization({presentableInfo, userInfo, nodeInfo})
         if (!virtualContractAuthResult.isAuth) {
             return authResult
         }

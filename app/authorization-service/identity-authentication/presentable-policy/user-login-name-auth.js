@@ -7,10 +7,10 @@ const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
 
-module.exports.auth = ({policyAuthUsers, userInfo}) => {
+module.exports.auth = ({policyAuthUsers, userInfo, nodeInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
-    let individualUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() ==='INDIVIDUAL')
+    let individualUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'INDIVIDUAL')
 
     //如果没有个人认证的策略,则默认返回
     if (!individualUserPolicy) {
@@ -26,15 +26,27 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
     }
 
     //如果匹配到当前登录用户的邮件或者手机号,则通过认证
-    if (!individualUserPolicy.users.some(item => userInfo.email.toLowerCase() === item || userInfo.mobile === item)) {
-        authResult.authCode = authCodeEnum.UserObjectUngratified
-        authResult.authErrCode = authErrorCodeEnum.individualsRefuse
-        authResult.data.individualUserPolicy = individualUserPolicy
-        authResult.addError('不满足个人认证策略')
+    if (individualUserPolicy.users.some(item => userInfo.email.toLowerCase() === item || userInfo.mobile === item)) {
+        authResult.authCode = authCodeEnum.BasedOnIndividuals
         return authResult
     }
 
-    authResult.authCode = authCodeEnum.BasedOnIndividuals
+    if (!nodeInfo) {
+        authResult.authCode = authCodeEnum.UserObjectUngratified
+        authResult.authErrCode = authErrorCodeEnum.notFoundNode
+        authResult.addError('未找到节点信息')
+        return authResult
+    }
 
+    //对自己授权
+    if (individualUserPolicy.users.some(item => item.toUpperCase() === "SELF") && nodeInfo.ownerUserId === userInfo.userId) {
+        authResult.authCode = authCodeEnum.BasedOnIndividuals
+        return authResult
+    }
+
+    authResult.authCode = authCodeEnum.UserObjectUngratified
+    authResult.authErrCode = authErrorCodeEnum.individualsRefuse
+    authResult.data.individualUserPolicy = individualUserPolicy
+    authResult.addError('不满足个人认证策略')
     return authResult
 }
