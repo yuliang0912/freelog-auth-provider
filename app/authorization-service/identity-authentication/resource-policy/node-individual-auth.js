@@ -8,7 +8,7 @@ const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
 
-module.exports.auth = ({policyAuthUsers, nodeInfo, userInfo, policyOwnerId}) => {
+module.exports.auth = async ({policyAuthUsers, nodeInfo, userInfo, policyOwnerId}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
     let individualUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'INDIVIDUAL')

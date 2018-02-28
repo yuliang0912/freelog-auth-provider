@@ -11,7 +11,7 @@ const authErrorCodeEnum = require('../../enum/auth_err_code')
 /***
  * 针对presentable授权,主要检测普通用户是否有权限使用presentable
  */
-module.exports.auth = ({userContract}) => {
+module.exports.auth = async ({userContract}) => {
 
     let result = new commonAuthResult(authCodeEnum.UserContractUngratified)
 

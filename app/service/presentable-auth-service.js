@@ -57,7 +57,12 @@ class PresentableAuthService extends Service {
          * B.去模拟调用是否能通过initial-terminate的方式授权
          * C.如果能授权,则默认创建一个合同,再次授权,如果不能授权,则返回之前的授权结果(用户未签约合同)
          */
-        let virtualContractAuthResult = authService.virtualContractAuthorization({presentableInfo, userInfo, nodeInfo})
+        let virtualContractAuthResult = await authService.virtualContractAuthorization({
+            presentableInfo,
+            userInfo,
+            nodeInfo
+        })
+
         if (!virtualContractAuthResult.isAuth) {
             return authResult
         }
@@ -147,9 +152,10 @@ class PresentableAuthService extends Service {
             partyTwo: userInfo.userId
         }
 
-        return this.ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/contracts`, {
+        return this.ctx.curlIntranetApi(`http://127.0.0.1:7008/v1/contracts`, {
             type: 'post',
-            data: postData
+            contentType: 'json',
+            data: postData,
         }).catch(error => {
             this.ctx.error({msg: '创建用户合同失败', data: error.toString()})
         })

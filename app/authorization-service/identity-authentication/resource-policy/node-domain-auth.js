@@ -7,7 +7,7 @@ const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
 
-module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
+module.exports.auth = async ({policyAuthUsers, nodeInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
     let nodeDomainPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'DOMAIN')

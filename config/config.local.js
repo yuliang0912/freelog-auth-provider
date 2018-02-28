@@ -8,12 +8,12 @@ module.exports = appInfo => {
     return {
 
         middleware: ['errorHandler', 'localUserIdentity'],
-        
+
         /**
          * 本地开发环境身份信息
          */
         localIdentity: {
-            userId: 10026,
+            userId: 10024,
             userName: "余亮",
             nickname: "烟雨落叶",
             email: "4896819@qq.com",
@@ -26,22 +26,11 @@ module.exports = appInfo => {
             tokenType: "jwt"
         },
 
-        //
-        // mongoose: {
-        //     url: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
-        // },
-        //
-        // knex: {
-        //     contract: {
-        //         connection: {
-        //             host: 'rm-wz9wj9435a0428942.mysql.rds.aliyuncs.com',
-        //             user: 'freelog',
-        //             password: 'Ff@233109',
-        //             database: 'fr_contract',
-        //         },
-        //         debug: false
-        //     },
-        // },
+
+        mongoose: {
+            url: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
+        },
+
     }
 }
 

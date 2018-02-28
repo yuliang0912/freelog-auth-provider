@@ -99,7 +99,7 @@ module.exports = class ContractController extends Controller {
         let targetId = ctx.checkBody('targetId').exist().notEmpty().value
         let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
 
-        ctx.allowContentType({type: 'json'}).validate()
+        ctx.validate()
 
         if (contractType === ctx.app.contractType.PresentableToUer && partyTwo !== ctx.request.userId) {
             ctx.error({msg: '参数partyTwo与当前登录用户身份不符合'})

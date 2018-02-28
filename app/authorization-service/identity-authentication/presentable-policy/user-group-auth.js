@@ -7,8 +7,9 @@ const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
+const globalInfo = require('egg-freelog-base/globalInfo')
 
-module.exports.auth = ({policyAuthUsers, userInfo}) => {
+module.exports.auth = async ({policyAuthUsers, userInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
     let groupUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'GROUP')
@@ -39,7 +40,13 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
         return authResult
     }
 
+    let app = globalInfo.app
     let customGroups = groupUserPolicy.users.filter(item => commonRegex.userGroupId.test(item))
+    // let existMemberGroups = await app.curl(`${app.config.gatewayUrl}/api/v1/groups/isExistMember?memberId=${userInfo.userId}&groupIds=${customGroups.toString()}`)
+    //
+    // if (existMemberGroups.length) {
+    //
+    // }
 
     authResult.authCode = authCodeEnum.UserObjectUngratified
     authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse

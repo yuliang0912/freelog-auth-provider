@@ -38,17 +38,20 @@ const AuthProcessManager = class AuthProcessManager {
 
             //如果有登陆用户,则使用用户的合同,否则尝试使用虚拟合同授权
             let userContractAuthorizationResult = userInfo
-                ? this.userContractAuthorization({userContract, userInfo, nodeInfo})
-                : this.virtualContractAuthorization({presentableInfo, userInfo, nodeInfo})
+                ? await this.userContractAuthorization({userContract, userInfo, nodeInfo})
+                : await this.virtualContractAuthorization({presentableInfo, userInfo, nodeInfo})
 
             userContractAuthorizationResult.data.presentableId = presentableInfo.presentableId
 
             if (userInfo && userContractAuthorizationResult.authErrCode === errAuthCodeEnum.notFoundUserContract) {
-                presentableInfo.policy.forEach(policySegment => {
-                    policySegment.identityAuthenticationResult = this.presentablePolicyIdentityAuthentication({
+                let tasks = presentableInfo.policy.map(policySegment => {
+                    return this.presentablePolicyIdentityAuthentication({
                         policySegment, userInfo, nodeInfo
-                    }).isAuth
+                    }).then(authResult => {
+                        policySegment.identityAuthenticationResult = authResult.isAuth
+                    })
                 })
+                await Promise.all(tasks)
                 userContractAuthorizationResult.data.presentableInfo = presentableInfo
             }
 
@@ -57,7 +60,11 @@ const AuthProcessManager = class AuthProcessManager {
             }
 
             let nodeContract = await this.dataProvider.contractProvider.getContractById(presentableInfo.contractId)
-            let nodeContractAuthorizationResult = this.nodeContractAuthorization({nodeContract, nodeInfo, userInfo})
+            let nodeContractAuthorizationResult = await this.nodeContractAuthorization({
+                nodeContract,
+                nodeInfo,
+                userInfo
+            })
             if (!nodeContractAuthorizationResult.isAuth) {
                 return nodeContractAuthorizationResult
             }
@@ -88,9 +95,9 @@ const AuthProcessManager = class AuthProcessManager {
      * @param policy
      * @param userInfo
      */
-    userContractAuthorization({userContract, userInfo, nodeInfo}) {
+    async userContractAuthorization({userContract, userInfo, nodeInfo}) {
 
-        let userContractAuthorizationResult = userContractAuthorization.auth({userContract})
+        let userContractAuthorizationResult = await userContractAuthorization.auth({userContract})
 
         if (!userContractAuthorizationResult.isAuth) {
             return userContractAuthorizationResult
@@ -100,7 +107,7 @@ const AuthProcessManager = class AuthProcessManager {
             throw new Error('参数错误,数据不匹配')
         }
 
-        let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
+        let identityAuthenticationResult = await identityAuthentication.presentablePolicyIdentityAuth({
             userInfo, nodeInfo,
             policy: userContract.policySegment
         })
@@ -117,9 +124,9 @@ const AuthProcessManager = class AuthProcessManager {
      * @param nodeContract
      * @param nodeInfo
      */
-    nodeContractAuthorization({nodeContract, userInfo, nodeInfo}) {
+    async nodeContractAuthorization({nodeContract, userInfo, nodeInfo}) {
 
-        let nodeContractAuthorizationResult = nodeContractAuthorization.auth({nodeContract})
+        let nodeContractAuthorizationResult = await nodeContractAuthorization.auth({nodeContract})
 
         if (!nodeContractAuthorizationResult.isAuth) {
             return nodeContractAuthorizationResult
@@ -129,7 +136,7 @@ const AuthProcessManager = class AuthProcessManager {
             throw new Error('参数错误,数据不匹配')
         }
 
-        let nodeIdentityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
+        let nodeIdentityAuthenticationResult = await identityAuthentication.resourcePolicyIdentityAuth({
             nodeInfo, userInfo,
             policyOwnerId: nodeContract.partyOne,
             policy: nodeContract.policySegment
@@ -148,27 +155,33 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    virtualContractAuthorization({presentableInfo, userInfo, nodeInfo}) {
+    async virtualContractAuthorization({presentableInfo, userInfo, nodeInfo}) {
 
         let result = new commonAuthResult(authCodeEnum.BasedOnNodePolicy)
 
-        let authPolicySegment = presentableInfo.policy.find(policySegment => {
 
-            let presentablePolicyAuthorizationResult = presentablePolicyAuthorization.auth({policySegment})
+        let authPolicySegment = null
+
+        for (let i = 0, j = presentableInfo.policy.length; i < j; i++) {
+            let policySegment = presentableInfo.policy[i]
+
+            let presentablePolicyAuthorizationResult = await presentablePolicyAuthorization.auth({policySegment})
             if (!presentablePolicyAuthorizationResult.isAuth) {
-                return false
+                continue
             }
 
-            let identityAuthenticationResult = identityAuthentication.presentablePolicyIdentityAuth({
+            let identityAuthenticationResult = await identityAuthentication.presentablePolicyIdentityAuth({
                 userInfo, nodeInfo, policy: policySegment
             })
             if (!identityAuthenticationResult.isAuth) {
-                return false
+                continue
             }
 
+            authPolicySegment = policySegment
             result.data.policySegment = policySegment
-            return true
-        })
+            break
+        }
+
 
         if (!authPolicySegment) {
             result.authCode = authCodeEnum.NodePolicyUngratified
@@ -185,27 +198,30 @@ const AuthProcessManager = class AuthProcessManager {
      * @param presentableInfo
      * @param userInfo
      */
-    resourcePolicyAuthorization({resourcePolicy, nodeInfo, userInfo}) {
+    async resourcePolicyAuthorization({resourcePolicy, nodeInfo, userInfo}) {
 
         let result = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
 
-        let authPolicySegment = resourcePolicy.policy.find(policySegment => {
+        let authPolicySegment = null
+        for (let i = 0, j = resourcePolicy.policy.length; i < j; i++) {
 
-            let resourcePolicyAuthorizationResult = resourcePolicyAuthorization.auth({policySegment})
+            let policySegment = resourcePolicy.policy[i]
+            let resourcePolicyAuthorizationResult = await resourcePolicyAuthorization.auth({policySegment})
             if (!resourcePolicyAuthorizationResult.isAuth) {
-                return false
+                continue
             }
 
-            let identityAuthenticationResult = identityAuthentication.resourcePolicyIdentityAuth({
+            let identityAuthenticationResult = await identityAuthentication.resourcePolicyIdentityAuth({
                 userInfo, nodeInfo, policyOwnerId: resourcePolicy.userId, policy: policySegment
             })
             if (!identityAuthenticationResult.isAuth) {
-                return false
+                continue
             }
 
+            authPolicySegment = policySegment
             result.data.policySegment = policySegment
-            return true
-        })
+            break
+        }
 
         if (!authPolicySegment) {
             result.authCode = authCodeEnum.ResourcePolicyUngratified
@@ -232,8 +248,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    resourcePolicyIdentityAuthentication({resourcePolicy,policySegment, nodeInfo, userInfo}) {
-        console.log(resourcePolicy)
+    async resourcePolicyIdentityAuthentication({resourcePolicy, policySegment, nodeInfo, userInfo}) {
         return identityAuthentication.resourcePolicyIdentityAuth({
             nodeInfo, userInfo, policyOwnerId: resourcePolicy.userId, policy: policySegment
         })
@@ -244,7 +259,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param policySegment
      * @param userInfo
      */
-    presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo}) {
+    async presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo}) {
         return identityAuthentication.presentablePolicyIdentityAuth({
             userInfo, nodeInfo, policy: policySegment
         })

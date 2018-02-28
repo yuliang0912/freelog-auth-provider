@@ -9,7 +9,7 @@ const authCodeEnum = require('../../enum/auth_code')
 const commonAuthResult = require('.././common-auth-result')
 const authErrorCodeEnum = require('../../enum/auth_err_code')
 
-module.exports.auth = ({nodeContract}) => {
+module.exports.auth = async ({nodeContract}) => {
 
     let result = new commonAuthResult(authCodeEnum.UserContractUngratified)
 

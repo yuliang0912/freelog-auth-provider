@@ -153,11 +153,14 @@ module.exports = class PresentableController extends Controller {
             this.ctx.error({msg: '参数presentableId错误'})
         }
 
-        presentableInfo.policy.forEach(policySegment => {
-            policySegment.identityAuthenticationResult = authService.presentablePolicyIdentityAuthentication({
+        let tasks = presentableInfo.policy.map(policySegment => {
+            return authService.presentablePolicyIdentityAuthentication({
                 policySegment, userInfo: ctx.request.identityInfo.userInfo
-            }).isAuth
+            }).then(authResult => {
+                policySegment.identityAuthenticationResult = authResult.isAuth
+            })
         })
+        await Promise.all(tasks)
 
         ctx.success(presentableInfo)
     }

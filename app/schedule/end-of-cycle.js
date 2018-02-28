@@ -28,7 +28,6 @@ module.exports = class EndOfCycleTask extends Subscription {
         let endDate = this.app.moment().toDate().toLocaleString()
 
         await this.app.dataProvider.cycleSettlementProvider.getMaxAndMinSeqId({}, beginDate, endDate).then(startAndEndSeq => {
-            //console.log(beginDate, endDate, startAndEndSeq)
             this.getTaskQueue(startAndEndSeq.minSeqId, startAndEndSeq.maxSeqId)
         })
     }

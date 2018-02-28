@@ -93,7 +93,8 @@ class ContractService extends Service {
         if (!nodeInfo) {
             ctx.error({msg: '未找到节点信息', data: {presentable}})
         }
-        if (!authService.presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo}).isAuth) {
+        let authResult = await authService.presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo})
+        if (!authResult.isAuth) {
             ctx.error({msg: 'presentable策略段身份认证失败', data: {policyUsers: policySegment.users, userInfo}})
         }
 
@@ -140,7 +141,7 @@ class ContractService extends Service {
             ctx.error({msg: '未找到节点或者用户与节点信息不匹配', data: nodeInfo})
         }
 
-        let resourcePolicyIdentityAuth = authService.resourcePolicyIdentityAuthentication({
+        let resourcePolicyIdentityAuth = await authService.resourcePolicyIdentityAuthentication({
             resourcePolicy,
             policySegment,
             nodeInfo,

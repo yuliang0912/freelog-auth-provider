@@ -9,7 +9,7 @@ const authErrorCodeEnum = require('../../enum/auth_err_code')
  * @param app
  * @returns {{}}
  */
-module.exports.auth = ({policySegment}) => {
+module.exports.auth = async ({policySegment}) => {
 
     let isInitialTerminatMode = policySegment.fsmDescription.length === 1
         && policySegment.activatedStates.some(m => m === policySegment.initialState)

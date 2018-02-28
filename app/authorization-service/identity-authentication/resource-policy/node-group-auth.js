@@ -8,7 +8,7 @@ const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 
-module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
+module.exports.auth = async ({policyAuthUsers, nodeInfo}) => {
 
     let authResult = new AuthResult(authCodeEnum.Default)
     let groupUserPolicy = policyAuthUsers.find(t => t.userType.toUpperCase() === 'GROUP')
