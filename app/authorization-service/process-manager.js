@@ -232,9 +232,10 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    resourcePolicyIdentityAuthentication({resourcePolicy, nodeInfo, userInfo}) {
+    resourcePolicyIdentityAuthentication({resourcePolicy,policySegment, nodeInfo, userInfo}) {
+        console.log(resourcePolicy)
         return identityAuthentication.resourcePolicyIdentityAuth({
-            nodeInfo, userInfo, policyOwnerId: resourcePolicy.userId, policy: resourcePolicy.policySegment
+            nodeInfo, userInfo, policyOwnerId: resourcePolicy.userId, policy: policySegment
         })
     }
 

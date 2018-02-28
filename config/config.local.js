@@ -8,14 +8,7 @@ module.exports = appInfo => {
     return {
 
         middleware: ['errorHandler', 'localUserIdentity'],
-
-        // mongo: {
-        //     uri: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
-        // },
-
-        /**
-         * 本地开发环境身份信息
-         */
+        
         /**
          * 本地开发环境身份信息
          */
@@ -31,7 +24,24 @@ module.exports = appInfo => {
             createDate: "2017-10-20T16:38:17.000Z",
             updateDate: "2017-11-01T15:53:29.000Z",
             tokenType: "jwt"
-        }
+        },
+
+        //
+        // mongoose: {
+        //     url: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
+        // },
+        //
+        // knex: {
+        //     contract: {
+        //         connection: {
+        //             host: 'rm-wz9wj9435a0428942.mysql.rds.aliyuncs.com',
+        //             user: 'freelog',
+        //             password: 'Ff@233109',
+        //             database: 'fr_contract',
+        //         },
+        //         debug: false
+        //     },
+        // },
     }
 }
 

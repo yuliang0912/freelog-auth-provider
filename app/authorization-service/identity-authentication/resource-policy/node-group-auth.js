@@ -6,6 +6,7 @@
 const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
+const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 
 module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
 
@@ -42,8 +43,8 @@ module.exports.auth = ({policyAuthUsers, nodeInfo}) => {
      * TODO  满足A或者B任意条件则通过认证
      * @type {T[]}
      */
-    let customNodeGroups = groupUserPolicy.users.filter(item => /^group_node_[a-zA-Z0-9-]{4,20}$/.test(item))
-    let customUserGroups = groupUserPolicy.users.filter(item => /^group_user_[a-zA-Z0-9-]{4,20}$/.test(item))
+    let customNodeGroups = groupUserPolicy.users.filter(item => commonRegex.nodeGroupId.test(item))
+    let customUserGroups = groupUserPolicy.users.filter(item => commonRegex.userGroupId.test(item))
 
     //其他分组默认不通过
     authResult.authCode = authCodeEnum.UserObjectUngratified

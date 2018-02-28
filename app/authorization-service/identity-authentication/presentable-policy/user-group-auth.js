@@ -6,6 +6,7 @@
 const AuthResult = require('../../common-auth-result')
 const authCodeEnum = require('../../../enum/auth_code')
 const authErrorCodeEnum = require('../../../enum/auth_err_code')
+const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 
 module.exports.auth = ({policyAuthUsers, userInfo}) => {
 
@@ -38,7 +39,7 @@ module.exports.auth = ({policyAuthUsers, userInfo}) => {
         return authResult
     }
 
-    let customGroups = groupUserPolicy.users.filter(item => /^group_user_[a-zA-Z0-9-]{4,20}$/i.test(item))
+    let customGroups = groupUserPolicy.users.filter(item => commonRegex.userGroupId.test(item))
 
     authResult.authCode = authCodeEnum.UserObjectUngratified
     authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse

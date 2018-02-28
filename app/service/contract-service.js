@@ -142,6 +142,7 @@ class ContractService extends Service {
 
         let resourcePolicyIdentityAuth = authService.resourcePolicyIdentityAuthentication({
             resourcePolicy,
+            policySegment,
             nodeInfo,
             userInfo
         })
