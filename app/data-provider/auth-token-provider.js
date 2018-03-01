@@ -35,6 +35,6 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
         //授权有效期最少还有5秒的token
         condition.expire = {$gt: Math.round(new Date().getTime() / 1000) + 5}
 
-        return super.findOne(condition)
+        return super.model.findOne(condition).sort({createDate: 1}).exec()
     }
 }

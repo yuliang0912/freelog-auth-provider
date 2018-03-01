@@ -17,15 +17,10 @@ class PresentableAuthService extends Service {
      */
     async authProcessHandler({userId, nodeId, presentableId, userContractId}) {
 
-        // if (userId) {
-        //     let lastAuthResult = await this.app.dal.authTokenProvider.getLatestAuthToken({
-        //         userId,
-        //         targetId: presentableId
-        //     })
-        //     if (lastAuthResult) {
-        //         return lastAuthResult
-        //     }
-        // }
+        let authResultCache = await this.getLatestAuthResultCache({userId, presentableId})
+        if (authResultCache) {
+            return authResultCache
+        }
 
         //此处也可以考虑去调用API获取用户信息
         let userInfo = userId ? this.ctx.request.identityInfo.userInfo : null
@@ -49,6 +44,7 @@ class PresentableAuthService extends Service {
          * 以上两种结果直接返回授权服务的授权结果,否则去校验用户能否静默创建合同,继续后面代码逻辑检查
          */
         if (authResult.isAuth || authResult.authErrCode !== authErrCodeEnum.notFoundUserContract) {
+            this.saveAuthResult({userInfo, nodeInfo, presentableInfo, authResult})
             return authResult
         }
 
@@ -74,7 +70,59 @@ class PresentableAuthService extends Service {
         })
 
         //针对新创建的合同进行二次授权重试
-        return authService.presentableAuthorization({presentableInfo, userInfo, nodeInfo, userContract})
+        let secondaryAuthResult = await authService.presentableAuthorization({
+            presentableInfo,
+            userInfo,
+            nodeInfo,
+            userContract
+        })
+        this.saveAuthResult({userInfo, nodeInfo, presentableInfo, secondaryAuthResult})
+        return secondaryAuthResult
+    }
+
+    /**
+     * 获取最新一次的授权结果缓存
+     * @returns {Promise<void>}
+     */
+    async getLatestAuthResultCache({userId, presentableId}) {
+        if (!userId) {
+            return
+        }
+
+        let lastAuthResult = await this.app.dal.authTokenProvider.getLatestAuthToken({
+            userId, targetId: presentableId
+        })
+        if (!lastAuthResult) {
+            return
+        }
+
+        let authResult = new commonAuthResult(lastAuthResult.authCode)
+        authResult.data.authToken = lastAuthResult.extendInfo
+
+        return authResult
+    }
+
+    /**
+     * 保存最后一次授权结果
+     * @param userInfo
+     * @param authResult
+     * @returns {Promise<void>}
+     */
+    async saveAuthResult({userInfo, nodeInfo, presentableInfo, authResult}) {
+        if (!userInfo || !authResult.isAuth) {
+            return
+        }
+        let model = {
+            userId: userInfo.userId,
+            nodeId: nodeInfo.nodeId,
+            targetId: presentableInfo.presentableId,
+            targetType: 1,
+            authCode: authResult.authCode,
+            extendInfo: authResult.data.authToken,
+            signature: authResult.data.authToken.signature,
+            expire: authResult.data.authToken.expire
+        }
+        await this.app.dal.authTokenProvider.createAuthToken(model)
     }
 
     /**

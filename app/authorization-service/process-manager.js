@@ -77,7 +77,7 @@ const AuthProcessManager = class AuthProcessManager {
                 userContractId: userContract ? userContract.contractId : null,
                 resourceId: presentableInfo.resourceId
             }
-
+            userContractAuthorizationResult.data.authToken.expire = Math.round(new Date().getTime() / 1000) + 1296000
             userContractAuthorizationResult.data.authToken.signature = resourceAuthJwt.createJwt(userContractAuthorizationResult.data.authToken, 1296000)
 
             return userContractAuthorizationResult
