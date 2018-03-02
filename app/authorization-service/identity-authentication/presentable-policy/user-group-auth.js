@@ -41,12 +41,18 @@ module.exports.auth = async ({policyAuthUsers, userInfo}) => {
     }
 
     let app = globalInfo.app
+    let isExistMember = async (groups, memberId) => {
+        let existGroups = await app.curl(`${app.config.gatewayUrl}/api/v1/groups/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`, {dataType: 'json'}).then(res => {
+            return res.data.data
+        })
+        return Array.isArray(existGroups) && existGroups.length
+    }
+
     let customGroups = groupUserPolicy.users.filter(item => commonRegex.userGroupId.test(item))
-    // let existMemberGroups = await app.curl(`${app.config.gatewayUrl}/api/v1/groups/isExistMember?memberId=${userInfo.userId}&groupIds=${customGroups.toString()}`)
-    //
-    // if (existMemberGroups.length) {
-    //
-    // }
+    if (customGroups.length && (await isExistMember(customGroups, userInfo.userId))) {
+        authResult.authCode = authCodeEnum.BasedOnGroup
+        return authResult
+    }
 
     authResult.authCode = authCodeEnum.UserObjectUngratified
     authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse
