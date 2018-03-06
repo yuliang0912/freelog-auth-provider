@@ -1,4 +1,4 @@
-FROM daocloud.io/node:8.5
+FROM daocloud.io/node:8.5-alpine
 
 MAINTAINER yuliang <yu.liang@freelog.com>
 
@@ -10,13 +10,12 @@ COPY . /data/freelog-auth-provider
 
 RUN npm install
 
-#ENV
-#VOLUME ['/opt/logs','/opt/logs/db','/opt/logs/koa','/opt/logs/track']
-
 ENV NODE_ENV test
 ENV EGG_SERVER_ENV test
-ENV PORT 7008
+ENV PORT 5008
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-EXPOSE 7008
+EXPOSE 5008
 
 CMD [ "npm", "start" ]
