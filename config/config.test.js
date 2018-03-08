@@ -9,14 +9,14 @@ module.exports = {
     gatewayUrl: "http://172.18.215.224:8895",
 
     mongoose: {
-        url: "mongodb://root:Ff233109@dds-wz9b5420c30a27941546-pub.mongodb.rds.aliyuncs.com:3717,dds-wz9b5420c30a27942267-pub.mongodb.rds.aliyuncs.com:3717/auth?replicaSet=mgset-5016983"
+        url: "mongodb://172.18.215.230:27017/auth"
     },
 
     knex: {
         contract: {
             connection: {
                 host: 'rm-wz9wj9435a0428942.mysql.rds.aliyuncs.com',
-                user: 'freelog',
+                user: 'freelog_test',
                 password: 'Ff@233109',
                 database: 'fr_contract',
             },
@@ -26,10 +26,10 @@ module.exports = {
 
     rabbitMq: {
         connOptions: {
-            host: '172.18.215.224',
+            host: '172.18.215.230',
             port: 5672,
-            login: 'guest',
-            password: 'guest',
+            login: 'test_user',
+            password: 'test_user_2018',
             authMechanism: 'AMQPLAIN'
         },
     }
