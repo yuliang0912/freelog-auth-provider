@@ -15,7 +15,7 @@ module.exports = {
     knex: {
         contract: {
             connection: {
-                host: 'rm-wz9wj9435a0428942.mysql.rds.aliyuncs.com',
+                host: 'rm-wz93t7g809kthrub7.mysql.rds.aliyuncs.com',
                 user: 'freelog_test',
                 password: 'Ff@233109',
                 database: 'fr_contract',
@@ -28,7 +28,7 @@ module.exports = {
         connOptions: {
             host: '172.18.215.229',
             port: 5672,
-            login: 'test_user',
+            login: 'test_user_auth',
             password: 'test_user_2018',
             authMechanism: 'AMQPLAIN'
         },
