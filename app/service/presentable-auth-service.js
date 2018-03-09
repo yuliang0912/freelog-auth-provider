@@ -200,7 +200,7 @@ class PresentableAuthService extends Service {
             partyTwo: userInfo.userId
         }
 
-        return this.ctx.curlIntranetApi(`http://127.0.0.1:7008/v1/contracts`, {
+        return this.ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/contracts`, {
             type: 'post',
             contentType: 'json',
             data: postData,
