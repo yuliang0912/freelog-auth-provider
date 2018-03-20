@@ -65,6 +65,7 @@ const AuthProcessManager = class AuthProcessManager {
                 nodeInfo,
                 userInfo
             })
+
             if (!nodeContractAuthorizationResult.isAuth) {
                 return nodeContractAuthorizationResult
             }
