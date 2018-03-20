@@ -70,7 +70,7 @@ module.exports.getContractFsm = (contractInfo, events) => {
  */
 module.exports.checkFsmDescription = (fsmDescription) => {
 
-    if (!Array.isArray(fsm.activatedStates) || fsmDescription.activatedStates.length < 1) {
+    if (!Array.isArray(fsmDescription.activatedStates) || fsmDescription.activatedStates.length < 1) {
         throw new Error('合同必须最少包含一个激活状态')
     }
 
