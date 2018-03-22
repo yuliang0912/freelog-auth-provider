@@ -210,6 +210,7 @@ module.exports = class ContractController extends Controller {
         let resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
         let contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
         let partyTwo = ctx.checkQuery('partyTwo').optional().toInt().gt(0).value
+        let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
 
         ctx.validate()
 
@@ -225,6 +226,9 @@ module.exports = class ContractController extends Controller {
         }
         if (partyTwo) {
             condition.partyTwo = partyTwo
+        }
+        if (contractType) {
+            condition.contractType = contractType
         }
         if (!Object.keys(condition).length) {
             ctx.error({msg: '最少需要一个可选查询条件'})
