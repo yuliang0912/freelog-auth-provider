@@ -206,7 +206,7 @@ class PresentableAuthService extends Service {
             contentType: 'json',
             data: postData,
         }).catch(error => {
-            this.ctx.error({msg: '创建用户合同失败', data: error.toString()})
+            this.ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
         })
     }
 

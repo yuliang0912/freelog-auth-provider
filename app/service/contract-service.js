@@ -3,6 +3,7 @@
 const Service = require('egg').Service;
 const authService = require('../authorization-service/process-manager')
 const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
+const authErrCode = require('../enum/auth_err_code')
 
 class ContractService extends Service {
     /**
@@ -84,7 +85,7 @@ class ContractService extends Service {
 
         await ctx.dal.contractProvider.getContractById(presentable.contractId).then(resourceContract => {
             if (!resourceContract || resourceContract.status !== 3) {
-                ctx.error({msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约', data: resourceContract})
+                ctx.error({msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约', errCode: authErrCode.nodeContractNotActivate, data: resourceContract})
             }
         })
 
