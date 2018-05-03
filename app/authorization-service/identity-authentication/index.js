@@ -10,6 +10,8 @@ const nodeDomainAuth = require('./resource-policy/node-domain-auth')
 const nodeIndividualAuth = require('./resource-policy/node-individual-auth')
 const userGroupAuth = require('./presentable-policy/user-group-auth')
 const userLoginNameAuth = require('./presentable-policy/user-login-name-auth')
+const userGroupAuthForResourcePolicy = require('./resource-policy/user-group-auth')
+const userLoginNameAuthForResourcePolicy = require('./resource-policy/user-login-name-auth')
 
 module.exports = {
 
@@ -18,7 +20,7 @@ module.exports = {
      * @param policyAuthUsers
      * @param userInfo
      */
-    async resourcePolicyIdentityAuth({policy, userInfo, nodeInfo, policyOwnerId}) {
+    async resourcePolicyIdentityAuth({policy, partyOneId, userInfo, nodeInfo, policyOwnerId}) {
         if (!Array.isArray(policy.users)) {
             throw new Error('错误的策略段')
         }
@@ -30,6 +32,15 @@ module.exports = {
         if (nodeDomainAuthResult.isAuth) {
             return nodeDomainAuthResult
         }
+
+        //step2.对当前登录人进行Email或者登录名认证
+        let userLoginNameAuthResult = await  userLoginNameAuthForResourcePolicy.auth(params)
+        if (userLoginNameAuthResult.isAuth) {
+            return userLoginNameAuthResult
+        }
+
+        //step3.用户分组授权
+        let userGroupAuthResult = await userLoginNameAuthForResourcePolicy.auth(params)
 
         //step2.进行个人用户身份认证,如果符合个人用户策略,则通过认证
         let nodeIndividualAuthResult = await nodeIndividualAuth.auth(params)

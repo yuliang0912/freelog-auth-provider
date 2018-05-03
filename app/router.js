@@ -4,9 +4,6 @@ module.exports = app => {
 
     const {router, controller} = app;
 
-    //创建pb资源的合同
-    router.post('/v1/contracts/createPageBuildContracts', controller.contract.v1.createPageBuildContracts)
-
     //消费客户的presentable合约列表
     router.get('/v1/contracts/user/:userId', controller.contract.v1.userContracts)
 
@@ -36,6 +33,8 @@ module.exports = app => {
     router.get('/v1/auths/resource/:resourceId', controller.auth.v1.resource)
     router.get('/v1/auths/presentablePolicyIdentityAuthentication/:presentableId', controller.auth.v1.presentablePolicyIdentityAuthentication)
 
+    //批量签约
+    router.post('/v1/contracts/batchCreateAuthSchemeContracts', '/v1/contracts/batchCreateAuthSchemeContracts', controller.contract.v1.batchCreateAuthSchemeContracts)
     /**
      * 资源合约相关REST-API
      */

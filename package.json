@@ -17,6 +17,7 @@
     "egg-scripts": "^1.2.0",
     "javascript-state-machine": "^3.0.1",
     "jsonschema": "^1.2.2",
+    "kardia": "^0.12.1",
     "knex": "^0.14.4",
     "lodash": "^4.17.5",
     "moment": "^2.21.0",

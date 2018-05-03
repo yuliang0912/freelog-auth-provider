@@ -38,7 +38,7 @@ module.exports = class rabbitMqClient extends Emitter {
         if (this.isReady || this.connection) {
             return Promise.resolve(this.instance)
         }
-        return startConnect.call(this).tap(heartBeat).timeout(timeout).catch(Promise.TimeoutError, (err) => {
+        return startConnect.call(this).timeout(timeout).catch(Promise.TimeoutError, (err) => {
             return Promise.reject(new Error('rabbitMQ connect timeout'))
         })
     }
@@ -173,6 +173,10 @@ function startConnect() {
             console.log("rabbitMQ has closed...")
         })
 
+        connection.on("heartbeat", () => {
+            console.log("心跳保持成功")
+        })
+
         connection.on('error', (err) => {
             reject(err)
             this.isReady = false
@@ -187,25 +191,4 @@ function startConnect() {
             })
         });
     })
-}
-
-/**
- * 心跳检测函数
- * @param client
- */
-function heartBeat(client) {
-    setInterval(() => {
-        client.publish({
-            routingKey: 'heartBeat',
-            eventName: null,
-            body: {message: '心跳检测包'},
-            options: {mandatory: false}
-        }).then(() => {
-            console.log('发送心跳包成功')
-        }).catch((err) => {
-            console.log('发送心跳包失败')
-            console.error(err)
-        })
-    }, 600000)
-    console.log('程序将在10分钟以后开始进行rabbit心跳保持')
 }

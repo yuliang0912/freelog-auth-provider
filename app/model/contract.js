@@ -21,7 +21,7 @@ module.exports = app => {
                 contractType: ret.contractType,
                 createDate: ret.createDate,
                 languageType: ret.languageType,
-                policyCounterpart: ret.policyCounterpart,
+                //policyCounterpart: ret.policyCounterpart,
                 status: ret.status,
                 fsmState: ret.fsmState,
             }
@@ -30,8 +30,8 @@ module.exports = app => {
 
     const ContractSchema = new mongoose.Schema({
         targetId: {type: String, required: true}, //目标ID,当为资源时是资源策略ID,为消费方案时是presentableId
-        partyOne: {type: Number, required: true}, //甲方
-        partyTwo: {type: Number, required: true}, //乙方
+        partyOne: {type: String, required: true}, //甲方
+        partyTwo: {type: String, required: true}, //乙方
         contractType: {type: Number, required: true}, //合约类型
         resourceId: {type: String, required: true},
         segmentId: {type: String, required: true},
@@ -43,10 +43,10 @@ module.exports = app => {
             terminateState: {type: String, required: true},
             activatedStates: {type: [String], required: true}
         },
-        policyCounterpart: {type: String, required: true},
+        //policyCounterpart: {type: String, required: true},
         languageType: {type: String, required: true},
         status: {type: Number, required: true, default: 1}, //默认未开始执行
-        fsmState: {type: String, required: true, default: 'none'},
+        fsmState: {type: String, default: 'none'},
     }, {
         versionKey: false,
         timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},

@@ -6,6 +6,59 @@ const contractFsmEventHandler = require('../contract-service/contract-fsm-event-
 const authErrCode = require('../enum/auth_err_code')
 
 class ContractService extends Service {
+
+    /**
+     * 批量签约(保证原子性)
+     * @returns {Promise<void>}
+     */
+    async batchCreateAuthSchemeContracts({policies}) {
+
+        const {ctx, app} = this
+        const userInfo = this.ctx.request.identityInfo.userInfo
+        const contractObjects = new Map(policies.map(x => [x.targetId, x]))
+        const authSchemeIds = [...contractObjects.keys()]
+        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/v1/resources/authSchemes/?authSchemeIds=${authSchemeIds.toString()}`)
+
+        if (authSchemeInfos.length !== authSchemeIds.length) {
+            ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {policies}})
+        }
+
+        for (let i = 0, j = authSchemeInfos.length; i < j; i++) {
+            let item = authSchemeInfos[i]
+            let contractObject = contractObjects.get(item.authSchemeId)
+            let policySegment = item.policy.find(x => x.segmentId === contractObject.segmentId)
+            if (!policySegment) {
+                ctx.error({
+                    msg: '参数segmentId校验失败',
+                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+                })
+            }
+            if (item.serialNumber !== policySegment.serialNumber) {
+                ctx.error({
+                    msg: '参数serialNumber校验失败,签约对象的策略可能发生变化',
+                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+                })
+            }
+            let identityAuthResult = await authService.resourcePolicyIdentityAuthentication({
+                policyOwnerId: item.userId,
+                policySegment, userInfo
+            })
+            if (!identityAuthResult.isAuth) {
+                ctx.error({
+                    msg: '策略段身份认证失败',
+                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+                })
+            }
+            contractObject.policySegment = policySegment
+            contractObject.partyOne = item.authSchemeId
+            contractObject.resourceId = item.resourceId
+            contractObject.contractType = app.contractType.ResourceToResource
+            contractObject.languageType = item.languageType
+        }
+        console.log([...contractObjects.values()])
+        return ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
+    }
+
     /**
      * 创建合同
      * @returns {Promise<void>}
@@ -85,7 +138,11 @@ class ContractService extends Service {
 
         await ctx.dal.contractProvider.getContractById(presentable.contractId).then(resourceContract => {
             if (!resourceContract || resourceContract.status !== 3) {
-                ctx.error({msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约', errCode: authErrCode.nodeContractNotActivate, data: resourceContract})
+                ctx.error({
+                    msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约',
+                    errCode: authErrCode.nodeContractNotActivate,
+                    data: resourceContract
+                })
             }
         })
 
@@ -143,7 +200,7 @@ class ContractService extends Service {
         }
 
         let resourcePolicyIdentityAuth = await authService.resourcePolicyIdentityAuthentication({
-            resourcePolicy,
+            policyOwnerId: resourcePolicy.userId,
             policySegment,
             nodeInfo,
             userInfo

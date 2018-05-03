@@ -40,7 +40,7 @@ module.exports = appInfo => {
             contract: {
                 client: 'mysql',
                 connection: {
-                    host: '192.168.0.99',
+                    host: '192.168.2.239',
                     user: 'root',
                     password: 'yuliang@@',
                     database: 'fr_contract',
@@ -62,15 +62,8 @@ module.exports = appInfo => {
             },
         },
 
-        /**
-         * mongoDB配置
-         */
-        mongo: {
-            uri: "mongodb://192.168.0.99:27017/auth"
-        },
-
         mongoose: {
-            url: "mongodb://192.168.0.99:27017/auth"
+            url: "mongodb://192.168.2.239:27017/auth"
         },
 
         /**
@@ -114,7 +107,8 @@ module.exports = appInfo => {
                 port: 5672,
                 login: 'guest',
                 password: 'guest',
-                authMechanism: 'AMQPLAIN'
+                authMechanism: 'AMQPLAIN',
+                heartbeat: 60  //每分钟保持一次连接
             },
             implOptions: {
                 reconnect: true,

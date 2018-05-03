@@ -240,145 +240,6 @@ module.exports = class ContractController extends Controller {
             .bind(ctx).then(ctx.success)
     }
 
-
-    /**
-     * 节点创建pb类型资源的合同
-     * @returns {Promise.<void>}
-     */
-    async createPageBuildContracts(ctx) {
-
-        ctx.error({msg: '此接口已停止使用'})
-
-        let nodeId = ctx.checkBody('nodeId').isInt().gt(0).value
-
-        // pb与需要展示的widget资源 此处允许widget后续再创建presentable.
-        // 目前不支持presentable合同创建以后在动态新增widget
-        let pbContracts = ctx.checkBody('contracts').exist().isArray().len(2, 999).value
-
-        ctx.allowContentType({type: 'json'}).validate().validatePbContractList(pbContracts)
-
-        let resourceIds = [...new Set(pbContracts.map(item => item.resourceId))]
-
-        if (resourceIds.length !== pbContracts.length) {
-            ctx.error({msg: 'post-body数据中不允许有重复的resourceId'})
-        }
-
-        let resourcesTask = ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/list?resourceIds=${resourceIds.toString()}`)
-        let policiesTask = ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/policies?resourceIds=${resourceIds.toString()}`)
-
-        await Promise.all([resourcesTask, policiesTask]).then(([resourceInfos, policyInfos]) => {
-            let errors = []
-            pbContracts.forEach(item => {
-                item.resourceInfo = resourceInfos.find(t => t.resourceId === item.resourceId)
-                item.policyInfo = policyInfos.find(t => t.resourceId === item.resourceId)
-
-                if (!item.resourceInfo) {
-                    errors.push(`资源(${errorResourceIds.toString()})没有源数据信息`)
-                } else {
-                    item.isPbContract = item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD
-                }
-
-                if (!item.policyInfo) {
-                    errors.push(`资源(${item.resourceId})没有授权策略信息`)
-                    return
-                }
-
-                item.policySegment = item.policyInfo.policy.find(t => t.segmentId === item.segmentId)
-                if (item.policyInfo.serialNumber !== item.serialNumber) {
-                    errors.push(`serialNumber(${item.serialNumber})不匹配,policy已变更`)
-                }
-                if (!item.policySegment) {
-                    errors.push(`segmentId(${item.segmentId})错误`)
-                }
-            })
-
-            resourceInfos.forEach(item => {
-                if (item.resourceType !== ctx.app.resourceType.PAGE_BUILD && item.resourceType !== ctx.app.resourceType.WIDGET) {
-                    errors.push(`resourceId(${item.resourceId})资源类型错误`)
-                }
-            })
-
-            if (errors.length) {
-                return Promise.reject(Object.assign(new Error('数据校验失败'), {data: errors}))
-            }
-        }).catch(err => ctx.error(err))
-
-        let pageBuilds = pbContracts.filter(item => item.isPbContract)
-
-        if (pageBuilds.length != 1) {
-            ctx.error({msg: 'page_build类型的资源有且只能有一个', data: pageBuilds})
-        }
-
-        let pbContract = pageBuilds[0]
-
-        if (pbContract.resourceInfo.systemMeta.widgets.some(x => !pbContracts.some(t => t.resourceId === x.resourceId))) {
-            ctx.error({msg: 'PB对应的widget-resource-id与传入的合同数据不匹配', data: pbContract.resourceInfo.systemMeta.widgets})
-        }
-
-        let oldContracts = await ctx.dal.contractProvider.getContracts({
-            resourceId: {$in: resourceIds},
-            segmentId: {$in: pbContracts.map(t => t.segmentId)},
-            partyTwo: nodeId,
-            contractType: ctx.app.contractType.ResourceToNode
-        }, '_id resourceId status').map(item => {
-            return {
-                contractId: item._id.toString(),
-                resourceId: item.resourceId,
-                status: item.status
-            }
-        })
-
-        if (oldContracts.some(t => t.resourceId === pbContract.resourceId)) {
-            ctx.error({
-                msg: `pageBuild资源(${pbContract.resourceId})不能创建多个合约`,
-                data: oldContracts.find(t => t.resourceId === pbContract.resourceId)
-            })
-        }
-
-        let awaitCreateContracts = pbContracts.filter(t => !oldContracts.some(x => x.resourceId === t.resourceId)).map(item => {
-            let model = {
-                targetId: item.resourceId,
-                resourceId: item.resourceId,
-                segmentId: item.segmentId,
-                partyOne: item.policyInfo.userId,
-                partyTwo: nodeId,
-                contractType: ctx.app.contractType.ResourceToNode,
-                languageType: item.policyInfo.languageType,
-                policyInfo: item.policyInfo,
-                policySegment: item.policySegment,
-                isPbContract: item.resourceInfo.resourceType === ctx.app.resourceType.PAGE_BUILD
-            }
-            if (model.isPbContract) {
-                model.subsidiaryInfo = {relevanceContractIds: oldContracts.map(t => t.contractId)}
-            }
-            return model
-        })
-
-        let uploadTasks = awaitCreateContracts.map(item => {
-            let policyTextBuffer = new Buffer(item.policyInfo.policyText, 'utf8')
-            return ctx.app.upload.putBuffer(`contracts/${item.policyInfo.serialNumber}.txt`, policyTextBuffer).then(data => {
-                item.policyCounterpart = data.url
-                //Reflect.deleteProperty(item, 'policyInfo')
-            })
-        })
-
-        await Promise.all(uploadTasks)
-
-        await ctx.dal.contractProvider.createPageBuildContract(awaitCreateContracts).bind(ctx).then(dataList => {
-            dataList.forEach(item => {
-                contractFsmEventHandler.initContractFsm(item.toObject())
-            })
-            ctx.success({
-                oldContracts: oldContracts.map(t => {
-                    return {contractId: t.contractId, resourceId: t.resourceId}
-                }),
-                newContracts: dataList.map(t => {
-                    return {contractId: t._id.toString(), resourceId: t.resourceId}
-                })
-            })
-        }).catch(ctx.error)
-    }
-
     /**
      * 给合同签协议
      * @param ctx
@@ -465,6 +326,25 @@ module.exports = class ContractController extends Controller {
         let result = await contractFsmEventHandler.isCanExecEvent(eventId, contractInfo)
 
         ctx.success({contractInfo, eventId, isCanExec: result})
+    }
+
+    /**
+     * 批量创建授权方案的合同
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async batchCreateAuthSchemeContracts(ctx) {
+
+        let partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
+        let signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
+        ctx.validate()
+
+        signObjects.forEach(x => x.partyTwo = partyTwo)
+        await ctx.service.contractService.batchCreateAuthSchemeContracts({policies: signObjects}).then(data => {
+            ctx.success(data)
+        }).catch(err => {
+            ctx.error(err)
+        })
     }
 }
 

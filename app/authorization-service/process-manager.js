@@ -249,9 +249,9 @@ const AuthProcessManager = class AuthProcessManager {
      * @param userInfo
      * @param nodeInfo
      */
-    async resourcePolicyIdentityAuthentication({resourcePolicy, policySegment, nodeInfo, userInfo}) {
+    async resourcePolicyIdentityAuthentication({policyOwnerId, policySegment, nodeInfo, userInfo}) {
         return identityAuthentication.resourcePolicyIdentityAuth({
-            nodeInfo, userInfo, policyOwnerId: resourcePolicy.userId, policy: policySegment
+            nodeInfo, userInfo, policyOwnerId, policy: policySegment
         })
     }
 

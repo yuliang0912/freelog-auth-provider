@@ -21,6 +21,14 @@ module.exports = class ContractProvider extends MongoBaseOperation {
         return super.create(model)
     }
 
+    /**
+     * 批量创建合同
+     * @param contractList
+     */
+    batchCreateContract(contractList) {
+        return super.insertMany(contractList)
+    }
+
 
     /**
      * 创建pageBuild类型资源的合同

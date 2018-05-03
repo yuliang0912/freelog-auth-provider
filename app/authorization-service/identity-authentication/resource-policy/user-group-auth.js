@@ -25,12 +25,6 @@ module.exports.auth = async ({policyAuthUsers, userInfo, nodeInfo}) => {
         return authResult
     }
 
-    //如果分组策略中允许所有节点签约,并且存在节点信息
-    if (nodeInfo && groupUserPolicy.users.some(item => item.toUpperCase() === 'NODES')) {
-        authResult.authCode = authCodeEnum.BasedOnGroup
-        return authResult
-    }
-
     /**
      * TODO  A.检查节点是否在用户的自定义节点组中
      * TODO  B.检查节点所属人是否在用户的自定义用户分组中.
@@ -45,8 +39,14 @@ module.exports.auth = async ({policyAuthUsers, userInfo, nodeInfo}) => {
         return Array.isArray(existGroups) && existGroups.length
     }
 
-    let customNodeGroups = groupUserPolicy.users.filter(item => commonRegex.nodeGroupId.test(item))
-    if (nodeInfo && customNodeGroups.length && (await isExistMember(customNodeGroups, nodeInfo.nodeId))) {
+    let customUserGroups = groupUserPolicy.users.filter(item => commonRegex.userGroupId.test(item))
+    //如果存在节点,则校验节点的主人ID是否在用户的自定义分组中
+    if (nodeInfo && customUserGroups.length && (await isExistMember(customUserGroups, nodeInfo.ownerUserId))) {
+        authResult.authCode = authCodeEnum.BasedOnGroup
+        return authResult
+    }
+    //如果不存在节点信息,但是存在用户信息,则校验用户ID是否在用户自定义分组中
+    if (!nodeInfo && userInfo && customUserGroups.length && (await isExistMember(customUserGroups, userInfo.userId))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
