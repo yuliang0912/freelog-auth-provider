@@ -33,7 +33,7 @@ class ContractService extends Service {
                     data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
                 })
             }
-            if (item.serialNumber !== policySegment.serialNumber) {
+            if (item.serialNumber !== contractObject.serialNumber) {
                 ctx.error({
                     msg: '参数serialNumber校验失败,签约对象的策略可能发生变化',
                     data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
