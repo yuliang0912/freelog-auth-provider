@@ -10,6 +10,7 @@ require('egg').startCluster({
     workers: 1
 });
 
+
 // var Kardia = require('kardia');
 // var kardia = Kardia.start({name: "auth", host: '0.0.0.0', port: 12900});
 // kardia.registerHealthcheck({

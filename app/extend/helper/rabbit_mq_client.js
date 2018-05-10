@@ -170,11 +170,6 @@ function startConnect() {
 
         connection.on('close', () => {
             this.isReady = false
-            console.log("rabbitMQ has closed...")
-        })
-
-        connection.on("heartbeat", () => {
-            console.log("心跳保持成功")
         })
 
         connection.on('error', (err) => {

@@ -55,7 +55,6 @@ class ContractService extends Service {
             contractObject.contractType = app.contractType.ResourceToResource
             contractObject.languageType = item.languageType
         }
-        console.log([...contractObjects.values()])
         return ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
     }
 

@@ -69,7 +69,7 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
 
 
     /**
-     * 事件到达事件取消
+     * 时间到达事件取消
      * @param eventId
      * @param contractId
      */

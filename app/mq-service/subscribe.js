@@ -67,5 +67,5 @@ module.exports = async (app) => {
                 }).catch(console.error)
             })
         }
-    })
+    }).catch(console.error)
 }

@@ -21,49 +21,31 @@ module.exports = {
      * @param userInfo
      */
     async resourcePolicyIdentityAuth({policy, partyOneId, userInfo, nodeInfo, policyOwnerId}) {
+
         if (!Array.isArray(policy.users)) {
             throw new Error('错误的策略段')
         }
 
+        let authResults = []
         let params = {policyAuthUsers: policy.users, nodeInfo, userInfo, policyOwnerId}
+        let authSteps = [nodeDomainAuth, userLoginNameAuthForResourcePolicy, nodeIndividualAuth, userGroupAuthForResourcePolicy, nodeGroupAuth]
 
-        //step1.进行节点域名认证,如果符合策略,则通过认证
-        let nodeDomainAuthResult = await nodeDomainAuth.auth(params)
-        if (nodeDomainAuthResult.isAuth) {
-            return nodeDomainAuthResult
+        for (let i = 0; i < authSteps.length; i++) {
+            let result = await authSteps[i].auth(params)
+            if (result.isAuth) {
+                return result
+            }
+            authResults.push(result)
         }
 
-        //step2.对当前登录人进行Email或者登录名认证
-        let userLoginNameAuthResult = await  userLoginNameAuthForResourcePolicy.auth(params)
-        if (userLoginNameAuthResult.isAuth) {
-            return userLoginNameAuthResult
-        }
-
-        //step3.用户分组授权
-        let userGroupAuthResult = await userLoginNameAuthForResourcePolicy.auth(params)
-
-        //step2.进行个人用户身份认证,如果符合个人用户策略,则通过认证
-        let nodeIndividualAuthResult = await nodeIndividualAuth.auth(params)
-        if (nodeIndividualAuthResult.isAuth) {
-            return nodeIndividualAuthResult
-        }
-
-        //step3.进行分组认证,如果符合节点分组或者用户分组策略,则通过认证
-        let nodeGroupAuthResult = await nodeGroupAuth.auth(params)
-        if (nodeGroupAuthResult.isAuth) {
-            return nodeGroupAuthResult
-        }
-
-        //如果都是默认的,则代表存在第三种未知的方式
-        if (nodeGroupAuthResult.authCode === authCodeEnum.Default &&
-            nodeDomainAuthResult.authCode === authCodeEnum.Default &&
-            nodeIndividualAuthResult.authCode === authCodeEnum.Default) {
+        let validAuthResults = authResults.filter(x => x.authCode !== authCodeEnum.Default)
+        if (!validAuthResults.length) {
             throw Object.assign(new Error('策略中存在系统未知的身份认证方式'), {
                 data: {users: policy.users}
             })
         }
 
-        return nodeDomainAuthResult.authCode === authCodeEnum.Default ? nodeGroupAuthResult : nodeDomainAuthResult
+        return validAuthResults[0]
     },
 
 
