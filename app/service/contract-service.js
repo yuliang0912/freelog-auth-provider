@@ -17,7 +17,7 @@ class ContractService extends Service {
         const userInfo = this.ctx.request.identityInfo.userInfo
         const contractObjects = new Map(policies.map(x => [x.targetId, x]))
         const authSchemeIds = [...contractObjects.keys()]
-        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/v1/resources/authSchemes/?authSchemeIds=${authSchemeIds.toString()}`)
+        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/authSchemes/?authSchemeIds=${authSchemeIds.toString()}`)
 
         if (authSchemeInfos.length !== authSchemeIds.length) {
             ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {policies}})
