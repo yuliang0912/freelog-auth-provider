@@ -5,6 +5,13 @@ const fs = require('fs')
 module.exports = appInfo => {
 
     const config = {
+
+        cluster: {
+            listen: {
+                port: 7008
+            }
+        },
+
         keys: '20ab72d9397ff78c5058a106c635f008',
 
         i18n: {

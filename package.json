@@ -30,7 +30,7 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "egg-scripts start",
     "stop": "egg-scripts stop",
     "dev": "egg-bin dev",
     "test": "npm run lint -- --fix && npm run test-local",

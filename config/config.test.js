@@ -6,6 +6,12 @@
 
 module.exports = {
 
+    cluster: {
+        listen: {
+            port: 5008
+        }
+    },
+
     gatewayUrl: "http://172.18.215.224:8895/test",
 
     mongoose: {
