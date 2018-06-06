@@ -339,7 +339,8 @@ module.exports = class ContractController extends Controller {
 
         let nodeInfo = null;
         if (contractType === ctx.app.contractType.ResourceToNode) {
-            nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${partyTwo}`)
+            //nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${partyTwo}`)
+            nodeInfo = await ctx.curlIntranetApi(`${ctx.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
             if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
                 ctx.error({msg: '参数partyTwo校验失败', data: nodeInfo})
             }
