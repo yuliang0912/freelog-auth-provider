@@ -1,7 +1,7 @@
 'use strict'
 
 const Service = require('egg').Service;
-const authService = require('../authorization-service/process-manager')
+const authService = require('../authorization-service/process-manager-new')
 const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 const authErrCode = require('../enum/auth_err_code')
 
@@ -45,8 +45,12 @@ class ContractService extends Service {
                 })
             }
 
-            await authService.resourcePolicyIdentityAuthentication({
-                policyOwnerId: item.userId, policySegment, userInfo, nodeInfo
+            await authService.policyIdentityAuthentication({
+                policySegment,
+                contractType,
+                partyOneUserId: item.userId,
+                partyTwoInfo: nodeInfo,
+                partyTwoUserInfo: userInfo
             }).then(identityAuthResult => {
                 if (!identityAuthResult.isAuth) {
                     ctx.error({
@@ -55,6 +59,18 @@ class ContractService extends Service {
                     })
                 }
             })
+
+
+            // await authService.resourcePolicyIdentityAuthentication({
+            //     policyOwnerId: item.userId, policySegment, userInfo, nodeInfo
+            // }).then(identityAuthResult => {
+            //     if (!identityAuthResult.isAuth) {
+            //         ctx.error({
+            //             msg: '策略段身份认证失败',
+            //             data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+            //         })
+            //     }
+            // })
 
             contractObject.partyOneUserId = item.userId
             contractObject.partyTwoUserId = userInfo.userId
