@@ -17,21 +17,22 @@ class PresentableAuthService extends Service {
      */
     async authProcessHandler({userId, nodeId, presentableId, userContractId}) {
 
+        const {ctx, config} = this
         let authResultCache = await this.getLatestAuthResultCache({userId, presentableId})
         if (authResultCache) {
             return authResultCache
         }
 
         //此处也可以考虑去调用API获取用户信息
-        let userInfo = userId ? this.ctx.request.identityInfo.userInfo : null
-        let nodeInfo = await this.ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${nodeId}`)
+        let userInfo = ctx.request.identityInfo ? ctx.request.identityInfo.userInfo : null
+        let nodeInfo = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/nodes/${nodeId}`)
 
         if (!nodeInfo || nodeInfo.status !== 0) {
-            this.ctx.error({msg: '参数nodeId错误', data: nodeInfo})
+            ctx.error({msg: '参数nodeId错误', data: nodeInfo})
         }
-        let presentableInfo = await this.ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+        let presentableInfo = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/presentables/${presentableId}`)
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
-            this.ctx.error({msg: '参数presentableId错误或者presentableId与nodeId不匹配', data: presentableInfo})
+            ctx.error({msg: '参数presentableId错误或者presentableId与nodeId不匹配', data: presentableInfo})
         }
 
         let userContract = await this.getUserContract({userId, nodeId, presentableId, userContractId})

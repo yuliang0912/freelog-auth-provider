@@ -1,84 +1,100 @@
 /**
- * 策略用户与节点身份认证
+ * 资源策略身份对象认证
  */
 
 'use strict'
 
+const Patrun = require('patrun')
+const nodeDomainRele = require('./node-domain-rule')
+const userIndividualRule = require('./user-individual-rule')
+const userOrNodeGroupRule = require('./user-or-node-group-rule')
 const authCodeEnum = require('../../enum/auth_code')
-const nodeGroupAuth = require('./resource-policy/node-group-auth')
-const nodeDomainAuth = require('./resource-policy/node-domain-auth')
-const nodeIndividualAuth = require('./resource-policy/node-individual-auth')
-const userGroupAuth = require('./presentable-policy/user-group-auth')
-const userLoginNameAuth = require('./presentable-policy/user-login-name-auth')
-const userGroupAuthForResourcePolicy = require('./resource-policy/user-group-auth')
-const userLoginNameAuthForResourcePolicy = require('./resource-policy/user-login-name-auth')
+const contractType = require('egg-freelog-base/app/enum/contract_type')
 
-module.exports = {
+class FreelogPolicyIdentityAuthentication {
+
+    constructor() {
+        this.certificationRules = this.__registerCertificationRules__()
+    }
 
     /**
-     * 资源策略身份认证,逻辑为符合节点域名策略或者分组策略
-     * @param policyAuthUsers
-     * @param userInfo
+     * 身份认证主函数
+     * @param policySegment
+     * @param contractType
+     * @param partyOneUserId
+     * @param partyTwoInfo
+     * @param partyTwoUserInfo
+     * @returns {Promise<*>}
      */
-    async resourcePolicyIdentityAuth({policy, partyOneId, userInfo, nodeInfo, policyOwnerId}) {
+    async main({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
-        if (!Array.isArray(policy.users)) {
-            throw new Error('错误的策略段')
-        }
+        const authResults = []
 
-        let authResults = []
-        let params = {policyAuthUsers: policy.users, nodeInfo, userInfo, policyOwnerId}
-        let authSteps = [nodeDomainAuth, userLoginNameAuthForResourcePolicy, nodeIndividualAuth, userGroupAuthForResourcePolicy, nodeGroupAuth]
-
-        for (let i = 0; i < authSteps.length; i++) {
-            let result = await authSteps[i].auth(params)
-            if (result.isAuth) {
-                return result
+        const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
+        for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
+            const stepRule = this.authRuleSteps[i]
+            params.authUserObject = policySegment.users.find(t => t.userType.toUpperCase() === stepRule.userType)
+            if (!params.authUserObject) {
+                continue
             }
-            authResults.push(result)
+            const authRule = this.certificationRules.find(Object.assign(stepRule, {contractType}));
+            if (!authRule) {
+                continue
+            }
+            const authResult = await authRule(params)
+            if (authResult.isAuth) {
+                return authResult
+            }
+            if (authResult.authCode !== authCodeEnum.Default) {
+                authResults.push(authResult)
+            }
         }
 
-        let validAuthResults = authResults.filter(x => x.authCode !== authCodeEnum.Default)
-        if (!validAuthResults.length) {
+        if (!authResults.length) {
             throw Object.assign(new Error('策略中存在系统未知的身份认证方式'), {
-                data: {users: policy.users}
+                data: {users: policySegment.users}
             })
         }
 
-        return validAuthResults[0]
-    },
-
+        return authResults[0]
+    }
 
     /**
-     * presentable策略身份认证,逻辑为符合用户手机号或者email策略或者符合用户分组策略任意条件即可
-     * @param policyAuthUsers
-     * @param nodeInfo
+     * 授权规则设定
+     * @returns {*[]}
      */
-    async presentablePolicyIdentityAuth({policy, userInfo, nodeInfo}) {
-        if (!Array.isArray(policy.users)) {
-            throw new Error('错误的策略段')
-        }
+    get authRuleSteps() {
+        return [
+            {ruleName: 'nodeDomainAuth', userType: 'DOMAIN'},
+            {ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'},
+            {ruleName: 'userOrNodeGroupAuth', userType: 'GROUP'},
+        ]
+    }
 
-        let params = {policyAuthUsers: policy.users, userInfo, nodeInfo}
+    /**
+     * 注册认证规则
+     * @private
+     */
+    __registerCertificationRules__() {
 
-        //step1.进行用户的登录名认证,如果符合策略,则通过认证
-        let userLoginNameAuthResult = await userLoginNameAuth.auth(params)
-        if (userLoginNameAuthResult.isAuth) {
-            return userLoginNameAuthResult
-        }
+        const patrun = Patrun()
 
-        //step2.进行分组认证,如果符合用户分组策略,则通过认证
-        let userGroupAuthResult = await userGroupAuth.auth(params)
-        if (userGroupAuthResult.isAuth) {
-            return userGroupAuthResult
-        }
+        //节点域名认证
+        patrun.add({
+            ruleName: 'nodeDomainAuth',
+            userType: 'DOMAIN',
+            contractType: contractType.ResourceToNode
+        }, nodeDomainRele)
 
-        //如果都是默认的,则代表策略中存在第三种未知的方式
-        if (userLoginNameAuthResult.authCode === authCodeEnum.Default && userGroupAuthResult.authCode === authCodeEnum.Default) {
-            throw new Error('策略中存在系统未知的身份认证方式')
-        }
+        //用户个体认证
+        patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, nodeDomainRele)
 
-        //如果未登陆用户并且PUBLIC分组认证失败,则默认为用户登录名策略不通过
-        return userLoginNameAuthResult.authCode === authCodeEnum.Default ? userGroupAuthResult : userLoginNameAuthResult
+        //节点或者用户分组认证
+        patrun.add({ruleName: 'userOrNodeGroupAuth', userType: 'GROUP'}, userOrNodeGroupRule)
+
+        return patrun
     }
 }
+
+module.exports = new FreelogPolicyIdentityAuthentication()
+

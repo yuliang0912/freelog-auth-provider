@@ -84,6 +84,21 @@ module.exports = {
     "identityAuthenticationRefuse": 70080307,
 
     /**
+     * 未找到资源合同
+     */
+    "notFoundResourceContract": 70080401,
+
+    /**
+     * 资源合同未激活
+     */
+    "resourceContractNotActivate": 70080402,
+
+    /**
+     * 合同未激活(所有类型的合同)
+     */
+    "contractNotActivate": 70080501,
+
+    /**
      * 未知异常
      */
     "exception": 70080000

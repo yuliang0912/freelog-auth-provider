@@ -9,21 +9,32 @@ class ContractService extends Service {
 
     /**
      * 批量签约(保证原子性)
-     * @returns {Promise<void>}
+     * @param policies
+     * @param contractType
+     * @param nodeInfo
+     * @param partyTwo
+     * @returns {Promise<*[]>}
      */
-    async batchCreateAuthSchemeContracts({policies}) {
+    async batchCreateContracts({policies, contractType, nodeInfo, partyTwo}) {
 
-        const {ctx, app} = this
-        const userInfo = this.ctx.request.identityInfo.userInfo
-        const contractObjects = new Map(policies.map(x => [x.targetId, x]))
-        const authSchemeIds = [...contractObjects.keys()]
-        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/authSchemes/?authSchemeIds=${authSchemeIds.toString()}`)
+        const {existContracts, signObjects} = await this._checkDuplicateContract(partyTwo, policies)
 
-        if (authSchemeInfos.length !== authSchemeIds.length) {
-            ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {policies}})
+        if (!signObjects.length) {
+            return existContracts
+        }
+
+        const {ctx} = this
+        const userInfo = ctx.request.identityInfo.userInfo
+        const contractObjects = new Map(signObjects.map(x => [x.targetId, x]))
+        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/authSchemes/?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
+        //const authSchemeInfos = await ctx.curlIntranetApi(`http://127.0.0.1:7001/v1/resources/authSchemes/?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
+
+        if (authSchemeInfos.length !== contractObjects.size) {
+            ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {signObjects}})
         }
 
         for (let i = 0, j = authSchemeInfos.length; i < j; i++) {
+
             let item = authSchemeInfos[i]
             let contractObject = contractObjects.get(item.authSchemeId)
             let policySegment = item.policy.find(x => x.segmentId === contractObject.segmentId)
@@ -33,48 +44,49 @@ class ContractService extends Service {
                     data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
                 })
             }
-            if (item.serialNumber !== contractObject.serialNumber) {
-                ctx.error({
-                    msg: '参数serialNumber校验失败,签约对象的策略可能发生变化',
-                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
-                })
-            }
-            let identityAuthResult = await authService.resourcePolicyIdentityAuthentication({
-                policyOwnerId: item.userId,
-                policySegment, userInfo
+
+            await authService.resourcePolicyIdentityAuthentication({
+                policyOwnerId: item.userId, policySegment, userInfo, nodeInfo
+            }).then(identityAuthResult => {
+                if (!identityAuthResult.isAuth) {
+                    ctx.error({
+                        msg: '策略段身份认证失败',
+                        data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+                    })
+                }
             })
-            if (!identityAuthResult.isAuth) {
-                ctx.error({
-                    msg: '策略段身份认证失败',
-                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
-                })
-            }
+
+            contractObject.partyOneUserId = item.userId
+            contractObject.partyTwoUserId = userInfo.userId
             contractObject.policySegment = policySegment
             contractObject.partyOne = item.authSchemeId
+            contractObject.partyTwo = partyTwo
             contractObject.resourceId = item.resourceId
-            contractObject.contractType = app.contractType.ResourceToResource
+            contractObject.contractType = contractType
             contractObject.languageType = item.languageType
         }
-        return ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
+
+        const createdContracts = await ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
+
+        return [...createdContracts, ...existContracts]
     }
 
     /**
      * 创建合同
      * @returns {Promise<void>}
      */
-    async createContract({targetId, contractType, segmentId, serialNumber, partyTwo}) {
+    async createContract({targetId, contractType, segmentId, partyTwo}) {
 
         let {ctx, app} = this
         let contractModel = null
-        let userInfo = this.ctx.request.identityInfo.userInfo
+        let userInfo = ctx.request.identityInfo.userInfo
 
         if (contractType === app.contractType.PresentableToUer) {
-            contractModel = await this.createUserContract({presentableId: targetId, segmentId, serialNumber, userInfo})
+            contractModel = await this.createUserContract({presentableId: targetId, segmentId, userInfo})
         } else {
             contractModel = await this.createNodeContract({
                 resourceId: targetId,
                 segmentId,
-                serialNumber,
                 nodeId: partyTwo,
                 userInfo
             })
@@ -82,15 +94,6 @@ class ContractService extends Service {
 
         await app.dal.contractProvider.getContract({targetId, partyTwo, segmentId}).then(oldContract => {
             oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
-        })
-
-        let policyTextBuffer = new Buffer(contractModel.policySegment.segmentText, 'utf8')
-
-        /**
-         * 保持策略原文副本,以备以后核查
-         */
-        await app.upload.putBuffer(`contracts/${serialNumber}.txt`, policyTextBuffer).then(data => {
-            contractModel.policyCounterpart = data.url
         })
 
         //如果初始态就是激活态
@@ -115,20 +118,16 @@ class ContractService extends Service {
      * @param targetId
      * @param contractType
      * @param segmentId
-     * @param serialNumber
      * @param partyTwo
      * @returns {Promise<void>}
      */
-    async createUserContract({presentableId, segmentId, serialNumber, userInfo}) {
+    async createUserContract({presentableId, segmentId, userInfo}) {
 
         let {ctx, app} = this
         let presentable = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
         //let presentable = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/presentables/${presentableId}`)
         if (!presentable) {
             ctx.error({msg: `targetId:${presentableId}错误`})
-        }
-        if (presentable.serialNumber !== serialNumber) {
-            ctx.error({msg: 'serialNumber不匹配,policy已变更,变更时间' + new Date(policyInfo.updateDate).toLocaleString()})
         }
         let policySegment = presentable.policy.find(t => t.segmentId === segmentId)
         if (!policySegment) {
@@ -161,6 +160,8 @@ class ContractService extends Service {
             targetId: presentableId,
             partyOne: presentable.nodeId,
             partyTwo: userInfo.userId,
+            partyOneUserId: presentable.userId,
+            partyTwoUserId: userInfo.userId,
             resourceId: presentable.resourceId,
             contractType: app.contractType.PresentableToUer,
             languageType: presentable.languageType
@@ -172,20 +173,16 @@ class ContractService extends Service {
      * @param targetId
      * @param contractType
      * @param segmentId
-     * @param serialNumber
      * @param partyTwo
      * @returns {Promise<void>}
      */
-    async createNodeContract({resourceId, segmentId, serialNumber, nodeId, userInfo}) {
+    async createNodeContract({resourceId, segmentId, nodeId, userInfo}) {
 
         let {ctx, app, config} = this
         let resourcePolicy = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/resources/policies/${resourceId}`)
         //debug let resourcePolicy = await ctx.curlIntranetApi(`http://127.0.0.1:7001/v1/policies/${resourceId}`)
         if (!resourcePolicy) {
             ctx.error({msg: `targetId:${resourceId}错误`})
-        }
-        if (resourcePolicy.serialNumber !== serialNumber) {
-            ctx.error({msg: 'serialNumber不匹配,policy已变更,变更时间' + new Date(policyInfo.updateDate).toLocaleString()})
         }
         let policySegment = resourcePolicy.policy.find(t => t.segmentId === segmentId)
         if (!policySegment) {
@@ -215,10 +212,46 @@ class ContractService extends Service {
             targetId: resourceId,
             partyOne: resourcePolicy.userId,
             partyTwo: nodeId,
+            partyOneUserId: resourcePolicy.userId,
+            partyTwoUserId: nodeInfo.ownerUserId,
             resourceId: resourceId,
             contractType: app.contractType.ResourceToNode,
             languageType: resourcePolicy.languageType
         }
+    }
+
+    /**
+     * 检查是否存在重复的合同
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _checkDuplicateContract(partyTwo, signObjects = []) {
+
+        if (!signObjects.length) {
+            return []
+        }
+
+        const signObjectKeyMap = new Map()
+        const statistics = {targetIds: [], segmentIds: []}
+        signObjects.forEach(current => {
+            statistics.targetIds.push(current.targetId)
+            statistics.segmentIds.push(current.segmentId)
+            signObjectKeyMap.set(`${current.targetId}_${current.segmentId}`, current)
+        })
+
+        const contractList = await this.ctx.dal.contractProvider.find({
+            partyTwo,
+            targetId: {$in: statistics.targetIds},
+            segmentId: {$in: statistics.segmentIds}
+        })
+
+        const existContracts = contractList.filter(x => {
+            let isExist = signObjectKeyMap.has(`${x.targetId}_${x.segmentId}`)
+            isExist && signObjectKeyMap.delete(`${x.targetId}_${x.segmentId}`)
+            return isExist
+        })
+
+        return {existContracts, signObjects: Array.from(signObjectKeyMap.values())}
     }
 }
 

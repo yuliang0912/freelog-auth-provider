@@ -9,12 +9,12 @@ const authErrorCodeEnum = require('../../enum/auth_err_code')
  * @param app
  * @returns {{}}
  */
-module.exports.auth = async ({policySegment}) => {
+module.exports = ({policySegment}) => {
 
-    let isInitialTerminatMode = policySegment.fsmDescription.length === 1
+    const isInitialTerminatMode = policySegment.fsmDescription.length === 1
         && policySegment.activatedStates.some(m => m === policySegment.initialState)
 
-    let authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy)
+    const authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy)
     if (!isInitialTerminatMode) {
         authResult.authCode = authCodeEnum.ResourcePolicyUngratified
         authResult.authErrCode = authErrorCodeEnum.resourcePolicyRefuse

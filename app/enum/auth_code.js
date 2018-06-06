@@ -49,6 +49,11 @@ module.exports = {
     BasedOnUserObjectAuth: 7,
 
     /**
+     * 基于资源合同授权(resource to resource contract)
+     */
+    BasedOnResourceContract: 8,
+
+    /**
      * 用户合同不满足
      */
     UserContractUngratified: 11,
@@ -77,6 +82,17 @@ module.exports = {
      * 用户对象不满足
      */
     UserObjectUngratified: 16,
+
+
+    /**
+     * 资源合同不满足
+     */
+    ResourceContractUngratified: 17,
+
+    /**
+     * 合同不满足(所有类型的合同)
+     */
+    ContractUngratified: 18,
 
     /**
      * 未知的异常

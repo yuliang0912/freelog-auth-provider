@@ -14,7 +14,7 @@ module.exports = appInfo => {
          */
 
         localIdentity: {
-            userId: 10024,
+            userId: 10026,
             userName: "余亮",
             nickname: "烟雨落叶",
             email: "4896819@qq.com",

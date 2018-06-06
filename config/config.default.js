@@ -163,6 +163,10 @@ module.exports = appInfo => {
             clientId: 1003,
             publicKey: 'a4fc45596a8ef4f6c65b0b6620811ead',
             privateKey: 'e394b36cd66c9c205f1e3304058ba4d4'
+        },
+
+        logger: {
+            level: 'NONE'
         }
     }
 

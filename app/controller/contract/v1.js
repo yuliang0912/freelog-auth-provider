@@ -91,11 +91,9 @@ module.exports = class ContractController extends Controller {
      * @returns {Promise.<void>}
      */
     async create(ctx) {
-        //目前暂不支持资源商对资源商的合同
+
         let contractType = ctx.checkBody('contractType').toInt().in([2, 3]).value
         let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
-        let serialNumber = ctx.checkBody('serialNumber').exist().isMongoObjectId().value
-        // 此处为资源ID或者presentableId
         let targetId = ctx.checkBody('targetId').exist().notEmpty().value
         let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
 
@@ -109,7 +107,6 @@ module.exports = class ContractController extends Controller {
             targetId,
             contractType,
             segmentId,
-            serialNumber,
             partyTwo
         })
 
@@ -335,16 +332,21 @@ module.exports = class ContractController extends Controller {
      */
     async batchCreateAuthSchemeContracts(ctx) {
 
-        let partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
-        let signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
-        ctx.validate()
+        const partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
+        const signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
+        const contractType = ctx.checkBody("contractType").toInt().in([1, 2, 3]).value
+        ctx.allowContentType({type: 'json'}).validate()
 
-        signObjects.forEach(x => x.partyTwo = partyTwo)
-        await ctx.service.contractService.batchCreateAuthSchemeContracts({policies: signObjects}).then(data => {
-            ctx.success(data)
-        }).catch(err => {
-            ctx.error(err)
-        })
+        let nodeInfo = null;
+        if (contractType === ctx.app.contractType.ResourceToNode) {
+            nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${partyTwo}`)
+            if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
+                ctx.error({msg: '参数partyTwo校验失败', data: nodeInfo})
+            }
+        }
+        await ctx.service.contractService.batchCreateContracts({
+            policies: signObjects, contractType, nodeInfo, partyTwo
+        }).then(ctx.success).catch(ctx.error)
     }
 }
 

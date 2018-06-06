@@ -18,10 +18,8 @@ module.exports = class PresentableController extends Controller {
         let presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
         let extName = ctx.checkParams('extName').optional().in(ExtensionNames).value
         let userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
-        //资源响应请求设置:https://help.aliyun.com/document_detail/31980.html?spm=5176.doc31855.2.9.kpDwZN
-        let response = ctx.checkHeader('response').optional().toJson().default({}).value
         let userId = ctx.request.userId
-        ctx.validate(false)  //validateIdentity:false 用户可以不用登陆
+        ctx.validate(false)  //validateIdentity:false  用户可以不用登陆
 
         if (userContractId && !userId) {
             ctx.error({msg: '参数userContractId错误,当前不存在登录用户'})

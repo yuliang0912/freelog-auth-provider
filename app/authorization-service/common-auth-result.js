@@ -73,6 +73,7 @@ module.exports = class CommonAuthResult {
     get isAuth() {
         return this.authCode === authCodeEnum.BasedOnUserContract
             || this.authCode === authCodeEnum.BasedOnNodeContract
+            || this.authCode === authCodeEnum.BasedOnResourceContract
             || this.authCode === authCodeEnum.BasedOnNodePolicy
             || this.authCode === authCodeEnum.BasedOnResourcePolicy
             || this.authCode === authCodeEnum.BasedOnIndividuals
