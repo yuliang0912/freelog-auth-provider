@@ -146,7 +146,13 @@ const AuthProcessManager = class AuthProcessManager {
      * @returns {Promise<*>}
      */
     async policyIdentityAuthentication({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
-        return IdentityAuthentication.main(arguments)
+        return IdentityAuthentication.main({
+            policySegment,
+            contractType,
+            partyOneUserId,
+            partyTwoInfo,
+            partyTwoUserInfo
+        })
     }
 
 }
