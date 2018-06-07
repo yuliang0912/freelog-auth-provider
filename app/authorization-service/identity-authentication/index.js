@@ -28,6 +28,8 @@ class FreelogPolicyIdentityAuthentication {
      */
     async main({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
+        console.log(policySegment, contractType)
+
         const authResults = []
 
         const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
@@ -36,7 +38,7 @@ class FreelogPolicyIdentityAuthentication {
             try {
                 params.authUserObject = policySegment.users.find(t => t.userType.toUpperCase() === stepRule.userType)
             } catch (e) {
-                throw new Error(JSON.stringify(policySegment))
+                throw new Error('错误:' + policySegment === null)
             }
             if (!params.authUserObject) {
                 continue
