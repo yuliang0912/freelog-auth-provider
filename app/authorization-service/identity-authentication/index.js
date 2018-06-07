@@ -33,7 +33,11 @@ class FreelogPolicyIdentityAuthentication {
         const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
         for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
             const stepRule = this.authRuleSteps[i]
-            params.authUserObject = policySegment.users.find(t => t.userType.toUpperCase() === stepRule.userType)
+            try {
+                params.authUserObject = policySegment.users.find(t => t.userType.toUpperCase() === stepRule.userType)
+            } catch (e) {
+                throw new Error(JSON.stringify(policySegment))
+            }
             if (!params.authUserObject) {
                 continue
             }
