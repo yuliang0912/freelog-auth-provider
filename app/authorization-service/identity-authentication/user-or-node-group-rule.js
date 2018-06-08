@@ -55,7 +55,7 @@ module.exports = async ({authUserObject, contractType, partyOneUserId, partyTwoI
         if (!groups.length) {
             return false
         }
-        const existGroups = await app.curl(`${app.config.gatewayUrl}/api/v1/groups/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`, {dataType: 'json'}).then(res => {
+        const existGroups = await app.curl(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`, {dataType: 'json'}).then(res => {
             return res.data.data
         })
         return Array.isArray(existGroups) && existGroups.length

@@ -14,7 +14,7 @@ module.exports = {
      * @param data
      * @returns {exports}
      */
-    validatePbContractList(data){
+    validatePbContractList(data) {
 
         let result =
             pbContractSchema.jsonSchemaValidator.validate(data, pbContractSchema.pbContractListSchema)
@@ -24,5 +24,9 @@ module.exports = {
         }
 
         return this
+    },
+
+    get webApi() {
+        return this.app.webApi
     }
 }

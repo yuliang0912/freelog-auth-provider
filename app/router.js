@@ -23,10 +23,11 @@ module.exports = app => {
      */
     router.get('/v1/contracts/contractRecords', controller.contract.v1.contractRecords)
     router.get('/v1/contracts/isCanExecEvent', controller.contract.v1.isCanExecEvent)
-
+    router.get('/v1/contracts/initial', controller.contract.v1.initial)
+    
     //请求获取presentable资源
     router.get('/v1/presentables/resource/:presentableId.:extName', controller.auth.v1.presentable)
-    router.get('/v1/presentables/resource/:presentableId', controller.auth.v1.presentable)
+    router.get('/v1/presentables/resource/:presentableId', controller.auth.v2.presentable)
 
     //直接请求授权资源
     router.get('/v1/auths/resource/:resourceId.:extName', controller.auth.v1.resource)

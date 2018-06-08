@@ -46,6 +46,7 @@ class FreelogPolicyIdentityAuthentication {
                 return authResult
             }
             if (authResult.authCode !== authCodeEnum.Default) {
+                authResult.data.segmentId = policySegment.segmentId
                 authResults.push(authResult)
             }
         }

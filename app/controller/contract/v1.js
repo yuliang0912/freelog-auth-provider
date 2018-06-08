@@ -4,7 +4,7 @@
 
 'use strict'
 
-const _ = require('lodash')
+const lodash = require('lodash')
 const Controller = require('egg').Controller
 const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
 
@@ -58,18 +58,18 @@ module.exports = class ContractController extends Controller {
      * @returns {Promise<void>}
      */
     async list(ctx) {
-        let contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 100).value
+
+        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 100).value
 
         ctx.validate()
 
-        let condition = {
+        const condition = {
             _id: {$in: contractIds}
         }
 
-        let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
+        const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
 
-        await ctx.dal.contractProvider.getContracts(condition, projection)
-            .bind(ctx).then(ctx.success).catch(ctx.error)
+        await ctx.dal.contractProvider.getContracts(condition, projection).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -78,11 +78,41 @@ module.exports = class ContractController extends Controller {
      * @returns {Promise.<void>}
      */
     async show(ctx) {
-        let contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
+
+        const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         ctx.validate()
 
-        await ctx.dal.contractProvider.getContractById(contractId).bind(ctx).then(buildReturnContract)
-            .then(ctx.success).catch(ctx.error)
+        await ctx.dal.contractProvider.getContractById(contractId).then(ctx.success).catch(ctx.error)
+    }
+
+    /**
+     * 初始化合同
+     * @returns {Promise<void>}
+     */
+    async initial(ctx) {
+
+        const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId('合同ID格式错误').toSplitArray().len(1, 100).value
+        ctx.validate()
+
+        const contractInfos = await ctx.dal.contractProvider.find({
+            _id: {$in: contractIds},
+            partyTwoUserId: ctx.request.userId,
+            fsmState: 'none'
+        })
+
+        const tasks = contractInfos.map(contractInfo => {
+            contractInfo = contractInfo.toObject()
+            return new Promise((resolve, reject) => {
+                ctx.app.once(`${ctx.app.event.contractEvent.initialContractEvent}_${contractInfo.contractId}`, function () {
+                    resolve(contractInfo)
+                })
+                contractFsmEventHandler.initContractFsm(contractInfo).catch(reject)
+            })
+        })
+
+        await Promise.all(tasks).then(contracts => {
+            return contracts.map(x => new Object({contractId: x.contractId}))
+        }).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -92,26 +122,15 @@ module.exports = class ContractController extends Controller {
      */
     async create(ctx) {
 
-        let contractType = ctx.checkBody('contractType').toInt().in([2, 3]).value
-        let segmentId = ctx.checkBody('segmentId').exist().isMd5().value
-        let targetId = ctx.checkBody('targetId').exist().notEmpty().value
-        let partyTwo = ctx.checkBody('partyTwo').toInt().gt(0).value
+        console.log(ctx.request.body)
 
+        //仅支持用户与presentable签约,(节点与资源 资源与资源通过批量结果实现)
+        const contractType = ctx.checkBody('contractType').toInt().in([3]).value
+        const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
+        const targetId = ctx.checkBody('targetId').exist().notEmpty().value
         ctx.validate()
 
-        if (contractType === ctx.app.contractType.PresentableToUer && partyTwo !== ctx.request.userId) {
-            ctx.error({msg: '参数partyTwo与当前登录用户身份不符合'})
-        }
-
-        let contractInfo = await ctx.service.contractService.createContract({
-            targetId,
-            contractType,
-            segmentId,
-            partyTwo
-        })
-
-        ctx.app.deleteProperties(contractInfo, 'languageType', 'policyCounterpart')
-        ctx.success(contractInfo)
+        await ctx.service.contractService.createUserContract({presentableId: targetId, segmentId}).then(ctx.success)
     }
 
     /**
@@ -133,7 +152,7 @@ module.exports = class ContractController extends Controller {
             contractType: ctx.app.contractType.PresentableToUer,
             expireDate: {$gt: new Date()},
             status: 0
-        }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -155,7 +174,7 @@ module.exports = class ContractController extends Controller {
             contractType: ctx.app.contractType.ResourceToNode,
             expireDate: {$gt: new Date()},
             status: 0
-        }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -175,7 +194,7 @@ module.exports = class ContractController extends Controller {
             partyTwo: authorId,
             targetId: resourceId,
             contractType: ctx.app.contractType.ResourceToResource
-        }, null, page, pageSize).bind(ctx).map(buildReturnContract).then(ctx.success).catch(ctx.error)
+        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -190,11 +209,7 @@ module.exports = class ContractController extends Controller {
 
         ctx.allowContentType({type: 'json'}).validate()
 
-        await contractFsmEventHandler.contractEventTriggerHandler(eventId, contractId).then(data => {
-            ctx.success(data)
-        }).catch(error => {
-            ctx.error(error)
-        })
+        await contractFsmEventHandler.contractEventTriggerHandler(eventId, contractId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -263,7 +278,7 @@ module.exports = class ContractController extends Controller {
 
         //如果是资源-节点合同
         if (contractInfo.contractType === ctx.app.contractType.ResourceToNode) {
-            let nodeInfo = nodeId ? await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${nodeId}`) : null
+            let nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
             if (!nodeInfo || nodeInfo.ownerUserId !== userId) {
                 ctx.error({msg: '参数nodeId错误', data: {nodeId, userId}})
             }
@@ -288,7 +303,7 @@ module.exports = class ContractController extends Controller {
 
         if (eventModel.type === 'compoundEvents') {
             let eventParams = eventModel.params.find(subEvent => subEvent.eventId === eventId).params
-            let diffLicenseIds = _.difference(eventParams, licenseIds)
+            let diffLicenseIds = lodash.difference(eventParams, licenseIds)
             if (diffLicenseIds.length || eventParams.length !== licenseIds.length) {
                 ctx.error({
                     msg: '参数licenseIds与事件中的协议参数不匹配', data: {
@@ -298,9 +313,7 @@ module.exports = class ContractController extends Controller {
             }
         }
 
-        await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel, eventId).then(data => {
-            ctx.success(data)
-        }).catch(err => ctx.error(err))
+        await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel, eventId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -339,23 +352,14 @@ module.exports = class ContractController extends Controller {
 
         let nodeInfo = null;
         if (contractType === ctx.app.contractType.ResourceToNode) {
-            //nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${partyTwo}`)
-            nodeInfo = await ctx.curlIntranetApi(`${ctx.config.gatewayUrl}/api/v1/nodes/${partyTwo}`)
+            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwo}`)
             if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
                 ctx.error({msg: '参数partyTwo校验失败', data: nodeInfo})
             }
         }
+
         await ctx.service.contractService.batchCreateContracts({
             policies: signObjects, contractType, nodeInfo, partyTwo
         }).then(ctx.success).catch(ctx.error)
     }
-}
-
-const buildReturnContract = (data) => {
-    if (data) {
-        data = data.toObject()
-        Reflect.deleteProperty(data, 'languageType')
-        Reflect.deleteProperty(data, 'policyCounterpart')
-    }
-    return data
 }

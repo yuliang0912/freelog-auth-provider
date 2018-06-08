@@ -49,6 +49,10 @@ const handler = {
      */
     async initContractFsm(contractInfo) {
 
+        if (contractInfo.fsmState !== 'none') {
+            throw new Error('合同已经激活,不能重复操作')
+        }
+
         contractInfo.fsmState = contractInfo.policySegment.initialState
         contractInfo.isFirst = true
 

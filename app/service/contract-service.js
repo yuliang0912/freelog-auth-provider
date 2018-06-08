@@ -3,7 +3,6 @@
 const Service = require('egg').Service;
 const authService = require('../authorization-service/process-manager-new')
 const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
-const authErrCode = require('../enum/auth_err_code')
 
 class ContractService extends Service {
 
@@ -26,52 +25,23 @@ class ContractService extends Service {
         const {ctx} = this
         const userInfo = ctx.request.identityInfo.userInfo
         const contractObjects = new Map(signObjects.map(x => [x.targetId, x]))
-        const authSchemeInfos = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/authSchemes/?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
-        //const authSchemeInfos = await ctx.curlIntranetApi(`http://127.0.0.1:7001/v1/resources/authSchemes/?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
+        const authSchemeInfos = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
 
         if (authSchemeInfos.length !== contractObjects.size) {
             ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {signObjects}})
         }
 
-        for (let i = 0, j = authSchemeInfos.length; i < j; i++) {
+        const identityAuthTasks = []
+        authSchemeInfos.forEach(item => {
 
-            let item = authSchemeInfos[i]
-            let contractObject = contractObjects.get(item.authSchemeId)
-            let policySegment = item.policy.find(x => x.segmentId === contractObject.segmentId)
+            const contractObject = contractObjects.get(item.authSchemeId)
+            const policySegment = item.policy.find(x => x.segmentId === contractObject.segmentId)
             if (!policySegment) {
                 ctx.error({
                     msg: '参数segmentId校验失败',
-                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
+                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId, policy: item.policy}
                 })
             }
-
-            await authService.policyIdentityAuthentication({
-                policySegment,
-                contractType,
-                partyOneUserId: item.userId,
-                partyTwoInfo: nodeInfo,
-                partyTwoUserInfo: userInfo
-            }).then(identityAuthResult => {
-                if (!identityAuthResult.isAuth) {
-                    ctx.error({
-                        msg: '策略段身份认证失败',
-                        data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
-                    })
-                }
-            })
-
-
-            // await authService.resourcePolicyIdentityAuthentication({
-            //     policyOwnerId: item.userId, policySegment, userInfo, nodeInfo
-            // }).then(identityAuthResult => {
-            //     if (!identityAuthResult.isAuth) {
-            //         ctx.error({
-            //             msg: '策略段身份认证失败',
-            //             data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId}
-            //         })
-            //     }
-            // })
-
             contractObject.partyOneUserId = item.userId
             contractObject.partyTwoUserId = userInfo.userId
             contractObject.policySegment = policySegment
@@ -80,53 +50,25 @@ class ContractService extends Service {
             contractObject.resourceId = item.resourceId
             contractObject.contractType = contractType
             contractObject.languageType = item.languageType
+
+            identityAuthTasks.push(authService.policyIdentityAuthentication({
+                policySegment,
+                contractType,
+                partyOneUserId: item.userId,
+                partyTwoInfo: nodeInfo,
+                partyTwoUserInfo: userInfo
+            }))
+        })
+
+        const identityAuthResults = await Promise.all(identityAuthTasks)
+        const identityAuthFaildResults = identityAuthResults.filter(x => !x.isAuth)
+        if (identityAuthFaildResults.length) {
+            ctx.error({msg: '待签约列表中存在部分策略身份认证失败', data: {identityAuthFaildResults}})
         }
 
         const createdContracts = await ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
 
         return [...createdContracts, ...existContracts]
-    }
-
-    /**
-     * 创建合同
-     * @returns {Promise<void>}
-     */
-    async createContract({targetId, contractType, segmentId, partyTwo}) {
-
-        let {ctx, app} = this
-        let contractModel = null
-        let userInfo = ctx.request.identityInfo.userInfo
-
-        if (contractType === app.contractType.PresentableToUer) {
-            contractModel = await this.createUserContract({presentableId: targetId, segmentId, userInfo})
-        } else {
-            contractModel = await this.createNodeContract({
-                resourceId: targetId,
-                segmentId,
-                nodeId: partyTwo,
-                userInfo
-            })
-        }
-
-        await app.dal.contractProvider.getContract({targetId, partyTwo, segmentId}).then(oldContract => {
-            oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
-        })
-
-        //如果初始态就是激活态
-        if (contractModel.policySegment.activatedStates.some(t => t === contractModel.initialState)) {
-            contractModel.status = 3
-        }
-
-        let contractInfo = await ctx.dal.contractProvider.createContract(contractModel).then(app.toObject).then(contractInfo => {
-            let awaitIninial = new Promise((resolve) => {
-                app.once(`${app.event.contractEvent.initialContractEvent}_${contractInfo.contractId}`, function () {
-                    resolve(contractInfo)
-                })
-            })
-            contractFsmEventHandler.initContractFsm(contractInfo)
-            return awaitIninial
-        })
-        return ctx.dal.contractProvider.getContractById(contractInfo.contractId)
     }
 
     /**
@@ -137,40 +79,46 @@ class ContractService extends Service {
      * @param partyTwo
      * @returns {Promise<void>}
      */
-    async createUserContract({presentableId, segmentId, userInfo}) {
+    async createUserContract({presentableId, segmentId}) {
 
-        let {ctx, app} = this
-        let presentable = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
-        //let presentable = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/presentables/${presentableId}`)
-        if (!presentable) {
-            ctx.error({msg: `targetId:${presentableId}错误`})
-        }
-        let policySegment = presentable.policy.find(t => t.segmentId === segmentId)
-        if (!policySegment) {
-            ctx.error({msg: 'segmentId错误,未找到策略段'})
-        }
+        const {ctx, app} = this
+        const userInfo = ctx.request.identityInfo.userInfo
 
-        await ctx.dal.contractProvider.getContractById(presentable.contractId).then(resourceContract => {
-            if (!resourceContract || resourceContract.status !== 3) {
-                ctx.error({
-                    msg: 'presentable对应的节点与资源的合同不在激活状态,无法签订合约',
-                    errCode: authErrCode.nodeContractNotActivate,
-                    data: resourceContract
-                })
-            }
+        await ctx.dal.contractProvider.getContract({
+            targetId: presentableId,
+            partyTwo: userInfo.userId,
+            contractType: app.contractType.PresentableToUer,
+            segmentId
+        }).then(oldContract => {
+            oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
         })
 
-        let nodeInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/nodes/${presentable.nodeId}`)
-        //let nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${presentable.nodeId}`)
-        if (!nodeInfo) {
-            ctx.error({msg: '未找到节点信息', data: {presentable}})
+        const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        if (!presentable || presentable.status !== 2) {
+            ctx.error({msg: `targetId:${presentableId}错误或者presentable未上线`, data: {presentable}})
         }
-        let authResult = await authService.presentablePolicyIdentityAuthentication({policySegment, userInfo, nodeInfo})
+
+        const policySegment = presentable.policy.find(t => t.segmentId === segmentId)
+        if (!policySegment || policySegment.status !== 1) {
+            ctx.error({msg: 'segmentId错误,未找到策略段', data: {policySegment}})
+        }
+
+        const authResult = await authService.policyIdentityAuthentication({
+            policySegment,
+            contractType: app.contractType.PresentableToUer,
+            partyOneUserId: presentable.userId,
+            partyTwoUserInfo: userInfo
+        })
         if (!authResult.isAuth) {
             ctx.error({msg: 'presentable策略段身份认证失败', data: {policyUsers: policySegment.users, userInfo}})
         }
 
-        return {
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentable.nodeId}`)
+        if (!nodeInfo || nodeInfo.status !== 0) {
+            ctx.error({msg: '未找到节点信息或者节点已不存在', data: {presentable, nodeInfo}})
+        }
+
+        const contractModel = {
             segmentId,
             policySegment,
             targetId: presentableId,
@@ -179,61 +127,20 @@ class ContractService extends Service {
             partyOneUserId: presentable.userId,
             partyTwoUserId: userInfo.userId,
             resourceId: presentable.resourceId,
-            contractType: app.contractType.PresentableToUer,
-            languageType: presentable.languageType
-        }
-    }
-
-    /**
-     * 创建节点合同
-     * @param targetId
-     * @param contractType
-     * @param segmentId
-     * @param partyTwo
-     * @returns {Promise<void>}
-     */
-    async createNodeContract({resourceId, segmentId, nodeId, userInfo}) {
-
-        let {ctx, app, config} = this
-        let resourcePolicy = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/resources/policies/${resourceId}`)
-        //debug let resourcePolicy = await ctx.curlIntranetApi(`http://127.0.0.1:7001/v1/policies/${resourceId}`)
-        if (!resourcePolicy) {
-            ctx.error({msg: `targetId:${resourceId}错误`})
-        }
-        let policySegment = resourcePolicy.policy.find(t => t.segmentId === segmentId)
-        if (!policySegment) {
-            ctx.error({msg: 'segmentId错误,未找到策略段'})
+            contractType: app.contractType.PresentableToUer
         }
 
-        let nodeInfo = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/nodes/${nodeId}`)
-        //debug let nodeInfo = await ctx.curlIntranetApi(`http://127.0.0.1:7005/v1/nodes/${nodeId}`)
-        if (!nodeInfo || nodeInfo.ownerUserId !== userInfo.userId) {
-            ctx.error({msg: '未找到节点或者用户与节点信息不匹配', data: nodeInfo})
-        }
-
-        let resourcePolicyIdentityAuth = await authService.resourcePolicyIdentityAuthentication({
-            policyOwnerId: resourcePolicy.userId,
-            policySegment,
-            nodeInfo,
-            userInfo
+        const contractInfo = await ctx.dal.contractProvider.createContract(contractModel).then(app.toObject).then(contractInfo => {
+            let awaitIninial = new Promise((resolve) => {
+                app.once(`${app.event.contractEvent.initialContractEvent}_${contractInfo.contractId}`, function () {
+                    resolve(contractInfo)
+                })
+            })
+            contractFsmEventHandler.initContractFsm(contractInfo)
+            return awaitIninial
         })
 
-        if (!resourcePolicyIdentityAuth.isAuth) {
-            ctx.error({msg: '资源策略段身份认证失败', data: {policyUsers: policySegment.users, nodeInfo}})
-        }
-
-        return {
-            segmentId,
-            policySegment,
-            targetId: resourceId,
-            partyOne: resourcePolicy.userId,
-            partyTwo: nodeId,
-            partyOneUserId: resourcePolicy.userId,
-            partyTwoUserId: nodeInfo.ownerUserId,
-            resourceId: resourceId,
-            contractType: app.contractType.ResourceToNode,
-            languageType: resourcePolicy.languageType
-        }
+        return ctx.dal.contractProvider.getContractById(contractInfo.contractId)
     }
 
     /**

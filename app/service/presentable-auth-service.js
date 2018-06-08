@@ -3,8 +3,9 @@
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth_code')
 const authErrCodeEnum = require('../enum/auth_err_code')
-const authService = require('../authorization-service/process-manager')
+const authService = require('../authorization-service/process-manager-new')
 const commonAuthResult = require('../authorization-service/common-auth-result')
+const contractAuthorization = require('../authorization-service/contract-authorization/index')
 
 /**
  * presentable授权业务逻辑层
@@ -15,71 +16,132 @@ class PresentableAuthService extends Service {
      * 授权流程处理者
      * @returns {Promise<void>}
      */
-    async authProcessHandler({userId, nodeId, presentableId, userContractId}) {
+    async authProcessHandler({nodeId, presentableId, resourceId, userContractId}) {
 
-        const {ctx, config} = this
-        let authResultCache = await this.getLatestAuthResultCache({userId, presentableId})
+        const {ctx, app} = this
+        const userId = ctx.request.userId
+        const authResultCache = await this.getLatestAuthResultCache({userId, presentableId})
         if (authResultCache) {
             return authResultCache
         }
 
-        //此处也可以考虑去调用API获取用户信息
-        let userInfo = ctx.request.identityInfo ? ctx.request.identityInfo.userInfo : null
-        let nodeInfo = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/nodes/${nodeId}`)
-
+        const userInfo = ctx.request.identityInfo.userInfo
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
             ctx.error({msg: '参数nodeId错误', data: nodeInfo})
         }
-        let presentableInfo = await ctx.curlIntranetApi(`${config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+
+        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
             ctx.error({msg: '参数presentableId错误或者presentableId与nodeId不匹配', data: presentableInfo})
         }
 
-        let userContract = await this.getUserContract({userId, nodeId, presentableId, userContractId})
-
-        //进行第一次授权尝试
-        let authResult = await authService.presentableAuthorization({presentableInfo, userInfo, nodeInfo, userContract})
-
-        /**
-         * A.如果返回错误码不是notFoundUserContract则代表有用户,并且有合同
-         * B.如果是未登录用户,则默认检查的presentable策略是否符合public-initial-terminate
-         * 以上两种结果直接返回授权服务的授权结果,否则去校验用户能否静默创建合同,继续后面代码逻辑检查
-         */
-        if (authResult.isAuth || authResult.authErrCode !== authErrCodeEnum.notFoundUserContract) {
-            this.saveAuthResult({userInfo, nodeInfo, presentableInfo, authResult})
-            return authResult
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`).catch(ctx.error)
+        if (!presentableAuthTree) {
+            ctx.error({msg: 'presentable授权树数据缺失'})
         }
 
-        /**
-         * A.此时存在登录用户
-         * B.去模拟调用是否能通过initial-terminate的方式授权
-         * C.如果能授权,则默认创建一个合同,再次授权,如果不能授权,则返回之前的授权结果(用户未签约合同)
-         */
-        let virtualContractAuthResult = await authService.virtualContractAuthorization({
-            presentableInfo,
-            userInfo,
-            nodeInfo
-        })
-
-        if (!virtualContractAuthResult.isAuth) {
-            return authResult
+        if (!resourceId) {
+            resourceId = presentableAuthTree.masterResourceId
+        } else if (!presentableAuthTree.authTree.some(x => x.resourceId === resourceId)) {
+            ctx.error({msg: `参数resourceId:${resourceId}错误`})
         }
 
-        //如果通过initial-terminate模式授权,则静默的为用户创建一个合同,因为系统的健全都是基于合同来执行的
-        userContract = await this.createUserContract({
-            presentableInfo, userInfo, nodeInfo,
-            policySegment: virtualContractAuthResult.data.policySegment
+        //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
+        if (!userInfo) {
+            const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
+            if (!unLoginUserPresentableAuthResult.isAuth) {
+                return unLoginUserPresentableAuthResult
+            }
+        }
+
+        //获取用户合同,然后尝试基于用户合同获取第一步授权
+        const userContract = await this._getUserContract({userId, nodeId, presentableId, userContractId})
+        if (userContract) {
+            const userContractAuthResult = await authService.contractAuthorization({
+                contract: userContract,
+                partyTwoUserInfo: userInfo
+            })
+            if (!userContractAuthResult.isAuth) {
+                return userContractAuthResult
+            }
+        } else {
+            //如果登录用户没有合同,尝试获取授权,成功后默认创建一个合同
+            const tryPresentableAuthResult = await this._tryCreateDefaultUserContract({presentableInfo, userInfo})
+            if (!tryPresentableAuthResult.isAuth) {
+                return tryPresentableAuthResult
+            }
+        }
+
+        const partyTwoUserIds = new Set()
+        const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
+        const contractMap = await ctx.dal.contractProvider.getContracts({_id: {$in: contractIds}}).then(dataList => {
+            const contractMap = new Map()
+            dataList.forEach(item => {
+                let currentContract = item.toObject()
+                partyTwoUserIds.add(currentContract.partyTwoUserId)
+                contractMap.set(currentContract.contractId, currentContract)
+            })
+            return contractMap
         })
 
-        //针对新创建的合同进行二次授权重试
-        let secondaryAuthResult = await authService.presentableAuthorization({
-            presentableInfo,
-            userInfo,
-            nodeInfo,
-            userContract
+        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
+            return new Map(dataList.map(x => [x.userId, x]))
         })
-        this.saveAuthResult({userInfo, nodeInfo, presentableInfo, secondaryAuthResult})
-        return secondaryAuthResult
+
+        presentableAuthTree.nodeInfo = nodeInfo
+        presentableAuthTree.authTree.forEach(item => {
+            item.contractInfo = contractMap.get(item.contractId)
+            item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
+        })
+
+        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
+
+        return presentableTreeAuthResult
+    }
+
+    /**
+     * 未登陆用户尝试获取presentable授权(满足initial-terminate模式)
+     * @returns {Promise<void>}
+     */
+    async _unLoginUserPresentableAuth(presentable) {
+
+        const {app} = this
+        const params = {
+            policySegments: presentable.policy,
+            contractType: app.contractType.PresentableToUer,
+            partyOneUserId: presentable.userId
+        }
+
+        return authService.policyAuthorization(params)
+    }
+
+    /***
+     * 如果用户登录,并且满足presentable的免费授权策略(initial-terminate模式),则默认创建一个合同
+     * @param presentable
+     * @param userInfo
+     * @returns {Promise<void>}
+     */
+    async _tryCreateDefaultUserContract({presentableInfo, userInfo}) {
+
+        const {app} = this
+        const params = {
+            policySegments: presentableInfo.policy,
+            contractType: app.contractType.PresentableToUer,
+            partyOneUserId: presentableInfo.userId,
+            partyTwoUserInfo: presentableInfo
+        }
+
+        const presentablePolicyAuthResult = await authService.policyAuthorization(params)
+
+        if (!presentablePolicyAuthResult.isAuth) {
+            const result = new commonAuthResult(authCodeEnum.UserContractUngratified)
+            result.authErrCode = authErrCodeEnum.notFoundUserContract
+            return result
+        }
+
+        await this._createUserContract({presentableInfo, policySegment: presentablePolicyAuthResult.data.policySegment})
+        //.catch(console.error)
     }
 
     /**
@@ -136,34 +198,20 @@ class PresentableAuthService extends Service {
      * 如果有多份激活态合同或者多份全部未激活的合同,则让用户选择执行,前端去引导激活合同或者选择需要执行的合同
      * 如果有多份合同,但是只有一份激活态合同,则返回激活态合同执行
      */
-    async getUserContract({userId, presentableId, nodeId, userContractId}) {
+    async _getUserContract({userId, presentableId, nodeId, userContractId}) {
 
         if (!userId) {
             return null
         }
 
-        if (userContractId) {
-            let userContract = await this.app.dataProvider.contractProvider.getContract({
-                _id: userContractId,
-                targetId: presentableId,
-                partyOne: nodeId,
-                contractType: this.app.contractType.PresentableToUer,
-                partyTwo: userId
-            })
-            if (!userContract) {
-                this.ctx.error({msg: '参数userContractId错误,未能找到与当前用户匹配的合同'})
-            }
-            return userContract
-        }
-
+        const {ctx, app} = this
         //如果用户没有选择具体需要执行的合同,则搜索用户的合同列表
-        let allUserContracts = await this.app.dataProvider.contractProvider.getContracts({
+        const allUserContracts = await app.dataProvider.contractProvider.getContracts({
             targetId: presentableId,
             partyOne: nodeId,
             partyTwo: userId,
-            contractType: this.app.contractType.PresentableToUer,
-            status: {$in: [1, 2, 3]}
-        })
+            contractType: app.contractType.PresentableToUer
+        }).map(app.toObject)
 
         //如果用户没有签订合同,则返回
         if (!allUserContracts.length) {
@@ -172,20 +220,30 @@ class PresentableAuthService extends Service {
 
         //如果用户只有一个合同,则直接返回当前合同
         if (allUserContracts.length === 1) {
-            return allUserContracts[0].toObject()
+            return allUserContracts[0]
+        }
+
+        //如果用户指定了合同ID,则执行指定的合同
+        if (userContractId) {
+            const userContract = allUserContracts.find(x => x.contractId === userContractId)
+            if (userContract) {
+                ctx.error({msg: '参数userContractId错误,未能找到指定的用户合同', data: {userContractId, allUserContracts}})
+            }
+            return userContract
         }
 
         //如果用户有多个合同.默认找激活态的合同
-        let activatedContracts = allUserContracts.filter(t => t.status === 3)
+        let activatedContracts = allUserContracts.filter(t => contractAuthorization.isActivated(t))
         if (activatedContracts.length === 1) {
-            return activatedContracts[0].toObject()
+            return activatedContracts[0]
         }
 
-        let result = new commonAuthResult(authCodeEnum.NodeContractUngratified)
+        //如果用户有多个合同,但是激活的不止一个或者没有激活的合同,则需要手动让用户选择一个合同执行
+        const result = new commonAuthResult(authCodeEnum.NodeContractUngratified)
         result.authErrCode = authErrCodeEnum.chooseUserContract
         result.data.contracts = allUserContracts
 
-        this.ctx.error({msg: "请选择一个合同执行", data: result.toObject()})
+        this.ctx.error({msg: "请选择一个合同执行", data: result})
     }
 
     /**
@@ -193,21 +251,20 @@ class PresentableAuthService extends Service {
      * @param userContract
      * @returns {Promise<void>}
      */
-    async createUserContract({presentableInfo, policySegment, userInfo, nodeInfo}) {
-        let postData = {
-            contractType: this.app.contractType.PresentableToUer,
-            segmentId: policySegment.segmentId,
-            targetId: presentableInfo.presentableId,
-            serialNumber: presentableInfo.serialNumber,
-            partyTwo: userInfo.userId
-        }
+    async _createUserContract({presentableInfo, policySegment}) {
 
-        return this.ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/contracts`, {
+        const {ctx, app} = this
+
+        return ctx.curlIntranetApi(`${ctx.webApi.contractInfo}`, {
             type: 'post',
             contentType: 'json',
-            data: postData,
+            data: {
+                targetId: presentableInfo.presentableId,
+                contractType: app.contractType.PresentableToUer,
+                segmentId: policySegment.segmentId
+            },
         }).catch(error => {
-            this.ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
+            ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
         })
     }
 

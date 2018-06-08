@@ -3,16 +3,15 @@
 const authCodeEnum = require('../enum/auth_code')
 const errAuthCodeEnum = require('../enum/auth_err_code')
 const commonAuthResult = require('./common-auth-result')
-const globalInfo = require('egg-freelog-base/globalInfo')
+const contractType = require('egg-freelog-base/app/enum/contract_type')
+//身份认证
 const IdentityAuthentication = require('./identity-authentication/index')
+//合同授权(包含了身份认证)
 const ContractAuthorization = require('./contract-authorization/index')
+//策略授权(包含了身份认证)
 const PolicyAuthorization = require('./policy-authorization/index')
 
 const AuthProcessManager = class AuthProcessManager {
-
-    constructor() {
-        this.app = globalInfo.app
-    }
 
     /**
      * presentable授权树授权状态检查(先循环遍历去异步授权)
@@ -34,10 +33,10 @@ const AuthProcessManager = class AuthProcessManager {
             if (!ContractAuthorization.isActivated(currentContract)) {
                 unActivatedContracts.push(currentContract)
             }
-            if (currentContract.contractType === this.app.contractType.ResourceToNode) {
+            if (currentContract.contractType === contractType.ResourceToNode) {
                 nodeContracts.push(currentContract)
             }
-            if (currentContract.contractType === this.app.contractType.ResourceToResource) {
+            if (currentContract.contractType === contractType.ResourceToResource) {
                 resourceContracts.push(currentContract)
             }
         })
@@ -100,7 +99,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @returns {Promise<*>}
      */
     async contractAuthorization({contract, partyTwoInfo, partyTwoUserInfo}) {
-        return ContractAuthorization.main({contract, partyTwoInfo, partyTwoUserInfo})
+        return ContractAuthorization.main(...arguments)
     }
 
     /***
@@ -146,15 +145,8 @@ const AuthProcessManager = class AuthProcessManager {
      * @returns {Promise<*>}
      */
     async policyIdentityAuthentication({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
-        return IdentityAuthentication.main({
-            policySegment,
-            contractType,
-            partyOneUserId,
-            partyTwoInfo,
-            partyTwoUserInfo
-        })
+        return IdentityAuthentication.main(...arguments)
     }
-
 }
 
 module.exports = new AuthProcessManager()

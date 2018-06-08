@@ -2,7 +2,7 @@
 
 const Controller = require('egg').Controller
 const ExtensionNames = ['data', 'js', 'css', 'html']
-const authService = require('../../authorization-service/process-manager')
+const authService = require('../../authorization-service/process-manager-new')
 const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
 
 module.exports = class PresentableController extends Controller {
@@ -37,9 +37,7 @@ module.exports = class PresentableController extends Controller {
         ctx.set('freelog-contract-id', authToken.nodeContractId)
 
         let resourceInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/auth/getResource`, {
-            headers: response
-                ? {authorization: "bearer " + authToken.signature, response: JSON.stringify(response)}
-                : {authorization: "bearer " + authToken.signature}
+            headers: {authorization: "bearer " + authToken.signature}
         })
 
         if (!extName) {
@@ -146,18 +144,23 @@ module.exports = class PresentableController extends Controller {
         let presentableId = ctx.checkParams("presentableId").isMongoObjectId().value
         ctx.validate()
 
-        let presentableInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/presentables/${presentableId}`)
+        let presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo) {
             this.ctx.error({msg: '参数presentableId错误'})
         }
 
-        let tasks = presentableInfo.policy.map(policySegment => {
-            return authService.presentablePolicyIdentityAuthentication({
-                policySegment, userInfo: ctx.request.identityInfo.userInfo
+        const userInfo = ctx.request.identityInfo.userInfo
+        const tasks = presentableInfo.policy.map(policySegment => {
+            return authService.policyIdentityAuthentication({
+                policySegment,
+                contractType: ctx.app.contractType.PresentableToUer,
+                partyOneUserId: presentableInfo.userId,
+                partyTwoUserInfo: userInfo
             }).then(authResult => {
                 policySegment.identityAuthenticationResult = authResult.isAuth
             })
         })
+
         await Promise.all(tasks)
 
         ctx.success(presentableInfo)
