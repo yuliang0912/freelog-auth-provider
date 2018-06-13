@@ -23,6 +23,7 @@ class ContractService extends Service {
         }
 
         const {ctx} = this
+        const resourceMap = new Map()
         const userInfo = ctx.request.identityInfo.userInfo
         const contractObjects = new Map(signObjects.map(x => [x.targetId, x]))
         const authSchemeInfos = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
@@ -51,6 +52,7 @@ class ContractService extends Service {
             contractObject.contractType = contractType
             contractObject.languageType = item.languageType
 
+            resourceMap.set(item.resourceId, null)
             identityAuthTasks.push(authService.policyIdentityAuthentication({
                 policySegment,
                 contractType,
@@ -66,7 +68,19 @@ class ContractService extends Service {
             ctx.error({msg: '待签约列表中存在部分策略身份认证失败', data: {identityAuthFaildResults}})
         }
 
-        const createdContracts = await ctx.dal.contractProvider.batchCreateContract([...contractObjects.values()])
+        await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/list?resourceIds=${Array.from(resourceMap.keys()).toString()}`).then(list => {
+            list.forEach(resource => resourceMap.set(resource.resourceId, resource.resourceName))
+        })
+
+        const models = Array.from(contractObjects.values())
+
+        models.forEach(item => {
+            if (resourceMap.has(item.resourceId)) {
+                item.contractName = resourceMap.get(item.resourceId)
+            }
+        })
+
+        const createdContracts = await ctx.dal.contractProvider.batchCreateContract(models)
 
         return [...createdContracts, ...existContracts]
     }
@@ -127,6 +141,7 @@ class ContractService extends Service {
             partyOneUserId: presentable.userId,
             partyTwoUserId: userInfo.userId,
             resourceId: presentable.resourceId,
+            contractName: presentable.presentableName,
             contractType: app.contractType.PresentableToUer
         }
 

@@ -11,6 +11,7 @@ module.exports = app => {
         transform(doc, ret, options) {
             return {
                 contractId: ret._id.toString(),
+                contractName: ret.contractName,
                 targetId: ret.targetId,
                 resourceId: ret.resourceId,
                 partyOne: ret.partyOne,
@@ -29,7 +30,8 @@ module.exports = app => {
     }
 
     const ContractSchema = new mongoose.Schema({
-        targetId: {type: String, required: true}, //目标ID,当为资源时是资源策略ID,为消费方案时是presentableId
+        contractName: {type: String, default: ''}, //合同名称
+        targetId: {type: String, required: true}, //目标ID,当为资源时是资源的授权方案ID,为消费方案时是presentableId
         partyOne: {type: String, required: true}, //甲方
         partyTwo: {type: String, required: true}, //乙方
         partyOneUserId: {type: Number, required: true}, //甲方的用户主体ID
