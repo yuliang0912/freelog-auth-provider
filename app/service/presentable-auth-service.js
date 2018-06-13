@@ -18,9 +18,13 @@ class PresentableAuthService extends Service {
      */
     async authProcessHandler({nodeId, presentableId, resourceId, userContractId}) {
 
-        const {ctx, app} = this
+        const {ctx} = this
         const userId = ctx.request.userId
-        const authResultCache = await this.getLatestAuthResultCache({userId, presentableId})
+        const authResultCache = await ctx.service.authTokenService.getAuthToken({
+            targetId: presentableId,
+            partyTwo: userId,
+            partyTwoUserId: userId
+        })
         if (authResultCache) {
             return authResultCache
         }
@@ -41,35 +45,25 @@ class PresentableAuthService extends Service {
             ctx.error({msg: 'presentable授权树数据缺失'})
         }
 
-        if (!resourceId) {
-            resourceId = presentableAuthTree.masterResourceId
-        } else if (!presentableAuthTree.authTree.some(x => x.resourceId === resourceId)) {
+        if (resourceId && !presentableAuthTree.authTree.some(x => x.resourceId === resourceId)) {
             ctx.error({msg: `参数resourceId:${resourceId}错误`})
         }
 
         //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
-        if (!userInfo) {
-            const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
-            if (!unLoginUserPresentableAuthResult.isAuth) {
-                return unLoginUserPresentableAuthResult
-            }
-        }
-
-        //获取用户合同,然后尝试基于用户合同获取第一步授权
-        const userContract = await this._getUserContract({userId, nodeId, presentableId, userContractId})
-        if (userContract) {
-            const userContractAuthResult = await authService.contractAuthorization({
-                contract: userContract,
-                partyTwoUserInfo: userInfo
+        if (userInfo) {
+            const userContractAuthResult = await this._tryUserContractAuth({
+                presentableInfo,
+                userInfo,
+                nodeInfo,
+                userContractId
             })
             if (!userContractAuthResult.isAuth) {
                 return userContractAuthResult
             }
         } else {
-            //如果登录用户没有合同,尝试获取授权,成功后默认创建一个合同
-            const tryPresentableAuthResult = await this._tryCreateDefaultUserContract({presentableInfo, userInfo})
-            if (!tryPresentableAuthResult.isAuth) {
-                return tryPresentableAuthResult
+            const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
+            if (!unLoginUserPresentableAuthResult.isAuth) {
+                return unLoginUserPresentableAuthResult
             }
         }
 
@@ -97,6 +91,17 @@ class PresentableAuthService extends Service {
 
         const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
 
+        presentableTreeAuthResult.data.resourceId = resourceId || presentableInfo.resourceId
+        //presentableTreeAuthResult.data.presentableInfo = presentableInfo
+        //presentableTreeAuthResult.data.presentableAuthTree = presentableAuthTree
+
+        ctx.service.authTokenService.savePresentableAuthResult({
+            presentableAuthTree,
+            userInfo,
+            nodeInfo,
+            authResult: presentableTreeAuthResult
+        })
+
         return presentableTreeAuthResult
     }
 
@@ -116,6 +121,33 @@ class PresentableAuthService extends Service {
         return authService.policyAuthorization(params)
     }
 
+    /**
+     * 尝试使用用户合同授权.没有用户合同,则查看能否默认创建
+     * @param presentable
+     * @param contract
+     * @param userInfo
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _tryUserContractAuth({presentableInfo, userInfo, nodeInfo, userContractId}) {
+
+        //获取用户合同,然后尝试基于用户合同获取第一步授权
+        const userContract = await this._getUserContract({
+            userId: userInfo.userId,
+            nodeId: nodeInfo.nodeId,
+            presentableId: presentableInfo.presentableId,
+            userContractId
+        })
+
+        if (userContract) {
+            return authService.contractAuthorization({
+                contract: userContract, partyTwoUserInfo: userInfo
+            })
+        }
+
+        return this._tryCreateDefaultUserContract({presentableInfo, userInfo})
+    }
+
     /***
      * 如果用户登录,并且满足presentable的免费授权策略(initial-terminate模式),则默认创建一个合同
      * @param presentable
@@ -132,61 +164,21 @@ class PresentableAuthService extends Service {
             partyTwoUserInfo: presentableInfo
         }
 
+        const result = new commonAuthResult(authCodeEnum.BasedOnUserContract)
         const presentablePolicyAuthResult = await authService.policyAuthorization(params)
 
         if (!presentablePolicyAuthResult.isAuth) {
-            const result = new commonAuthResult(authCodeEnum.UserContractUngratified)
+            result.authCode = authCodeEnum.UserContractUngratified
             result.authErrCode = authErrCodeEnum.notFoundUserContract
             return result
         }
 
-        await this._createUserContract({presentableInfo, policySegment: presentablePolicyAuthResult.data.policySegment})
-        //.catch(console.error)
-    }
-
-    /**
-     * 获取最新一次的授权结果缓存
-     * @returns {Promise<void>}
-     */
-    async getLatestAuthResultCache({userId, presentableId}) {
-        if (!userId) {
-            return
-        }
-
-        let lastAuthResult = await this.app.dal.authTokenProvider.getLatestAuthToken({
-            userId, targetId: presentableId
+        await this._createUserContract({
+            presentableInfo,
+            policySegment: presentablePolicyAuthResult.data.policySegment
         })
-        if (!lastAuthResult) {
-            return
-        }
 
-        let authResult = new commonAuthResult(lastAuthResult.authCode)
-        authResult.data.authToken = lastAuthResult.extendInfo
-
-        return authResult
-    }
-
-    /**
-     * 保存最后一次授权结果
-     * @param userInfo
-     * @param authResult
-     * @returns {Promise<void>}
-     */
-    async saveAuthResult({userInfo, nodeInfo, presentableInfo, authResult}) {
-        if (!userInfo || !authResult.isAuth) {
-            return
-        }
-        let model = {
-            userId: userInfo.userId,
-            nodeId: nodeInfo.nodeId,
-            targetId: presentableInfo.presentableId,
-            targetType: 1,
-            authCode: authResult.authCode,
-            extendInfo: authResult.data.authToken,
-            signature: authResult.data.authToken.signature,
-            expire: authResult.data.authToken.expire
-        }
-        await this.app.dal.authTokenProvider.createAuthToken(model)
+        return result
     }
 
     /**
@@ -266,25 +258,6 @@ class PresentableAuthService extends Service {
         }).catch(error => {
             ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
         })
-    }
-
-    /**
-     * 获取上次授权结果
-     * @param userId
-     * @param presentableId
-     * @returns {Promise<*>}
-     */
-    async getLatestAuthToken({userId, presentableId}) {
-
-        let latestAuthToken = await this.app.dal.authTokenProvider.getLatestResourceToken({presentableId, userId})
-
-        let result = new commonAuthResult(authCodeEnum.Default)
-        if (latestAuthToken) {
-            result.authCode = latestAuthToken.authCode
-            result.data.authToken = latestAuthToken
-        }
-
-        return result
     }
 }
 

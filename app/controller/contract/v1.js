@@ -122,8 +122,6 @@ module.exports = class ContractController extends Controller {
      */
     async create(ctx) {
 
-        console.log(ctx.request.body)
-
         //仅支持用户与presentable签约,(节点与资源 资源与资源通过批量结果实现)
         const contractType = ctx.checkBody('contractType').toInt().in([3]).value
         const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
@@ -248,8 +246,7 @@ module.exports = class ContractController extends Controller {
 
         let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
 
-        await ctx.dal.contractProvider.getContracts(condition, projection)
-            .bind(ctx).then(ctx.success)
+        await ctx.dal.contractProvider.getContracts(condition, projection).then(ctx.success)
     }
 
     /**
@@ -347,10 +344,10 @@ module.exports = class ContractController extends Controller {
 
         const partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
         const signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
-        const contractType = ctx.checkBody("contractType").toInt().in([1, 2, 3]).value
+        const contractType = ctx.checkBody("contractType").toInt().in([1, 2]).value
         ctx.allowContentType({type: 'json'}).validate()
 
-        let nodeInfo = null;
+        var nodeInfo = null;
         if (contractType === ctx.app.contractType.ResourceToNode) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwo}`)
             if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {

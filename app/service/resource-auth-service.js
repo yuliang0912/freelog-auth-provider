@@ -1,10 +1,12 @@
 'use strict'
 
 const Service = require('egg').Service
+const authCodeEnum = require('../enum/auth_code')
 const authService = require('../authorization-service/process-manager-new')
 const commonAuthResult = require('../authorization-service/common-auth-result')
+const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
 
-class PublicResourceAuthService extends Service {
+class ResourceAuthService extends Service {
 
     /**
      * 基于资源策略直接授权
@@ -17,91 +19,68 @@ class PublicResourceAuthService extends Service {
         const {ctx, app} = this
         const userId = ctx.request.userId
 
-        const authResultCache = await this.getLatestAuthResultCache({userId, nodeId, resourceId})
+        const authResultCache = await ctx.service.authTokenService.getAuthToken({
+            targetId: resourceId,
+            partyTwo: nodeId || userId,
+            partyTwoUserId: userId
+        })
         if (authResultCache) {
             return authResultCache
         }
 
-        const resourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceId}`)
-        if (!resourceInfo || resourceInfo.status !== 2) {
-            ctx.error({msg: '参数resourceId错误,未能找到有效的资源信息', data: {resourceInfo}})
-        }
-
         const userInfo = ctx.request.identityInfo.userInfo || null
-        const nodeInfo = nodeId ? await this.ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
+        const nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
         if (nodeInfo && nodeInfo.userId !== userId) {
             ctx.error({msg: '节点信息与登录用户不匹配', data: {nodeInfo, userInfo}})
         }
 
         const params = {
             contractType: nodeInfo ? app.contractType.ResourceToNode : 4,
-            partyOneUserId: resourceInfo.userId,
             partyTwoInfo: nodeInfo,
             partyTwoUserInfo: userId
         }
 
-        let authResult = null
+        //如果资源授权方案策略授权通过,则直接返回,否则返回策略拒绝
         const resourceAuthSchemes = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?resourceIds=${resourceId}`)
         for (let i = 0, j = resourceAuthSchemes.length; i < j; i++) {
-            authResult = await authService.policyAuthorization(Object.assign(params, {policySegments: resourceAuthSchemes[i].policy}))
-            if (authResult.isAuth) {
-                break;
+            let authScheme = resourceAuthSchemes[i]
+            if (!authScheme.policy.length) {
+                continue
+            }
+            const authSchemeAuthResult = await authService.policyAuthorization(Object.assign(params, {
+                policySegments: authScheme.policy,
+                partyOneUserId: authScheme.userId
+            }))
+            if (authSchemeAuthResult.isAuth) {
+                ctx.service.authTokenService.saveResourceAuthResult({
+                    resourceId, userInfo, nodeInfo,
+                    authResult: authSchemeAuthResult,
+                    authSchemeId: authScheme.authSchemeId
+                })
+                return authSchemeAuthResult
             }
         }
 
-        this.saveAuthResult({userInfo, nodeInfo, resourceId, authResult})
-
-        return authResult
+        return new commonAuthResult(authCodeEnum.ResourcePolicyUngratified)
     }
 
-    /**
-     * 获取最新一次的授权结果缓存
-     * @returns {Promise<void>}
+
+    /***
+     * 获取资源授权jwt签名信息
+     * @param resourceId
+     * @param payLoad 签名载体
+     * @param expire 默认172800秒(2天)
      */
-    async getLatestAuthResultCache({userId, nodeId, resourceId}) {
+    getAuthResource({resourceId, payLoad = {}, expire = 172800}) {
 
-        if (!userId) {
-            return
-        }
+        const {ctx, config} = this
+        const {publicKey, privateKey} = config.rasSha256Key.resourceAuth
+        const resourceAuthJwt = new JsonWebToken(publicKey, privateKey)
 
-        let condition = {userId, targetId: resourceId}
-        if (nodeId) {
-            condition.nodeId = nodeId
-        }
+        const signature = resourceAuthJwt.createJwt(Object.assign({}, payLoad, {resourceId}), expire)
 
-        let lastAuthResult = await this.app.dal.authTokenProvider.getLatestAuthToken(condition)
-        if (!lastAuthResult) {
-            return
-        }
-
-        let authResult = new commonAuthResult(lastAuthResult.authCode)
-        authResult.data.authToken = lastAuthResult.extendInfo
-
-        return authResult
-    }
-
-    /**
-     * 保存最后一次授权结果
-     * @param userInfo
-     * @param authResult
-     * @returns {Promise<void>}
-     */
-    async saveAuthResult({userInfo, nodeInfo, resourceId, authResult}) {
-        if (!userInfo || !authResult.isAuth) {
-            return
-        }
-        let model = {
-            userId: userInfo.userId,
-            nodeId: nodeInfo ? nodeInfo.nodeId : 0,
-            targetId: resourceId,
-            targetType: 2,
-            authCode: authResult.authCode,
-            extendInfo: authResult.data.authToken,
-            signature: authResult.data.authToken.signature,
-            expire: authResult.data.authToken.expire
-        }
-        await this.app.dal.authTokenProvider.createAuthToken(model)
+        return ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/auth/getResource`, {headers: {authorization: `bearer ${signature}`}})
     }
 }
 
-module.exports = PublicResourceAuthService
+module.exports = ResourceAuthService

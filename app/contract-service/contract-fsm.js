@@ -64,32 +64,6 @@ module.exports.getContractFsm = (contractInfo, events) => {
 }
 
 
-/**
- * 状态机描述json检查
- * @param fsmDescription
- */
-module.exports.checkFsmDescription = (fsmDescription) => {
-
-    if (!Array.isArray(fsmDescription.activatedStates) || fsmDescription.activatedStates.length < 1) {
-        throw new Error('合同必须最少包含一个激活状态')
-    }
-
-    try {
-        let contractFsm = new StateMachine({
-            transitions: fsmDescription.map(item => {
-                return {
-                    name: item.event.eventId,
-                    from: item.currentState,
-                    to: item.nextState
-                }
-            })
-        })
-    } catch (e) {
-        throw new Error('状态机创建失败,请检查授权语言,[detail]:' + e.toString())
-    }
-}
-
-
 
 
 

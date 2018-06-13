@@ -4,12 +4,12 @@
 
 'use strict'
 
-const _ = require('lodash')
+const lodash = require('lodash')
 const contractFsmHelper = require('./contract-fsm')
 const contractFsmEvents = require('./contract-fsm-events')
 const globalInfo = require('egg-freelog-base/globalInfo')
 
-module.exports = {
+class ContractEventGroupHandler {
 
     /**
      * 合同组合事件子事件处理
@@ -21,7 +21,8 @@ module.exports = {
      */
     async eventGroupHandler(contractInfo, compoundEvent, subEventId, ...otherArgs) {
 
-        let condition = {
+        const {app} = globalInfo
+        const condition = {
             contractId: contractInfo.contractId,
             groupEventId: compoundEvent.eventId
         }
@@ -30,23 +31,21 @@ module.exports = {
             return Promise.reject('复合事件不能直接触发执行')
         }
 
-        let envetGroup = await globalInfo.app.dataProvider.contractEventGroupProvider.getEventGroup(condition)
-
+        const envetGroup = await app.dataProvider.contractEventGroupProvider.getEventGroup(condition)
         if (!envetGroup) {
             return Promise.reject("未找到有效的事件分组")
         }
 
-        let awaitExecuteEvents = _.difference(envetGroup.taskEvents, envetGroup.executedEvents)
-
+        const awaitExecuteEvents = lodash.difference(envetGroup.taskEvents, envetGroup.executedEvents)
         if (!envetGroup.taskEvents.some(t => t === subEventId)) {
             return Promise.reject("未找到子事件信息")
         }
 
-        await globalInfo.app.dataProvider.contractChangedHistoryProvider.addHistory(contractInfo.contractId, {
+        await app.dataProvider.contractChangedHistoryProvider.addHistory(contractInfo.contractId, {
             fromState: contractInfo.fsmState,
             toState: contractInfo.fsmState,
             eventId: subEventId,
-            triggerDate: globalInfo.app.moment().toDate()
+            triggerDate: app.moment().toDate()
         })
 
         //如果只有这一个待执行,则当前事件执行完毕.整个事件组即执行完毕
@@ -63,9 +62,11 @@ module.exports = {
             return contractFsm.execEvent(compoundEvent, ...otherArgs)
         }
 
-        return globalInfo.app.dataProvider.contractEventGroupProvider.updateEventGroup(condition, {
+        return app.dataProvider.contractEventGroupProvider.updateEventGroup(condition, {
             $addToSet: {executedEvents: subEventId},
             status: envetGroup.status
         }).then(data => true)
     }
 }
+
+module.exports = new ContractEventGroupHandler()

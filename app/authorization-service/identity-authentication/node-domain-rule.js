@@ -8,7 +8,7 @@ const authCodeEnum = require('../../enum/auth_code')
 const authErrorCodeEnum = require('../../enum/auth_err_code')
 const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 
-module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) => {
+module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
 
     const authResult = new AuthResult(authCodeEnum.Default)
 

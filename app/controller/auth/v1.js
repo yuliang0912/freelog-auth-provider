@@ -1,11 +1,10 @@
 'use strict'
 
 const Controller = require('egg').Controller
-const ExtensionNames = ['data', 'js', 'css', 'html']
-const authService = require('../../authorization-service/process-manager-new')
 const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
+const authProcessManager = require('../../authorization-service/process-manager-new')
 
-module.exports = class PresentableController extends Controller {
+module.exports = class PresentableOrResourceAuthController extends Controller {
 
     /**
      * 请求获取presentable资源
@@ -14,64 +13,40 @@ module.exports = class PresentableController extends Controller {
      */
     async presentable(ctx) {
 
-        let nodeId = ctx.checkQuery('nodeId').toInt().value
-        let presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
-        let extName = ctx.checkParams('extName').optional().in(ExtensionNames).value
-        let userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
-        let userId = ctx.request.userId
+        const nodeId = ctx.checkQuery('nodeId').toInt().value
+        const presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
+        const extName = ctx.checkParams('extName').optional().in(['data']).value
+        const resourceId = ctx.checkQuery('resourceId').optional().isResourceId().value
+        const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
         ctx.validate(false)  //validateIdentity:false  用户可以不用登陆
 
-        if (userContractId && !userId) {
+        if (userContractId && !ctx.request.userId) {
             ctx.error({msg: '参数userContractId错误,当前不存在登录用户'})
         }
 
-        let authResult = await ctx.service.presentableAuthService.authProcessHandler({
-            userId, nodeId, presentableId, userContractId
+        const authResult = await ctx.service.presentableAuthService.authProcessHandler({
+            nodeId,
+            presentableId,
+            resourceId,
+            userContractId
         })
-
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
 
-        let authToken = authResult.data.authToken
-        ctx.set('freelog-contract-id', authToken.nodeContractId)
-
-        let resourceInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/auth/getResource`, {
-            headers: {authorization: "bearer " + authToken.signature}
-        })
-
-        if (!extName) {
+        await ctx.service.resourceAuthService.getAuthResource({
+            resourceId: authResult.data.resourceId,
+            payLoad: {nodeId, presentableId}
+        }).then(resourceInfo => {
+            if (extName) {
+                return responseResourceFile.call(this, resourceInfo, presentableId)
+            }
             Reflect.deleteProperty(resourceInfo, 'resourceUrl')
             ctx.success(resourceInfo)
-            return
-        }
+        }).catch(ctx.error)
 
-        if (extName === 'data') {
-            const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
-            if (!/^2[\d]{2}$/.test(result.status)) {
-                ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
-            }
-            ctx.attachment(presentableId)
-            ctx.set('content-type', 'application/octet-stream')
-            ctx.set('content-length', result.headers['content-length'])
-            ctx.set('freelog-resource-type', resourceInfo.resourceType)
-            ctx.set('freelog-meta', crypto.base64Encode(JSON.stringify(resourceInfo.meta)))
-            ctx.set('freelog-system-meta', crypto.base64Encode(JSON.stringify(resourceInfo.systemMeta)))
-            ctx.body = result.res
-            return
-        }
-        if (resourceInfo.mimeType === 'application/json') {
-            await ctx.curl(resourceInfo.resourceUrl).then(res => {
-                return res.data.toString()
-            }).then(JSON.parse).then(data => {
-                ctx.success(data[extName])
-            }).catch(err => {
-                ctx.error(err)
-            })
-            return
-        }
-        ctx.success(null)
     }
+
 
     /**
      * 直接请求获取资源数据(为类似于license资源服务)
@@ -79,90 +54,115 @@ module.exports = class PresentableController extends Controller {
      * @returns {Promise<void>}
      */
     async resource(ctx) {
-        let resourceId = ctx.checkParams("resourceId").isResourceId().value
-        let nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
-        let extName = ctx.checkParams('extName').optional().in(ExtensionNames).value
-        //资源响应请求设置:https://help.aliyun.com/document_detail/31980.html?spm=5176.doc31855.2.9.kpDwZN
-        let response = ctx.checkHeader('response').optional().toJson().default({}).value
-        let userId = ctx.request.userId
+
+        const resourceId = ctx.checkParams("resourceId").isResourceId().value
+        const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
+        const extName = ctx.checkParams('extName').optional().in(['data']).value
         ctx.validate(false)
 
-        let authResult = await ctx.service.resourceAuthService.resourceAuth({userId, resourceId, nodeId})
-
+        const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
 
-        let authToken = authResult.data.authToken
-
-        let resourceInfo = await ctx.curlIntranetApi(`${this.config.gatewayUrl}/api/v1/resources/auth/getResource`, {
-            headers: response
-                ? {authorization: "bearer " + authToken.signature, response: JSON.stringify(response)}
-                : {authorization: "bearer " + authToken.signature}
-        })
-
-        if (!extName) {
+        //基于策略的直接授权,目前token缓存172800秒(2天)
+        await ctx.service.resourceAuthService.getAuthResource({
+            resourceId, payLoad: {nodeId, userId: ctx.request.userId, resourceId}
+        }).then(resourceInfo => {
+            if (extName) {
+                return responseResourceFile.call(this, resourceInfo)
+            }
             Reflect.deleteProperty(resourceInfo, 'resourceUrl')
             ctx.success(resourceInfo)
-            return
-        }
+        }).catch(ctx.error)
 
-        if (extName === 'data') {
-            const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
-            if (!/^2[\d]{2}$/.test(result.status)) {
-                ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
-            }
-            ctx.attachment(resourceId)
-            ctx.set('content-type', 'application/octet-stream')
-            ctx.set('content-length', result.headers['content-length'])
-            ctx.set('freelog-resource-type', resourceInfo.resourceType)
-            ctx.set('freelog-meta', crypto.base64Encode(JSON.stringify(resourceInfo.meta)))
-            ctx.set('freelog-system-meta', crypto.base64Encode(JSON.stringify(resourceInfo.systemMeta)))
-            ctx.body = result.res
-            return
-        }
-        if (resourceInfo.mimeType === 'application/json') {
-            await ctx.curl(resourceInfo.resourceUrl).then(res => {
-                return res.data.toString()
-            }).then(JSON.parse).then(data => {
-                ctx.success(data[extName])
-            }).catch(err => {
-                ctx.error(err)
-            })
-            return
-        }
-        ctx.success(null)
     }
 
     /**
-     * presentable-policy策略段身份认证结果
+     * 获取授权点的策略段身份认证结果
      * @param ctx
      * @returns {Promise<void>}
      */
-    async presentablePolicyIdentityAuthentication(ctx) {
+    async authSchemeIdentityAuth(ctx) {
 
-        let presentableId = ctx.checkParams("presentableId").isMongoObjectId().value
+        const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
+        const authSchemeIds = ctx.checkQuery('authSchemeIds').exist().isSplitMongoObjectId().toSplitArray().len(1, 15).value
         ctx.validate()
 
-        let presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
-        if (!presentableInfo) {
-            this.ctx.error({msg: '参数presentableId错误'})
+        var nodeInfo = null
+        if (nodeId) {
+            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        }
+        if (nodeId && (!nodeInfo || nodeInfo.ownerUserId === ctx.request.userId)) {
+            ctx.error({msg: '参数nodeId错误', data: {nodeInfo, userId: ctx.request.userId}})
         }
 
+        const allPolicySegments = new Map()
         const userInfo = ctx.request.identityInfo.userInfo
-        const tasks = presentableInfo.policy.map(policySegment => {
-            return authService.policyIdentityAuthentication({
-                policySegment,
-                contractType: ctx.app.contractType.PresentableToUer,
-                partyOneUserId: presentableInfo.userId,
-                partyTwoUserInfo: userInfo
-            }).then(authResult => {
-                policySegment.identityAuthenticationResult = authResult.isAuth
+        const contractType = nodeId ? ctx.app.contractType.ResourceToNode : ctx.app.contractType.ResourceToResource
+        const authSchemeInfos = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?authSchemeIds=${authSchemeIds.toString()}`)
+
+        //根据甲方ID以及策略段ID做去重合并,减少重复的策略段认证次数
+        authSchemeInfos.forEach(authSchemeInfo => authSchemeInfo.policy.forEach(policySegment => {
+            if (policySegment.status === 0) {
+                return
+            }
+            allPolicySegments.set(`${authSchemeInfo.userId}_${policySegment.segmentId}`, {
+                partyOneUserId: authSchemeInfo.userId,
+                partyTwoInfo: nodeInfo,
+                partyTwoUserInfo: userInfo,
+                contractType, policySegment
             })
+        }))
+
+        const allTasks = Array.from(allPolicySegments.values()).map(item => {
+            return authProcessManager.policyIdentityAuthentication(item).then(authResult => item.authResult = authResult.toObject())
         })
 
-        await Promise.all(tasks)
+        await Promise.all(allTasks)
 
-        ctx.success(presentableInfo)
+        const returnResult = authSchemeInfos.map(authSchemeInfo => new Object({
+            authSchemeId: authSchemeInfo.authSchemeId,
+            policy: authSchemeInfo.policy.map(policySegment => new Object({
+                segmentId: policySegment.segmentId,
+                policyStatus: policySegment.status,
+                authResult: allPolicySegments.has(`${authSchemeInfo.userId}_${policySegment.segmentId}`)
+                    ? allPolicySegments.get(`${authSchemeInfo.userId}_${policySegment.segmentId}`).authResult
+                    : null
+            }))
+        }))
+
+        ctx.success(returnResult)
     }
+
+    /**
+     * 获取presentable的策略段身份认证结果
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async presentableIdentityAuth(ctx) {
+
+    }
+}
+
+
+/**
+ * 响应输出resource-file信息
+ * @returns {Promise<void>}
+ */
+const responseResourceFile = async function (resourceInfo, fileName) {
+
+    const {ctx} = this
+    const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
+    if (!/^2[\d]{2}$/.test(result.status)) {
+        ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
+    }
+    ctx.attachment(fileName || resourceInfo.resourceId)
+    ctx.set('content-type', resourceInfo.mimeType)
+    ctx.set('content-length', result.headers['content-length'])
+    ctx.set('freelog-resource-type', resourceInfo.resourceType)
+    ctx.set('freelog-meta', crypto.base64Encode(JSON.stringify(resourceInfo.meta)))
+    ctx.set('freelog-system-meta', crypto.base64Encode(JSON.stringify(resourceInfo.systemMeta)))
+    ctx.body = result.res
+
 }

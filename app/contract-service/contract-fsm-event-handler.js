@@ -10,11 +10,8 @@ const contractFsmEvents = require('./contract-fsm-events')
 const contractEventGroupHandler = require('./contract-event-group-handler')
 const globalInfo = require('egg-freelog-base/globalInfo')
 
-/**
- * message-queue 事件与合同状态机对应事件映射
- * @type {{}}
- */
-const handler = {
+class ContractFsmEventHandler {
+
     /**
      * 合同状态机事件触发handler
      * @param eventName
@@ -39,8 +36,8 @@ const handler = {
             return Promise.reject("事件ID错误")
         }
 
-        return handler.contractEventExecute(contractInfo, event.event, eventId)
-    },
+        return this.contractEventExecute(contractInfo, event.event, eventId)
+    }
 
     /**
      * 首次初始化合同
@@ -60,7 +57,7 @@ const handler = {
          * 初始化合同状态机数据,首次自动把合同状态从none变更为initial
          */
         contractFsmHelper.getContractFsm(contractInfo, contractFsmEvents)
-    },
+    }
 
     /**
      * 执行合同事件
@@ -84,7 +81,7 @@ const handler = {
         }
 
         return contractFsm.execEvent(event, ...otherArgs)
-    },
+    }
 
     /**
      * 合同状态机事件触发handler
@@ -121,7 +118,8 @@ const handler = {
         })
 
         return envetGroup ? !envetGroup.executedEvents.some(t => t === eventId) : false
-    },
+    }
 }
 
-module.exports = handler
+
+module.exports = new ContractFsmEventHandler()

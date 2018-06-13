@@ -18,14 +18,14 @@ module.exports = class EndOfCycleTask extends Subscription {
         return {
             type: 'worker',
             immediate: false,
-            cron: '0 */10 * * * * *', //0点开始每4小时执行一次
+            cron: '0 0 */1 * * * *', //0点开始每4小时执行一次
         }
     }
 
     async subscribe() {
 
-        let beginDate = this.app.moment().add(-1, "day").toDate().toLocaleString()
-        let endDate = this.app.moment().toDate().toLocaleString()
+        const beginDate = this.app.moment().add(-1, "day").toDate().toLocaleString()
+        const endDate = this.app.moment().toDate().toLocaleString()
 
         await this.app.dataProvider.cycleSettlementProvider.getMaxAndMinSeqId({}, beginDate, endDate).then(startAndEndSeq => {
             this.getTaskQueue(startAndEndSeq.minSeqId, startAndEndSeq.maxSeqId)

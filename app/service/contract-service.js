@@ -84,7 +84,7 @@ class ContractService extends Service {
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
 
-        await ctx.dal.contractProvider.getContract({
+        await app.dal.contractProvider.getContract({
             targetId: presentableId,
             partyTwo: userInfo.userId,
             contractType: app.contractType.PresentableToUer,
@@ -136,7 +136,7 @@ class ContractService extends Service {
                     resolve(contractInfo)
                 })
             })
-            contractFsmEventHandler.initContractFsm(contractInfo)
+            contractFsmEventHandler.initContractFsm(contractInfo).catch(console.error)
             return awaitIninial
         })
 

@@ -9,7 +9,7 @@ const globalInfo = require('egg-freelog-base/globalInfo')
 const authErrorCodeEnum = require('../../enum/auth_err_code')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 
-module.exports = async ({authUserObject, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) => {
+module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
 
     const app = globalInfo.app
     const authResult = new AuthResult(authCodeEnum.Default)

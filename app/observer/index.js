@@ -15,8 +15,9 @@ module.exports = {
      * 初始化合同状态机状态转移主题观察者
      * @returns {*}
      */
-    initFsmStateSubject(){
-        let subject = new FsmStateSubject()
+    initFsmStateSubject() {
+
+        const subject = new FsmStateSubject()
 
         new FsmStateChangedObserver(subject)
         new FsmEventRegsiterObserver(subject)

@@ -18,15 +18,21 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
      * @returns {*}
      */
     createAuthToken(model) {
-        return super.create(model)
+        return super.findOneAndUpdate({
+            targetId: model.targetId,
+            partyTwo: model.partyTwo,
+            partyTwoUserId: model.partyTwoUserId,
+        }, model).then(oldInfo => {
+            return oldInfo ? super.findById(oldInfo._id) : super.create(model)
+        })
     }
 
     /**
-     * 获取最新的token
+     * 获取有效的token
      * @param presentable
      * @param userId
      */
-    getLatestAuthToken(condition) {
+    getEffectiveAuthToken(condition) {
 
         if (!super.type.object(condition)) {
             return Promise.reject(new Error("condition must be object"))
@@ -35,6 +41,6 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
         //授权有效期最少还有5秒的token
         condition.expire = {$gt: Math.round(new Date().getTime() / 1000) + 5}
 
-        return super.model.findOne(condition).sort({createDate: 1}).exec()
+        return super.model.findOne(condition).exec()
     }
 }

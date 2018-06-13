@@ -7,7 +7,7 @@ const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth_code')
 const authErrorCodeEnum = require('../../enum/auth_err_code')
 
-module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) => {
+module.exports = ({authUserObject, partyOneUserId, partyTwoUserInfo}) => {
 
     const authResult = new AuthResult(authCodeEnum.Default)
 
