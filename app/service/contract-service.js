@@ -108,7 +108,7 @@ class ContractService extends Service {
         })
 
         const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
-        if (!presentable || presentable.status !== 2) {
+        if (!presentable || !presentable.isOnline) {
             ctx.error({msg: `targetId:${presentableId}错误或者presentable未上线`, data: {presentable}})
         }
 
