@@ -53,7 +53,6 @@ class ContractAuthorization {
      * @returns {Promise<void>}
      */
     isActivated(contract) {
-
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
             throw new Error('contract-authorization Error: 不被支持的合同')
