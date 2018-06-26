@@ -4,7 +4,8 @@
 
 'use strict'
 
-const fsmStateSubject = require('../observer/index').initFsmStateSubject()
+const ContractFsmStateSubjectObserver = require('../observer/index')
+const fsmStateSubject = new ContractFsmStateSubjectObserver().subject
 
 module.exports = {
 

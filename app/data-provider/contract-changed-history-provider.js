@@ -24,11 +24,9 @@ module.exports = class ContractChangeHistoryProvider extends MongoBaseOperation 
             $addToSet: {histories: changeModel},
         }).then(changeHistory => {
             if (!changeHistory) {
-                return super.create({
-                    contractId,
-                    histories: [changeModel]
-                })
+                return super.create({contractId, histories: [changeModel]})
             }
+            changeHistory.histories.push(changeModel)
             return changeHistory
         })
     }

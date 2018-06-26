@@ -73,22 +73,6 @@ module.exports = appInfo => {
             url: "mongodb://192.168.2.239:27017/auth"
         },
 
-        /**
-         * 上传文件相关配置
-         */
-        uploadConfig: {
-            aliOss: {
-                enable: true,
-                accessKeyId: "LTAIy8TOsSnNFfPb",
-                accessKeySecret: "Bt5yMbW89O7wMTVQsNUfvYfou5GPsL",
-                bucket: "freelog-shenzhen",
-                internal: false,
-                region: "oss-cn-shenzhen",
-                timeout: 180000
-            },
-            amzS3: {}
-        },
-
         multipart: {
             autoFields: true,
             defaultCharset: 'utf8',
@@ -110,7 +94,7 @@ module.exports = appInfo => {
 
         rabbitMq: {
             connOptions: {
-                host: '192.168.164.129',
+                host: '192.168.164.142',
                 port: 5672,
                 login: 'guest',
                 password: 'guest',
@@ -119,7 +103,7 @@ module.exports = appInfo => {
             },
             implOptions: {
                 reconnect: true,
-                reconnectBackoffTime: 10000  //10秒尝试连接一次
+                reconnectBackoffTime: 20000  //10秒尝试连接一次
             },
             exchange: {
                 name: 'freelog-contract-exchange',

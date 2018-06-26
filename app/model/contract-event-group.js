@@ -19,7 +19,7 @@ module.exports = app => {
         timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'}
     })
 
-    ContractEventGroupSchema.index({contractId: 1, groupEventId: 1});
+    ContractEventGroupSchema.index({contractId: 1, groupEventId: 1}, {unique: true});
 
     return mongoose.model('contract-event-group', ContractEventGroupSchema)
 }

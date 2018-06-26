@@ -2,20 +2,18 @@
  * Created by yuliang on 2017/9/22.
  */
 
+'use strict'
+
 const baseObserver = require('./base-observer')
+const globalInfo = require('egg-freelog-base/globalInfo')
 const mqEventType = require('../mq-service/mq-event-type')
 const unRegisterEventTypes = ['period', 'arrivalDate', 'compoundEvents']
-const globalInfo = require('egg-freelog-base/globalInfo')
 
 /**
  * 合同状态机事件取消注册观察者
  * @type {FsmEventRegisterObserver}
  */
 module.exports = class FsmEventUnRegisterObserver extends baseObserver {
-
-    constructor(subject) {
-        super(subject)
-    }
 
     /**
      * 合同状态机状态转移
@@ -24,14 +22,14 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
      */
     update(lifeCycle) {
 
-        let contract = lifeCycle.fsm.contract
+        const {contractId, policySegment} = lifeCycle.fsm.contract
 
         //根据前一个状态遍历出所有需要取消注册的事件
-        contract.policySegment.fsmDescription
+        policySegment.fsmDescription
             .filter(item => item.event && item.currentState === lifeCycle.from && unRegisterEventTypes.some(type => type === item.event.type))
             .forEach(item => {
-                let handlerName = `${item.event.type}UnRegisterHandler`
-                Reflect.get(this, handlerName).call(this, item.event, contract.contractId)
+                const handlerName = `${item.event.type}UnRegisterHandler`
+                Reflect.get(this, handlerName).call(this, item.event, contractId)
                 console.log("事件取消注册:" + handlerName)
             })
     }
@@ -44,15 +42,13 @@ module.exports = class FsmEventUnRegisterObserver extends baseObserver {
     compoundEventsUnRegisterHandler(event, contractId) {
 
         return globalInfo.app.dataProvider.contractEventGroupProvider
-            .deletEventGroup(contractId, event.eventId).then(() => {
-                event.params.forEach(subEvent => {
-                    if (unRegisterEventTypes.some(type => type === subEvent.type)) {
-                        let handlerName = `${subEvent.type}UnRegisterHandler`
-                        Reflect.get(this, handlerName).call(this, subEvent, contractId)
-                        console.log("事件取消注册:" + handlerName)
-                    }
-                })
-            }).catch(console.error)
+            .deletEventGroup(contractId, event.eventId).then(() => event.params.forEach(subEvent => {
+                if (unRegisterEventTypes.some(type => type === subEvent.type)) {
+                    let handlerName = `${subEvent.type}UnRegisterHandler`
+                    Reflect.get(this, handlerName).call(this, subEvent, contractId)
+                    console.log("事件取消注册:" + handlerName)
+                }
+            })).catch(console.error)
     }
 
 

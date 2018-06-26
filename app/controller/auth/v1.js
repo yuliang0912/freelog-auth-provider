@@ -2,7 +2,7 @@
 
 const Controller = require('egg').Controller
 const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
-const authProcessManager = require('../../authorization-service/process-manager-new')
+const authProcessManager = require('../../authorization-service/process-manager')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
 
@@ -14,10 +14,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentable(ctx) {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
-        const presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
         const extName = ctx.checkParams('extName').optional().in(['data']).value
         const resourceId = ctx.checkQuery('resourceId').optional().isResourceId().value
         const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
+        const presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
         ctx.validate(false)  //validateIdentity:false  用户可以不用登陆
 
         if (userContractId && !ctx.request.userId) {
@@ -34,7 +34,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
 
-        await ctx.service.resourceAuthService.getAuthResource({
+        await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId: authResult.data.resourceId,
             payLoad: {nodeId, presentableId}
         }).then(resourceInfo => {
@@ -66,7 +66,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }
 
         //基于策略的直接授权,目前token缓存172800秒(2天)
-        await ctx.service.resourceAuthService.getAuthResource({
+        await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId, payLoad: {nodeId, userId: ctx.request.userId, resourceId}
         }).then(resourceInfo => {
             if (extName) {

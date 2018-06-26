@@ -9,20 +9,20 @@ const FsmStateChangedObserver = require('./fsm-state-changed-observer')
 const FsmEventRegsiterObserver = require('./fsm-event-register-observer')
 const FsmEventUnRegsiterObserver = require('./fsm-event-unregister-observer')
 
-module.exports = {
+module.exports = class ContractFsmStateSubjectObserver {
+
+    constructor() {
+        this.subject = new FsmStateSubject()
+        this.__registerObserver__()
+    }
 
     /**
-     * 初始化合同状态机状态转移主题观察者
+     * 注册合同状态机状态转移主题观察者
      * @returns {*}
      */
-    initFsmStateSubject() {
-
-        const subject = new FsmStateSubject()
-
-        new FsmStateChangedObserver(subject)
-        new FsmEventRegsiterObserver(subject)
-        new FsmEventUnRegsiterObserver(subject)
-
-        return subject
+    __registerObserver__() {
+        new FsmStateChangedObserver(this.subject)
+        new FsmEventRegsiterObserver(this.subject)
+        new FsmEventUnRegsiterObserver(this.subject)
     }
 }

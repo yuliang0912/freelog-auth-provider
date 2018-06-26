@@ -19,24 +19,24 @@ class ContractFsmEventHandler {
      */
     async contractEventTriggerHandler(eventId, contractId, ...otherArgs) {
 
-        let contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId).then(globalInfo.app.toObject)
+        const contractInfo = await globalInfo.app.dataProvider.contractProvider.getContractById(contractId).then(globalInfo.app.toObject)
 
         if (!contractInfo) {
             return Promise.reject("未找到有效的合同信息")
         }
 
-        let event = contractInfo.policySegment.fsmDescription.find(item => {
+        const eventObject = contractInfo.policySegment.fsmDescription.find(item => {
             return item.event.eventId === eventId ||
                 item.currentState === contractInfo.fsmState && item.event.eventName === eventId ||
                 item.currentState === contractInfo.fsmState && item.event.type === 'compoundEvents' &&
                 item.event.params.some(subEvent => subEvent.eventId === eventId || subEvent.eventName === eventId)
         })
 
-        if (!event && event.event) {
+        if (!eventObject && eventObject.event) {
             return Promise.reject("事件ID错误")
         }
 
-        return this.contractEventExecute(contractInfo, event.event, eventId)
+        return this.contractEventExecute(contractInfo, eventObject.event, eventId)
     }
 
     /**

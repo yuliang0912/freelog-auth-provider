@@ -74,6 +74,10 @@ module.exports = class AuthTokenService extends Service {
      */
     async getAuthToken({targetId, partyTwo, partyTwoUserId}) {
 
+        if (!partyTwoUserId) {
+            return
+        }
+
         const {ctx} = this
 
         const authToken = await ctx.dal.authTokenProvider.getEffectiveAuthToken({

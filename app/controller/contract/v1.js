@@ -16,15 +16,16 @@ module.exports = class ContractController extends Controller {
      * @returns {Promise.<void>}
      */
     async index(ctx) {
-        let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
-        let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
-        let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
-        let partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
-        let partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
-        let resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
+
+        const page = ctx.checkQuery("page").default(1).gt(0).toInt().value
+        const pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
+        const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
+        const partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
+        const partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
+        const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
         ctx.validate()
 
-        let condition = {}
+        const condition = {}
         if (contractType) {
             condition.contractType = contractType
         }
@@ -41,10 +42,10 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '最少需要一个查询条件'})
         }
 
-        let dataList = []
-        let totalItem = await ctx.dal.contractProvider.getCount(condition)
+        var dataList = []
+        const totalItem = await ctx.dal.contractProvider.getCount(condition)
 
-        let projection = "_id segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
+        const projection = "_id segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
         if (totalItem > (page - 1) * pageSize) {
             dataList = await ctx.dal.contractProvider.getContractList(condition, projection, page, pageSize)
         }
@@ -63,9 +64,7 @@ module.exports = class ContractController extends Controller {
 
         ctx.validate()
 
-        const condition = {
-            _id: {$in: contractIds}
-        }
+        const condition = {_id: {$in: contractIds}}
 
         const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
 
@@ -132,78 +131,14 @@ module.exports = class ContractController extends Controller {
     }
 
     /**
-     * 用户签订的presentable合约
-     * @param ctx
-     * @returns {Promise.<void>}
-     */
-    async userContracts(ctx) {
-        let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
-        let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
-        let userId = ctx.checkParams("userId").exist().isInt().value
-        let presentableId = ctx.checkQuery("presentableId").isMongoObjectId().value
-
-        ctx.validate()
-
-        await ctx.dal.contractProvider.getContractList({
-            partyTwo: userId,
-            targetId: presentableId,
-            contractType: ctx.app.contractType.PresentableToUer,
-            expireDate: {$gt: new Date()},
-            status: 0
-        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
-    }
-
-    /**
-     * 节点商与资源商签订的合约
-     * @param ctx
-     * @returns {Promise.<void>}
-     */
-    async nodeContracts(ctx) {
-        let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
-        let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
-        let nodeId = ctx.checkParams("nodeId").exist().isInt().value
-        let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
-
-        ctx.validate()
-
-        await ctx.dal.contractProvider.getContractList({
-            partyTwo: nodeId,
-            targetId: resourceId,
-            contractType: ctx.app.contractType.ResourceToNode,
-            expireDate: {$gt: new Date()},
-            status: 0
-        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
-    }
-
-    /**
-     * 资源商与资源商签订的合约
-     * @param ctx
-     * @returns {Promise.<void>}
-     */
-    async authorContracts(ctx) {
-        let page = ctx.checkQuery("page").default(1).gt(0).toInt().value
-        let pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
-        let authorId = ctx.checkParams("authorId").exist().isInt().value
-        let resourceId = ctx.checkQuery("resourceId").exist().isResourceId().value
-
-        ctx.validate()
-
-        await ctx.dal.contractProvider.getContractList({
-            partyTwo: authorId,
-            targetId: resourceId,
-            contractType: ctx.app.contractType.ResourceToResource
-        }, null, page, pageSize).then(ctx.success).catch(ctx.error)
-    }
-
-    /**
      * 测试状态机事件驱动
      * @param ctx
      * @returns {Promise.<void>}
      */
     async testContractFsm(ctx) {
 
-        let contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
-        let eventId = ctx.checkBody('eventId').exist().notEmpty().value
+        const contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
+        const eventId = ctx.checkBody('eventId').exist().notEmpty().value
 
         ctx.allowContentType({type: 'json'}).validate()
 
@@ -217,14 +152,14 @@ module.exports = class ContractController extends Controller {
      */
     async contractRecords(ctx) {
 
-        let resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
-        let contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
-        let partyTwo = ctx.checkQuery('partyTwo').optional().toInt().gt(0).value
-        let contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
+        const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
+        const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
+        const partyTwo = ctx.checkQuery('partyTwo').optional().toInt().gt(0).value
+        const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
 
         ctx.validate()
 
-        let condition = {}
+        const condition = {}
         if (resourceIds) {
             if (!partyTwo) {
                 ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
@@ -244,7 +179,7 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '最少需要一个可选查询条件'})
         }
 
-        let projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
+        const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
 
         await ctx.dal.contractProvider.getContracts(condition, projection).then(ctx.success)
     }
@@ -255,27 +190,27 @@ module.exports = class ContractController extends Controller {
      * @returns {Promise.<void>}
      */
     async signingLicenses(ctx) {
-        let contractId = ctx.checkBody('contractId').exist().isContractId().value
-        let eventId = ctx.checkBody('eventId').exist().isEventId().value
-        let licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
-        let nodeId = ctx.checkBody('nodeId').optional().toInt().gt(0).value
-        let userId = ctx.request.userId
+
+        const contractId = ctx.checkBody('contractId').exist().isContractId().value
+        const eventId = ctx.checkBody('eventId').exist().isEventId().value
+        const licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
+        const nodeId = ctx.checkBody('nodeId').optional().toInt().gt(0).value
+        const userId = ctx.request.userId
 
         ctx.allowContentType({type: 'json'}).validate()
 
-        let contractInfo = await ctx.dal.contractProvider.getContract({_id: contractId}).then(app.toObject)
+        const contractInfo = await ctx.dal.contractProvider.getContract({_id: contractId}).then(app.toObject)
 
         if (!contractInfo) {
             ctx.error({msg: '未找到有效的合同', data: {contractInfo, userId}})
         }
-
         if (contractInfo.status === 4 || contractInfo.status === 5) {
             ctx.error({msg: '合同已经终止', data: {contractStatus: contractInfo.status}})
         }
 
         //如果是资源-节点合同
         if (contractInfo.contractType === ctx.app.contractType.ResourceToNode) {
-            let nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
+            const nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
             if (!nodeInfo || nodeInfo.ownerUserId !== userId) {
                 ctx.error({msg: '参数nodeId错误', data: {nodeId, userId}})
             }
@@ -286,7 +221,7 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '没有执行合同的权限', data: {userId}})
         }
 
-        let eventModel = contractInfo.policySegment.fsmDescription.find(item => {
+        const eventModel = contractInfo.policySegment.fsmDescription.find(item => {
             return item.event.eventId === eventId && item.event.type === 'signing' ||
                 item.currentState === contractInfo.fsmState && item.event.type === 'compoundEvents' &&
                 item.event.params.some(subEvent => subEvent.eventId === eventId && subEvent.type === 'signing')
@@ -296,21 +231,17 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '未找到事件'})
         }
 
-        eventModel = eventModel.event
-
-        if (eventModel.type === 'compoundEvents') {
-            let eventParams = eventModel.params.find(subEvent => subEvent.eventId === eventId).params
-            let diffLicenseIds = lodash.difference(eventParams, licenseIds)
+        if (eventModel.event.type === 'compoundEvents') {
+            const eventParams = eventModel.event.params.find(subEvent => subEvent.eventId === eventId).params
+            const diffLicenseIds = lodash.difference(eventParams, licenseIds)
             if (diffLicenseIds.length || eventParams.length !== licenseIds.length) {
                 ctx.error({
-                    msg: '参数licenseIds与事件中的协议参数不匹配', data: {
-                        contractLicenseIds: eventParams, licenseIds
-                    }
+                    msg: '参数licenseIds与事件中的协议参数不匹配', data: {contractLicenseIds: eventParams, licenseIds}
                 })
             }
         }
 
-        await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel, eventId).then(ctx.success).catch(ctx.error)
+        await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel.event, eventId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -319,18 +250,17 @@ module.exports = class ContractController extends Controller {
      */
     async isCanExecEvent(ctx) {
 
-        let contractId = ctx.checkQuery('contractId').exist().isContractId().value
-        let eventId = ctx.checkQuery('eventId').exist().value
+        const contractId = ctx.checkQuery('contractId').exist().isContractId().value
+        const eventId = ctx.checkQuery('eventId').exist().value
 
         ctx.validate()
 
-        let contractInfo = await ctx.dal.contractProvider.getContractById(contractId)
-
+        const contractInfo = await ctx.dal.contractProvider.getContractById(contractId)
         if (!contractInfo) {
             ctx.error({msg: '未找到合同'})
         }
 
-        let result = await contractFsmEventHandler.isCanExecEvent(eventId, contractInfo)
+        const result = await contractFsmEventHandler.isCanExecEvent(eventId, contractInfo)
 
         ctx.success({contractInfo, eventId, isCanExec: result})
     }

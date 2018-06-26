@@ -8,7 +8,7 @@ module.exports = app => {
 
     const mongoose = app.mongoose
     const ContractChangeHistorySchema = new mongoose.Schema({
-        contractId: {type: String, required: true},
+        contractId: {type: String, unique: true, required: true},
         histories: {type: Array, required: true},
     }, {
         versionKey: false,

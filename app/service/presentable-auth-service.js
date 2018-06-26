@@ -3,7 +3,7 @@
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth_code')
 const authErrCodeEnum = require('../enum/auth_err_code')
-const authService = require('../authorization-service/process-manager-new')
+const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const contractAuthorization = require('../authorization-service/contract-authorization/index')
 

@@ -2,7 +2,7 @@
 
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth_code')
-const authService = require('../authorization-service/process-manager-new')
+const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
 
@@ -71,7 +71,7 @@ class ResourceAuthService extends Service {
      * @param payLoad 签名载体
      * @param expire 默认172800秒(2天)
      */
-    getAuthResource({resourceId, payLoad = {}, expire = 172800}) {
+    getAuthResourceInfo({resourceId, payLoad = {}, expire = 172800}) {
 
         const {ctx, config} = this
         const {publicKey, privateKey} = config.rasSha256Key.resourceAuth

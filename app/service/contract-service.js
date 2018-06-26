@@ -1,7 +1,7 @@
 'use strict'
 
 const Service = require('egg').Service;
-const authService = require('../authorization-service/process-manager-new')
+const authService = require('../authorization-service/process-manager')
 const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 
 class ContractService extends Service {

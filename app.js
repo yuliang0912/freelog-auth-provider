@@ -4,10 +4,10 @@
 
 'use strict'
 
-const subscribe = require('./app/mq-service/subscribe')
+const RabbitMessageQueueEventHandler = require('./app/mq-service/index')
 
 module.exports = async (app) => {
-    await subscribe(app)
+    new RabbitMessageQueueEventHandler(app)
 }
 
 

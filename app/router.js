@@ -5,14 +5,8 @@ module.exports = app => {
     const {router, controller} = app
     const {contract, auth} = controller
 
-    //消费客户的presentable合约列表
-    router.get('/v1/contracts/user/:userId', contract.v1.userContracts)
-    //节点商的resource合约列表
-    router.get('/v1/contracts/node/:nodeId', contract.v1.nodeContracts)
     //获取合同列表
     router.get('/v1/contracts/list', contract.v1.list)
-    //资源商引用其他资源的resource合约列表
-    router.get('/v1/contracts/author/:authorId', contract.v1.authorContracts)
 
     router.post('/v1/contracts/test', contract.v1.testContractFsm)
     router.post('/v1/contracts/signingLicenses', contract.v1.signingLicenses)

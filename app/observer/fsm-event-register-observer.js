@@ -15,10 +15,6 @@ const globalInfo = require('egg-freelog-base/globalInfo')
  */
 module.exports = class FsmEventRegisterObserver extends baseObserver {
 
-    constructor(subject) {
-        super(subject)
-    }
-
     /**
      * 合同状态机状态转移
      * @param lifeCycle
@@ -26,7 +22,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      */
     update(lifeCycle) {
 
-        let {contract, state} = lifeCycle.fsm
+        const {contract, state} = lifeCycle.fsm
 
         //根据当前状态遍历出所以需要注册到事件中心的事件
         contract.policySegment.fsmDescription
@@ -45,22 +41,20 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
      */
     compoundEventsHandler(event, contractInfo) {
 
-        let groupEventModel = {
+        const groupEventModel = {
             contractId: contractInfo.contractId,
             groupEventId: event.eventId,
             taskEvents: event.params.map(subEvent => subEvent.eventId || subEvent.eventName)
         }
 
         return globalInfo.app.dataProvider.contractEventGroupProvider
-            .registerEventGroup(groupEventModel).then(() => {
-                event.params.forEach(subEvent => {
-                    if (registerEventTypes.some(type => type === subEvent.type)) {
-                        let handlerName = `${subEvent.type}Handler`
-                        Reflect.get(this, handlerName).call(this, subEvent, contractInfo)
-                        //console.log("事件注册:" + handlerName)
-                    }
-                })
-            }).catch(console.error)
+            .registerEventGroup(groupEventModel).then(() => event.params.forEach(subEvent => {
+                if (registerEventTypes.some(type => type === subEvent.type)) {
+                    let handlerName = `${subEvent.type}Handler`
+                    Reflect.get(this, handlerName).call(this, subEvent, contractInfo)
+                    //console.log("事件注册:" + handlerName)
+                }
+            })).catch(console.error)
     }
 
     /**
@@ -98,7 +92,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
                     contractId: contractInfo.contractId || contractInfo._id
                 },
                 triggerLimit: 1,
-                triggerDate: tools.arrivalDateConvert(event.params),
+                triggerDate: this._arrivalDateConvert(event.params),
                 contractId: contractInfo.contractId || contractInfo._id
             }
         }).then(() => {
@@ -120,15 +114,13 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
             body: message
         }).catch(console.log)
     }
-}
 
-const tools = {
     /**
      * wiki:https://github.com/nergalyang/freelog-policy
      * @param eventParams
      * @returns {Date|*}
      */
-    arrivalDateConvert(eventParams) {
+    _arrivalDateConvert(eventParams) {
         if (eventParams[0] === '1') {
             return globalInfo.app.moment(eventParams[1]).toDate().toLocaleString()
         }

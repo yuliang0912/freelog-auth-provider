@@ -22,7 +22,7 @@ module.exports = class SettlementTimerTaskQueue {
         if (Array.isArray(contractEvents)) {
             contractEvents.forEach(event => this.queue.push(event))
         } else if (contractEvents) {
-            this.queue.push(event)
+            this.queue.push(contractEvents)
         }
     }
 

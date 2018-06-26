@@ -48,13 +48,11 @@ module.exports.getContractFsm = (contractInfo, events) => {
         /**
          * 所有的事件定义与状态流转
          */
-        transitions: contractInfo.policySegment.fsmDescription.filter(t => t.event).map(item => {
-            return {
-                name: item.event.eventId,
-                from: item.currentState,
-                to: item.nextState
-            }
-        }),
+        transitions: contractInfo.policySegment.fsmDescription.filter(t => t.event).map(item => new Object({
+            name: item.event.eventId,
+            from: item.currentState,
+            to: item.nextState
+        })),
 
         /**
          * 事件处理函数

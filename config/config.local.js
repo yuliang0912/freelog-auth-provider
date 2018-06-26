@@ -46,15 +46,15 @@ module.exports = appInfo => {
         //     },
         // },
         //
-        rabbitMq: {
-            connOptions: {
-                host: '39.108.77.211',
-                port: 5672,
-                login: 'guest',
-                password: 'guest',
-                authMechanism: 'AMQPLAIN'
-            },
-        },
+        // rabbitMq: {
+        //     connOptions: {
+        //         host: '39.108.77.211',
+        //         port: 5672,
+        //         login: 'guest',
+        //         password: 'guest',
+        //         authMechanism: 'AMQPLAIN'
+        //     },
+        // },
     }
 }
 

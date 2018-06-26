@@ -4,7 +4,6 @@
 
 'use strict'
 
-const mqEventType = require('./mq-event-type')
 const globalInfo = require('egg-freelog-base/globalInfo')
 const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 
@@ -16,7 +15,7 @@ module.exports = {
      * @param deliveryInfo
      * @param messageObject
      */
-    async paymentContractHandler(message, headers, deliveryInfo, messageObject) {
+    async paymentContractHandler(message) {
         /**
          * 此处直接调用contract-fsm的payment事件.
          * 信息经过支付中心加密处理,此处考虑不再校验数据
