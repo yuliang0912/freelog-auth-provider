@@ -27,6 +27,12 @@ module.exports = appInfo => {
             tokenType: "jwt"
         },
 
+        gatewayUrl: "http://119.23.63.19:8895/test",
+
+        mongoose: {
+            url: "mongodb://119.23.63.19:27017/auth"
+        },
+
         //
         // gatewayUrl: "https://api.freelog.com",
         //

@@ -34,6 +34,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
 
+        console.log('授权通过')
+
         await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId: authResult.data.resourceId,
             payLoad: {nodeId, presentableId}
