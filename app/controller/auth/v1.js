@@ -24,12 +24,14 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.error({msg: '参数userContractId错误,当前不存在登录用户'})
         }
 
+        console.log('开始授权')
+
         const authResult = await ctx.service.presentableAuthService.authProcessHandler({
             nodeId,
             presentableId,
             resourceId,
             userContractId
-        })
+        }).catch(console.error)
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
