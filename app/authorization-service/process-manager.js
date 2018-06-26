@@ -29,8 +29,7 @@ const AuthProcessManager = class AuthProcessManager {
         const unActivatedContracts = [], resourceContracts = [], nodeContracts = []
 
         presentableAuthTree.authTree.forEach(current => {
-            console.log(current)
-            let {contractInfo} = current.contractInfo
+            let {contractInfo} = current
             if (!ContractAuthorization.isActivated(contractInfo)) {
                 unActivatedContracts.push(contractInfo)
             }
