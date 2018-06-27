@@ -37,7 +37,10 @@ class PresentableAuthService extends Service {
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
-            ctx.error({msg: '参数presentableId错误或者presentableId与nodeId不匹配', data: presentableInfo})
+            ctx.error({msg: '参数presentableId错误或者presentableId与nodeId不匹配', data: {presentableInfo}})
+        }
+        if (!presentableInfo.isOnline) {
+            ctx.error({msg: 'presentable未上线,无法授权', data: {presentableInfo}})
         }
 
         const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`).catch(ctx.error)

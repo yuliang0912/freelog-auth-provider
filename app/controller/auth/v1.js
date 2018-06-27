@@ -30,13 +30,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             resourceId,
             userContractId
         })
-        
+
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
         }
 
         await ctx.service.resourceAuthService.getAuthResourceInfo({
-            resourceId: authResult.data.resourceId,
+            resourceId: resourceId || authResult.data.resourceId,
             payLoad: {nodeId, presentableId}
         }).then(resourceInfo => {
             if (extName) {
