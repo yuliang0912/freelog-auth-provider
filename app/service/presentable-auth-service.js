@@ -61,12 +61,20 @@ class PresentableAuthService extends Service {
                 userContractId
             })
             if (!userContractAuthResult.isAuth) {
-                return userContractAuthResult
+                return this._fillPresentableAuthDataInfo({
+                    presentableInfo,
+                    authResult: userContractAuthResult,
+                    resourceId
+                })
             }
         } else {
             const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
             if (!unLoginUserPresentableAuthResult.isAuth) {
-                return unLoginUserPresentableAuthResult
+                return this._fillPresentableAuthDataInfo({
+                    presentableInfo,
+                    authResult: unLoginUserPresentableAuthResult,
+                    resourceId
+                })
             }
         }
 
@@ -94,10 +102,6 @@ class PresentableAuthService extends Service {
 
         const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
 
-        presentableTreeAuthResult.data.resourceId = resourceId || presentableInfo.resourceId
-        //presentableTreeAuthResult.data.presentableInfo = presentableInfo
-        //presentableTreeAuthResult.data.presentableAuthTree = presentableAuthTree
-
         ctx.service.authTokenService.savePresentableAuthResult({
             presentableAuthTree,
             userInfo,
@@ -105,7 +109,11 @@ class PresentableAuthService extends Service {
             authResult: presentableTreeAuthResult
         })
 
-        return presentableTreeAuthResult
+        return this._fillPresentableAuthDataInfo({
+            presentableInfo,
+            authResult: presentableTreeAuthResult,
+            resourceId
+        })
     }
 
     /**
@@ -261,6 +269,22 @@ class PresentableAuthService extends Service {
         }).catch(error => {
             ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
         })
+    }
+
+    /**
+     * 填充授权信息数据
+     * @param presentableInfo
+     * @param authResult
+     * @param resourceId
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _fillPresentableAuthDataInfo({presentableInfo, authResult, resourceId}) {
+        authResult.data = authResult.data || {}
+        authResult.data.resourceId = resourceId || presentableInfo.resourceId
+        authResult.data.presentableId = presentableInfo.presentableId
+        authResult.data.presentableInfo = presentableInfo
+        return authResult
     }
 }
 
