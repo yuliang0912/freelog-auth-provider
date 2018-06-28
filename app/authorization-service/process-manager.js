@@ -118,6 +118,9 @@ const AuthProcessManager = class AuthProcessManager {
 
         for (let i = 0, j = policySegments.length; i < j; i++) {
             const policySegment = policySegments[i]
+            if (policySegment.status !== 1) {
+                continue
+            }
             const policyAuthResult = await PolicyAuthorization.main(Object.assign({}, params, {policySegment}))
             if (!policyAuthResult.isAuth) {
                 continue

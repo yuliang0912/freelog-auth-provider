@@ -10,6 +10,7 @@ const contractFsmEvents = require('./contract-fsm-events')
 const contractEventGroupHandler = require('./contract-event-group-handler')
 const globalInfo = require('egg-freelog-base/globalInfo')
 
+
 class ContractFsmEventHandler {
 
     /**

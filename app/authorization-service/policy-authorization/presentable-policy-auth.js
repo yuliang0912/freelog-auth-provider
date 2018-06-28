@@ -11,7 +11,7 @@ const authErrorCodeEnum = require('../../enum/auth_err_code')
  */
 module.exports = ({policySegment}) => {
 
-    const isInitialTerminatMode = policySegment.fsmDescription.length === 1
+    const isInitialTerminatMode = policySegment.status === 1 && policySegment.fsmDescription.length === 1
         && policySegment.activatedStates.some(m => m === policySegment.initialState)
 
     const authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy)
