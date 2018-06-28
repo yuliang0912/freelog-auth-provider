@@ -66,9 +66,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
         return globalInfo.app.dataProvider.cycleSettlementProvider.createCycleSettlementEvent({
             eventId: event.eventId,
             contractId: contractInfo.contractId,
-            eventParams: JSON.stringify({
-                eventId: event.eventId
-            })
+            eventParams: JSON.stringify({eventId: event.eventId})
         }).then((data) => {
             if (data[0].affectedRows > 0) {
                 console.log('period注册成功!')
@@ -95,9 +93,7 @@ module.exports = class FsmEventRegisterObserver extends baseObserver {
                 triggerDate: this._arrivalDateConvert(event.params),
                 contractId: contractInfo.contractId || contractInfo._id
             }
-        }).then(() => {
-            console.log('arrivalDate注册成功')
-        })
+        }).then(() => console.log('arrivalDate注册成功'))
     }
 
     /**

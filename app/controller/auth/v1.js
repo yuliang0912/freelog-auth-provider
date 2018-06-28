@@ -126,7 +126,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             authSchemeId: authSchemeInfo.authSchemeId,
             policy: authSchemeInfo.policy.map(policySegment => new Object({
                 segmentId: policySegment.segmentId,
-                policyStatus: policySegment.status,
+                status: policySegment.status,
                 authResult: allPolicySegments.has(`${authSchemeInfo.userId}_${policySegment.segmentId}`)
                     ? allPolicySegments.get(`${authSchemeInfo.userId}_${policySegment.segmentId}`).authResult
                     : null
@@ -143,6 +143,40 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async presentableIdentityAuth(ctx) {
 
+        const presentableId = ctx.checkQuery('presentableId').isPresentableId().value
+        ctx.validate()
+
+        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        if (!presentableInfo || !presentableInfo.isOnline) {
+            ctx.error({msg: 'presentable不存在或者已下线', data: {presentableId}})
+        }
+
+        const userInfo = ctx.request.identityInfo.userInfo
+
+        const params = {
+            partyTwoUserInfo: userInfo,
+            partyOneUserId: presentableInfo.userId,
+            contractType: ctx.app.contractType.PresentableToUer
+        }
+
+        const policyIdentityAuthTasks = presentableInfo.policy.reduce((acc, policySegment) => {
+            if (policySegment.status === 1) {
+                acc.push(authProcessManager.policyIdentityAuthentication(Object.assign({}, params, {policySegment})).then(authResult => {
+                    policySegment.authResult = authResult.toObject()
+                }))
+            }
+            return acc
+        }, [])
+
+        await Promise.all(policyIdentityAuthTasks)
+
+        const returnResult = presentableInfo.policy.map(policySegment => new Object({
+            segmentId: policySegment.segmentId,
+            status: policySegment.status,
+            authResult: policySegment.authResult || null
+        }))
+
+        ctx.success(returnResult)
     }
 }
 

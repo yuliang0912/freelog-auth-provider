@@ -279,7 +279,7 @@ class PresentableAuthService extends Service {
      * @returns {Promise<void>}
      * @private
      */
-    async _fillPresentableAuthDataInfo({presentableInfo, authResult, resourceId}) {
+    _fillPresentableAuthDataInfo({presentableInfo, authResult, resourceId}) {
         authResult.data = authResult.data || {}
         authResult.data.resourceId = resourceId || presentableInfo.resourceId
         authResult.data.presentableId = presentableInfo.presentableId

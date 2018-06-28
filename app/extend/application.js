@@ -2,11 +2,14 @@
  * Created by yuliang on 2017/9/5.
  */
 
+'use strict'
+
 const moment = require('moment')
+const restfulWebApiKey = Symbol('app#restfulWebApiKey')
+const restfulWebApi = require('./restful-web-api/index')
 const rabbitClient = require('./helper/rabbit_mq_client')
 const freelogContractEvent = require('./event/freelog-contract-event')
-const restfulWebApi = require('./restful-web-api/index')
-let restfulWebApiInstance = null
+
 module.exports = {
 
     get rabbitClient() {
@@ -26,10 +29,10 @@ module.exports = {
     },
 
     get webApi() {
-        if (restfulWebApiInstance === null) {
-            restfulWebApiInstance = new restfulWebApi(this.config)
+        if (!this.__cacheMap__.has(restfulWebApiKey)) {
+            this.__cacheMap__.set(restfulWebApiKey, new restfulWebApi(this.config))
         }
-        return restfulWebApiInstance
+        return this.__cacheMap__.get(restfulWebApiKey)
     },
 
     moment,

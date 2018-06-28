@@ -151,7 +151,7 @@ module.exports = appInfo => {
 
         logger: {
             level: 'NONE'
-        }
+        },
     }
 
     return config;
