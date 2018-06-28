@@ -94,7 +94,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         if (nodeId) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         }
-        if (nodeId && (!nodeInfo || nodeInfo.ownerUserId === ctx.request.userId)) {
+        if (nodeId && (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId)) {
             ctx.error({msg: '参数nodeId错误', data: {nodeInfo, userId: ctx.request.userId}})
         }
 
