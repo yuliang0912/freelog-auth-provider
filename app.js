@@ -8,7 +8,6 @@ const RabbitMessageQueueEventHandler = require('./app/mq-service/index')
 
 module.exports = async (app) => {
     new RabbitMessageQueueEventHandler(app)
-    console.log(app.loader.FileLoader)
 }
 
 

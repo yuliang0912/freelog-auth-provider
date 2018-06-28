@@ -108,6 +108,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             if (policySegment.status === 0) {
                 return
             }
+            policySegment.users = [{userType: 'individual', users: ["aaaa@freelog.com"]}]
             allPolicySegments.set(`${authSchemeInfo.userId}_${policySegment.segmentId}`, {
                 partyOneUserId: authSchemeInfo.userId,
                 partyTwoInfo: nodeInfo,

@@ -90,7 +90,7 @@ class FreelogPolicyIdentityAuthentication {
         }, nodeDomainRele)
 
         //用户个体认证
-        patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, nodeDomainRele)
+        patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, userIndividualRule)
 
         //节点或者用户分组认证
         patrun.add({ruleName: 'userOrNodeGroupAuth', userType: 'GROUP'}, userOrNodeGroupRule)
