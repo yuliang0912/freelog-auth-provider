@@ -14,7 +14,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentable(ctx) {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
-        const extName = ctx.checkParams('extName').optional().in(['data']).value
+        const extName = ctx.checkParams('extName').optional().in(['data', 'file']).value
         const resourceId = ctx.checkQuery('resourceId').optional().isResourceId().value
         const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
         const presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
@@ -45,7 +45,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             Reflect.deleteProperty(resourceInfo, 'resourceUrl')
             ctx.success(resourceInfo)
         }).catch(ctx.error)
-
     }
 
 
@@ -108,7 +107,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             if (policySegment.status === 0) {
                 return
             }
-            policySegment.users = [{userType: 'individual', users: ["aaaa@freelog.com"]}]
             allPolicySegments.set(`${authSchemeInfo.userId}_${policySegment.segmentId}`, {
                 partyOneUserId: authSchemeInfo.userId,
                 partyTwoInfo: nodeInfo,
