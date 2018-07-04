@@ -3,7 +3,7 @@
 const Patrun = require('patrun')
 const Promise = require('bluebird')
 const eventHandler = require('./mq-event-handler')
-const mqEventType = require('./mq-event-type').authService
+const mqEventType = require('../enum/mq-event-type').authService
 const rabbit = require('../extend/helper/rabbit_mq_client')
 const fsmEventHandler = require('../contract-service/contract-fsm-event-handler')
 

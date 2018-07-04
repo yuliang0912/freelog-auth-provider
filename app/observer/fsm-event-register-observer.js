@@ -5,7 +5,7 @@
 'use strict'
 
 const baseObserver = require('./base-observer')
-const mqEventType = require('../mq-service/mq-event-type')
+const mqEventType = require('../enum/mq-event-type')
 const registerEventTypes = ['period', 'arrivalDate', 'compoundEvents']
 const globalInfo = require('egg-freelog-base/globalInfo')
 

@@ -51,7 +51,7 @@ module.exports = Object.freeze({
     BasedOnDomain: 263,
 
     /**
-     * 给予最后一次授权结果的缓存授权
+     * 基于最后一次授权结果的缓存授权
      */
     BaseOnLatestAuthCache: 299,
 
@@ -76,7 +76,7 @@ module.exports = Object.freeze({
     NotFoundResourceOwnerUserInfo: 304,
 
     /**
-     * 资源合同未激活
+     * 节点合同未激活
      */
     NodeContractNotActive: 401,
 
@@ -105,7 +105,7 @@ module.exports = Object.freeze({
     NotFoundNodeOwnerUserInfo: 405,
 
     /**
-     * 资源合同未激活
+     * 用户合同未激活
      */
     UserContractNotActive: 501,
 
