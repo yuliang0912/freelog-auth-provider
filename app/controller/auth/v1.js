@@ -32,7 +32,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         })
 
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
         }
 
         await ctx.service.resourceAuthService.getAuthResourceInfo({
@@ -62,7 +62,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authErrCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
         }
 
         //基于策略的直接授权,目前token缓存172800秒(2天)

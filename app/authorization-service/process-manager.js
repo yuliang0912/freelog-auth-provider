@@ -1,9 +1,8 @@
 'use strict'
 
-const authCodeEnum = require('../enum/auth_code')
-const errAuthCodeEnum = require('../enum/auth_err_code')
+const authCodeEnum = require('../enum/auth-code')
 const commonAuthResult = require('./common-auth-result')
-const contractType = require('egg-freelog-base/app/enum/contract_type')
+const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 //身份认证
 const IdentityAuthentication = require('./identity-authentication/index')
 //合同授权(包含了身份认证)
@@ -26,25 +25,32 @@ const AuthProcessManager = class AuthProcessManager {
             throw new Error('presentableAuthTreeAuthorization Error:参数信息不完整')
         }
         const authResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
-        const unActivatedContracts = [], resourceContracts = [], nodeContracts = []
+        const unActivatedNodeContracts = [], unActivatedResourceContracts = [], resourceContracts = [],
+            nodeContracts = []
 
         presentableAuthTree.authTree.forEach(current => {
+
             let {contractInfo} = current
-            if (!ContractAuthorization.isActivated(contractInfo)) {
-                unActivatedContracts.push(contractInfo)
-            }
-            if (contractInfo.contractType === contractType.ResourceToNode) {
+            let contractIsActivated = ContractAuthorization.isActivated(contractInfo)
+
+            if (contractInfo.contractType === freelogContractType.ResourceToNode) {
                 nodeContracts.push(contractInfo)
+                !contractIsActivated && unActivatedNodeContracts.push(contractInfo)
             }
-            if (contractInfo.contractType === contractType.ResourceToResource) {
+            if (contractInfo.contractType === freelogContractType.ResourceToResource) {
                 resourceContracts.push(contractInfo)
+                !contractIsActivated && unActivatedResourceContracts.push(contractInfo)
             }
         })
 
-        if (unActivatedContracts.length) {
-            authResult.authCode = authCodeEnum.ContractUngratified
-            authResult.authErrCode = errAuthCodeEnum.contractNotActivate
-            authResult.data.unActivatedContracts = unActivatedContracts
+        if (unActivatedNodeContracts.length) {
+            authResult.authCode = authCodeEnum.NodeContractNotActive
+            authResult.data.unActivatedNodeContracts = unActivatedNodeContracts
+            return authResult
+        }
+        if (unActivatedResourceContracts.length) {
+            authResult.authCode = authCodeEnum.ResourceContractNotActive
+            authResult.data.unActivatedResourceContracts = unActivatedResourceContracts
             return authResult
         }
 
@@ -62,9 +68,8 @@ const AuthProcessManager = class AuthProcessManager {
         const nodeContractIdentityAuthResults = await Promise.all(nodeContractIdentityAuthTasks)
         const identityAuthFaildNodeContract = nodeContractIdentityAuthResults.filter(x => !x.isAuth)
         if (identityAuthFaildNodeContract.length) {
-            authResult.authCode = authCodeEnum.NodePolicyUngratified
-            authResult.authErrCode = errAuthCodeEnum.identityAuthenticationRefuse
-            authResult.data.identityAuthFaildNodeContract = identityAuthFaildNodeContract
+            authResult.authCode = authCodeEnum.NodeContractIdentityAuthenticationFailed
+            authResult.data.identityAuthFaildNodeContracts = identityAuthFaildNodeContract
             return authResult
         }
 
@@ -82,9 +87,8 @@ const AuthProcessManager = class AuthProcessManager {
         const resourceContractIdentityAuthResults = await Promise.all(resourceContractIdentityAuthTasks)
         const identityAuthFaildResourceContract = resourceContractIdentityAuthResults.filter(x => !x.isAuth)
         if (identityAuthFaildResourceContract.length) {
-            authResult.authCode = authCodeEnum.ResourcePolicyUngratified
-            authResult.authErrCode = errAuthCodeEnum.identityAuthenticationRefuse
-            authResult.data.identityAuthFaildResourceContract = identityAuthFaildResourceContract
+            authResult.authCode = authCodeEnum.ResourceContractIdentityAuthenticationFailed
+            authResult.data.identityAuthFaildResourceContracts = identityAuthFaildResourceContract
             return authResult
         }
 
@@ -130,8 +134,9 @@ const AuthProcessManager = class AuthProcessManager {
         }
 
         if (!result.data.policySegment) {
-            result.authCode = authCodeEnum.ResourcePolicyUngratified
-            result.authErrCode = result.authErrCode || errAuthCodeEnum.resourcePolicyRefuse
+            result.authCode = contractType === freelogContractType.ResourceToResource
+                ? authCodeEnum.NotFoundResourceContract : contractType === freelogContractType.ResourceToNode
+                    ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundNodeContract
             result.addError('未能通过资源策略授权')
         }
 

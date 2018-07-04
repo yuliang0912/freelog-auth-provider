@@ -10,4 +10,3 @@ module.exports = async (app) => {
     new RabbitMessageQueueEventHandler(app)
 }
 
-

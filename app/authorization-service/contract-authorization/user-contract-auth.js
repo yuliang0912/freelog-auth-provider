@@ -2,33 +2,32 @@
  * Created by yuliang on 2017/10/30.
  * 针对presentable授权,主要检测普通用户是否有权限使用presentable
  */
+/**
+ * Created by yuliang on 2017/10/30.
+ * 针对C端用户授权,主要检测C端用户是否有权限使用presentable
+ */
 
 'use strict'
 
-const authCodeEnum = require('../../enum/auth_code')
-const commonAuthResult = require('../common-auth-result')
-const authErrorCodeEnum = require('../../enum/auth_err_code')
+const authCodeEnum = require('../../enum/auth-code')
+const commonAuthResult = require('.././common-auth-result')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
 
 module.exports = ({contract}) => {
 
-    const result = new commonAuthResult(authCodeEnum.UserContractUngratified)
+    const result = new commonAuthResult(authCodeEnum.Default, {contract})
 
     if (!contract || contract.contractType !== contractType.PresentableToUer) {
-        result.authErrCode = authErrorCodeEnum.notFoundUserContract
+        result.authCode = authCodeEnum.NotFoundUserPresentableContract
         result.addError('用户未签约合同')
-        return result
     }
-
-    if (contract.status === 3 || contract.policySegment.activatedStates.some(x => x === contract.fsmState)) {
+    else if (contract.status === 3 || contract.policySegment.activatedStates.some(x => x === contract.fsmState)) {
         result.authCode = authCodeEnum.BasedOnUserContract
     }
     else {
+        result.authCode = authCodeEnum.UserContractNotActive
         result.addError(`用户合同未生效,当前合同状态:${contract.status}`)
-        result.authErrCode = authErrorCodeEnum.userContractNotActivate
     }
-
-    result.data.contract = contract
 
     return result
 }

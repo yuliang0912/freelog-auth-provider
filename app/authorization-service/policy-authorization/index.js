@@ -31,7 +31,7 @@ class PolicyAuthorization {
             throw new Error('policy-authentication Error: 不被支持的合同')
         }
 
-        const policyAuthResult = policyAuthHandler({policySegment})
+        const policyAuthResult = policyAuthHandler({policySegment, contractType})
         if (!policyAuthResult.isAuth) {
             return policyAuthResult
         }

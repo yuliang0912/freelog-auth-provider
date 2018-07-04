@@ -1,7 +1,7 @@
 'use strict'
 
 const Service = require('egg').Service
-const authCodeEnum = require('../enum/auth_code')
+const authCodeEnum = require('../enum/auth-code')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
@@ -63,7 +63,6 @@ class ResourceAuthService extends Service {
 
         return new commonAuthResult(authCodeEnum.ResourcePolicyUngratified)
     }
-
 
     /***
      * 获取资源授权jwt签名信息

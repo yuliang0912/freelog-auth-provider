@@ -53,27 +53,13 @@ class ContractAuthorization {
      * @returns {Promise<void>}
      */
     isActivated(contract) {
+
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
             throw new Error('contract-authorization Error: 不被支持的合同')
         }
 
         return contractAuthHandler({contract}).isAuth
-    }
-
-    /**
-     * 合同批量授权
-     * 批量授权执行逻辑与单个有区别,把状态检查等性能最快的集中到前面检查.把用户对象检查移到后面之心
-     * @param contractAuthObjects
-     * @returns {Promise<void>}
-     */
-    async contractBatchAuthentication(contractAuthObjects) {
-
-        if (!Array.isArray(contractAuthObjects) || !contractAuthObjects.length) {
-            throw new Error('contractBatchAuthentication Error:参数校验失败')
-        }
-
-        const contractAuthObjectMap = new Map(contractAuthObjects.map(x => [x.contractInfo.contractId, x]))
     }
 
     /**

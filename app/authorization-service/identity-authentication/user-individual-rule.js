@@ -3,13 +3,19 @@
  */
 
 'use strict'
+
 const AuthResult = require('../common-auth-result')
-const authCodeEnum = require('../../enum/auth_code')
-const authErrorCodeEnum = require('../../enum/auth_err_code')
+const authCodeEnum = require('../../enum/auth-code')
+const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 
-module.exports = ({authUserObject, partyOneUserId, partyTwoUserInfo}) => {
+module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInfo}) => {
 
-    const authResult = new AuthResult(authCodeEnum.Default)
+    const authResult = new AuthResult(authCodeEnum.Default, {
+        authUserObject,
+        contractType,
+        partyOneUserId,
+        partyTwoUserInfo
+    })
 
     //如果没有分组认证的策略,则默认返回
     if (!authUserObject || authUserObject.userType.toUpperCase() !== 'INDIVIDUAL') {
@@ -18,10 +24,8 @@ module.exports = ({authUserObject, partyOneUserId, partyTwoUserInfo}) => {
 
     //如果有针对乙方的用户认证规则,但是乙方不存在,则失败
     if (!partyTwoUserInfo || !partyTwoUserInfo.userId || !Reflect.has(partyTwoUserInfo, 'email') || !Reflect.has(partyTwoUserInfo, 'mobile')) {
-        authResult.authCode = authCodeEnum.UserObjectUngratified
-        authResult.authErrCode = authErrorCodeEnum.notFoundUser
-        authResult.data.authUserObject = authUserObject
-        authResult.data.partyTwoUserInfo = partyTwoUserInfo
+        authResult.authCode = contractType === freelogContractType.ResourceToResource ? authCodeEnum.NotFoundResourceOwnerUserInfo
+            : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeOwnerUserInfo : authCodeEnum.NotFoundUserInfo
         authResult.addError('未找到乙方用户信息')
         return authResult
     }
@@ -39,10 +43,7 @@ module.exports = ({authUserObject, partyOneUserId, partyTwoUserInfo}) => {
     }
 
     //其他默认不通过
-    authResult.authCode = authCodeEnum.UserObjectUngratified
-    authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse
-    authResult.data.authUserObject = authUserObject
-    authResult.data.partyTwoUserInfo = partyTwoUserInfo
+    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
     authResult.addError('乙方用户认证不通过')
 
     return authResult

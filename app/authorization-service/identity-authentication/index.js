@@ -8,7 +8,7 @@ const Patrun = require('patrun')
 const nodeDomainRele = require('./node-domain-rule')
 const userIndividualRule = require('./user-individual-rule')
 const userOrNodeGroupRule = require('./user-or-node-group-rule')
-const authCodeEnum = require('../../enum/auth_code')
+const authCodeEnum = require('../../enum/auth-code')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
 
 class FreelogPolicyIdentityAuthentication {

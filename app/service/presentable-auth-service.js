@@ -1,8 +1,7 @@
 'use strict'
 
 const Service = require('egg').Service
-const authCodeEnum = require('../enum/auth_code')
-const authErrCodeEnum = require('../enum/auth_err_code')
+const authCodeEnum = require('../enum/auth-code')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const contractAuthorization = require('../authorization-service/contract-authorization/index')
@@ -80,6 +79,7 @@ class PresentableAuthService extends Service {
 
         const partyTwoUserIds = new Set()
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
+
         const contractMap = await ctx.dal.contractProvider.getContracts({_id: {$in: contractIds}}).then(dataList => {
             const contractMap = new Map()
             dataList.forEach(item => {
@@ -89,7 +89,6 @@ class PresentableAuthService extends Service {
             })
             return contractMap
         })
-
         const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
             return new Map(dataList.map(x => [x.userId, x]))
         })
@@ -179,9 +178,7 @@ class PresentableAuthService extends Service {
         const presentablePolicyAuthResult = await authService.policyAuthorization(params)
 
         if (!presentablePolicyAuthResult.isAuth) {
-            result.authCode = authCodeEnum.UserContractUngratified
-            result.authErrCode = authErrCodeEnum.notFoundUserContract
-            return result
+            return presentablePolicyAuthResult
         }
 
         await this._createUserContract({
@@ -242,9 +239,7 @@ class PresentableAuthService extends Service {
         }
 
         //如果用户有多个合同,但是激活的不止一个或者没有激活的合同,则需要手动让用户选择一个合同执行
-        const result = new commonAuthResult(authCodeEnum.NodeContractUngratified)
-        result.authErrCode = authErrCodeEnum.chooseUserContract
-        result.data.contracts = allUserContracts
+        const result = new commonAuthResult(authCodeEnum.UnsureExecuteUserContracts, {contracts: allUserContracts})
 
         this.ctx.error({msg: "请选择一个合同执行", data: result})
     }

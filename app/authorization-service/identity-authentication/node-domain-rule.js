@@ -3,14 +3,14 @@
  */
 
 'use strict'
+
 const AuthResult = require('../common-auth-result')
-const authCodeEnum = require('../../enum/auth_code')
-const authErrorCodeEnum = require('../../enum/auth_err_code')
+const authCodeEnum = require('../../enum/auth-code')
 const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 
 module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
 
-    const authResult = new AuthResult(authCodeEnum.Default)
+    const authResult = new AuthResult(authCodeEnum.Default, {authUserObject, contractType, partyTwoInfo})
 
     //如果没有分组认证的策略,则默认返回
     if (!authUserObject || authUserObject.userType.toUpperCase() !== 'DOMAIN') {
@@ -22,9 +22,7 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
     }
 
     if (!partyTwoInfo || !Reflect.has(partyTwoInfo, 'nodeDomain')) {
-        authResult.authCode = authCodeEnum.UserObjectUngratified
-        authResult.authErrCode = authErrorCodeEnum.notFoundNode
-        authResult.data.partyTwoInfo = partyTwoInfo
+        authResult.authCode = authCodeEnum.NotFoundNodeInfo
         authResult.addError('未找到乙方节点信息')
         return authResult
     }
@@ -40,9 +38,7 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
         return authResult
     }
 
-    authResult.authCode = authCodeEnum.UserObjectUngratified
-    authResult.authErrCode = authErrorCodeEnum.individualsRefuse
-    authResult.data.authUserObject = authUserObject
+    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
     authResult.addError('不满足乙方节点身份认证策略')
 
     return authResult

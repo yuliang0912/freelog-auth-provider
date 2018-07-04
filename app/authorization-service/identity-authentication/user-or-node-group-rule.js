@@ -3,16 +3,21 @@
  */
 
 'use strict'
+
 const AuthResult = require('../common-auth-result')
-const authCodeEnum = require('../../enum/auth_code')
+const authCodeEnum = require('../../enum/auth-code')
 const globalInfo = require('egg-freelog-base/globalInfo')
-const authErrorCodeEnum = require('../../enum/auth_err_code')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 
 module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
 
     const app = globalInfo.app
-    const authResult = new AuthResult(authCodeEnum.Default)
+    const authResult = new AuthResult(authCodeEnum.Default, {
+        authUserObject,
+        contractType,
+        partyTwoInfo,
+        partyTwoUserInfo
+    })
 
     //如果没有分组认证的策略,则默认返回
     if (!authUserObject || authUserObject.userType.toUpperCase() !== 'GROUP') {
@@ -78,9 +83,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     //其他分组默认不通过
-    authResult.authCode = authCodeEnum.UserObjectUngratified
-    authResult.authErrCode = authErrorCodeEnum.identityAuthenticationRefuse
-    authResult.data.authUserObject = authUserObject
+    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
 
     return authResult
 }

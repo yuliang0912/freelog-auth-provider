@@ -44,7 +44,7 @@ module.exports = class RabbitMessageQueueEventHandler {
         })
 
         if (givenEventHandler) {
-            await givenEventHandler({message, headers, deliveryInfo, messageObject})
+            await givenEventHandler({message, headers, deliveryInfo, messageObject}).catch(console.error)
         } else {
             console.log(`不能处理的未知事件,queueName:${deliveryInfo.queue},routingKey:${messageObject.routingKey},eventName:${headers.eventName}`)
         }
