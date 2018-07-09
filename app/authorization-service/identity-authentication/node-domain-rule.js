@@ -18,7 +18,9 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
     }
 
     if (contractType !== freelogContractType.ResourceToNode) {
-        throw new Error('node-domain-rule Error: contractType与当前校验规则不符合 ')
+        authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
+        authResult.addError('不满足乙方节点身份认证策略')
+        return authResult
     }
 
     if (!partyTwoInfo || !Reflect.has(partyTwoInfo, 'nodeDomain')) {

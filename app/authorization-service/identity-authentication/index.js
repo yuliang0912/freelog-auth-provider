@@ -37,11 +37,12 @@ class FreelogPolicyIdentityAuthentication {
             if (!params.authUserObject) {
                 continue
             }
-            const authRule = this.certificationRules.find(Object.assign(stepRule, {contractType}));
+            const authRule = this.certificationRules.find(stepRule);
             if (!authRule) {
                 continue
             }
             const authResult = await authRule(params)
+
             if (authResult.isAuth) {
                 authResult.data.segmentId = policySegment.segmentId
                 return authResult
@@ -83,11 +84,7 @@ class FreelogPolicyIdentityAuthentication {
         const patrun = Patrun()
 
         //节点域名认证
-        patrun.add({
-            ruleName: 'nodeDomainAuth',
-            userType: 'DOMAIN',
-            contractType: contractType.ResourceToNode
-        }, nodeDomainRele)
+        patrun.add({ruleName: 'nodeDomainAuth', userType: 'DOMAIN'}, nodeDomainRele)
 
         //用户个体认证
         patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, userIndividualRule)
