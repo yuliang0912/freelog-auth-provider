@@ -14,39 +14,55 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentable(ctx) {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
+        const presentableId = ctx.checkParams('presentableId').isPresentableId().value
         const extName = ctx.checkParams('extName').optional().in(['data', 'file']).value
-        const resourceId = ctx.checkQuery('resourceId').optional().isResourceId().value
         const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
-        const presentableId = ctx.checkParams('presentableId').isMongoObjectId('presentableId格式错误').value
-        ctx.validate(false)  //validateIdentity:false  用户可以不用登陆
-
-        if (userContractId && !ctx.request.userId) {
-            ctx.error({msg: '参数userContractId错误,当前不存在登录用户'})
-        }
+        ctx.validate(false)
 
         const authResult = await ctx.service.presentableAuthService.authProcessHandler({
             nodeId,
             presentableId,
-            resourceId,
             userContractId
         })
-
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
         }
 
+        const {authToken} = authResult.data
         await ctx.service.resourceAuthService.getAuthResourceInfo({
-            resourceId: resourceId || authResult.data.resourceId,
+            resourceId: authToken.masterResourceId,
             payLoad: {nodeId, presentableId}
         }).then(resourceInfo => {
-            if (extName) {
-                return responseResourceFile.call(this, resourceInfo, presentableId)
+            authToken.authResourceIds = authToken.authResourceIds.filter(x => x !== authToken.masterResourceId)
+            if (authToken.authResourceIds.length) {
+                ctx.set('freelog-sub-resourceIds', authToken.authResourceIds.toString())
+                ctx.set('freelog-sub-resource-auth-token', authToken.token)
             }
-            Reflect.deleteProperty(resourceInfo, 'resourceUrl')
-            ctx.success(resourceInfo)
+            return responseResourceFile.call(this, resourceInfo, presentableId)
         }).catch(ctx.error)
     }
 
+    /**
+     * 请求获取presentable对应的子资源
+     * @returns {Promise<void>}
+     */
+    async presentableSubResource(ctx) {
+
+        const resourceId = ctx.checkParams('resourceId').isResourceId().value
+        const token = ctx.checkQuery('token').isMongoObjectId('token格式错误').value
+        ctx.validate(false)
+
+        const authResult = await ctx.service.presentableAuthService.tokenAuthHandler({token, resourceId})
+        if (!authResult.isAuth) {
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
+        }
+        const {authToken} = authResult.data
+        await ctx.service.resourceAuthService.getAuthResourceInfo({
+            resourceId, payLoad: {presentableId: authToken.targetId}
+        }).then(resourceInfo => {
+            return responseResourceFile.call(this, resourceInfo, resourceId)
+        }).catch(ctx.error)
+    }
 
     /**
      * 直接请求获取资源数据(为类似于license资源服务)
@@ -69,13 +85,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId, payLoad: {nodeId, userId: ctx.request.userId, resourceId}
         }).then(resourceInfo => {
-            if (extName) {
-                return responseResourceFile.call(this, resourceInfo)
-            }
-            Reflect.deleteProperty(resourceInfo, 'resourceUrl')
-            ctx.success(resourceInfo)
+            return responseResourceFile.call(this, resourceInfo)
         }).catch(ctx.error)
-
     }
 
     /**

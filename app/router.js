@@ -25,6 +25,8 @@ module.exports = app => {
     //请求获取presentable资源
     router.get('/v1/auths/presentable/:presentableId.:extName', auth.v1.presentable)
     router.get('/v1/auths/presentable/:presentableId', auth.v1.presentable)
+    //请求获取presentable资源的子资源
+    router.get('/v1/auths/presentable/subResource/:resourceId', auth.v1.presentableSubResource)
 
     //直接请求授权资源
     router.get('/v1/auths/resource/:resourceId.:extName', auth.v1.resource)

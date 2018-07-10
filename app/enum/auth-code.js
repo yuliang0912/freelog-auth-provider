@@ -135,6 +135,11 @@ module.exports = Object.freeze({
     UnsureExecuteUserContracts: 506,
 
     /**
+     * 用户token无效
+     */
+    UserTokenInvalid: 507,
+
+    /**
      * 策略身份认证失败
      */
     PolciyIdentityAuthenticationFailed: 601,

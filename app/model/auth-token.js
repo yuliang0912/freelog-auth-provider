@@ -7,6 +7,28 @@
 module.exports = app => {
 
     const mongoose = app.mongoose
+
+    // const toObjectOptions = {
+    //     transform(doc, ret, options) {
+    //         return {
+    //             token: ret._id.toString(),
+    //             partyOne: ret.partyOne,
+    //             partyTwo: ret.partyTwo,
+    //             partyTwoUserId: ret.partyTwoUserId,
+    //             targetId: ret.targetId,
+    //             contractType: ret.contractType,
+    //             masterResourceId: ret.masterResourceId,
+    //             authResourceIds: ret.authResourceIds,
+    //             authCode: ret.authCode,
+    //             signature: ret.signature,
+    //             expire: ret.expire,
+    //             createDate: ret.createDate,
+    //             updateDate: ret.updateDate,
+    //             status: ret.status,
+    //         }
+    //     }
+    // }
+
     const AuthTokenSchema = new mongoose.Schema({
         partyOne: {type: String, required: true}, //甲方
         partyTwo: {type: String, required: true}, //乙方
@@ -25,6 +47,10 @@ module.exports = app => {
     })
 
     AuthTokenSchema.index({targetId: 1, partyTwo: 1, partyTwoUserId: 1});
+
+    AuthTokenSchema.virtual("token").get(function () {
+        return this._id.toString()
+    })
 
     return mongoose.model('auth-token', AuthTokenSchema)
 }

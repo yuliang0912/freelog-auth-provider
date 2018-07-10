@@ -5,7 +5,6 @@
 'use strict'
 
 const Service = require('egg').Service
-const commonAuthResult = require('../authorization-service/common-auth-result')
 
 module.exports = class AuthTokenService extends Service {
 
@@ -16,9 +15,9 @@ module.exports = class AuthTokenService extends Service {
      * @param nodeInfo
      * @returns {Promise<void>}
      */
-    async savePresentableAuthResult({presentableAuthTree, userInfo, nodeInfo, authResult}) {
+    async savePresentableAuthResult({presentableAuthTree, userId, nodeInfo, authResult}) {
 
-        if (!authResult.isAuth || !userInfo) {
+        if (!authResult.isAuth) {
             return
         }
 
@@ -27,8 +26,8 @@ module.exports = class AuthTokenService extends Service {
         const model = {
             partyOne: presentableAuthTree.nodeId,
             targetId: presentableAuthTree.presentableId,
-            partyTwo: userInfo.userId.toString(),
-            partyTwoUserId: userInfo.userId,
+            partyTwo: userId.toString(),
+            partyTwoUserId: userId,
             contractType: app.contractType.PresentableToUer,
             authCode: authResult.authCode,
             masterResourceId: presentableAuthTree.masterResourceId,
@@ -74,24 +73,30 @@ module.exports = class AuthTokenService extends Service {
      */
     async getAuthToken({targetId, partyTwo, partyTwoUserId}) {
 
-        if (!partyTwoUserId) {
-            return
-        }
-
         const {ctx} = this
 
-        const authToken = await ctx.dal.authTokenProvider.getEffectiveAuthToken({
+        return ctx.dal.authTokenProvider.getEffectiveAuthToken({
             targetId,
             partyTwoUserId,
             partyTwo: partyTwo.toString()
         })
+    }
 
-        if (!authToken) {
-            return
-        }
+    /**
+     * 根据ID获取有效的授权token
+     * @param token
+     * @param partyTwo
+     * @param partyTwoUserId
+     * @returns {Promise<void>}
+     */
+    async getAuthTokenById({token, partyTwo, partyTwoUserId}) {
 
-        const authResult = new commonAuthResult(authToken.authCode)
-        authResult.data.resourceId = authToken.masterResourceId
-        return authResult
+        const {ctx} = this
+
+        return ctx.dal.authTokenProvider.getEffectiveAuthToken({
+            _id: token,
+            partyTwoUserId,
+            partyTwo: partyTwo.toString()
+        })
     }
 }
