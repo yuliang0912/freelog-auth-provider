@@ -22,9 +22,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             nodeId,
             presentableId,
             userContractId
-        })
+        }).catch(console.error)
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
         }
 
         const {authToken} = authResult.data
