@@ -27,6 +27,9 @@ module.exports = appInfo => {
             tokenType: "jwt"
         },
 
+
+
+
         // gatewayUrl: "http://119.23.63.19:8895/test",
         //
         // mongoose: {

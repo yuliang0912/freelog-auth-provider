@@ -91,6 +91,10 @@ class PresentableAuthService extends Service {
 
         const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
 
+        if (!presentableTreeAuthResult.isAuth) {
+            return this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentableTreeAuthResult})
+        }
+
         const authToken = await ctx.service.authTokenService.savePresentableAuthResult({
             presentableAuthTree, userId, nodeInfo,
             authResult: presentableTreeAuthResult
