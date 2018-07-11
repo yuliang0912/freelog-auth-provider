@@ -145,6 +145,11 @@ module.exports = Object.freeze({
     PolciyIdentityAuthenticationFailed: 601,
 
     /**
+     * 策略授权失败
+     */
+    PolicyAuthFailed: 602,
+
+    /**
      * 系统异常
      */
     Exception: 900

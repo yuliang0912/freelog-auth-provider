@@ -15,7 +15,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
         const presentableId = ctx.checkParams('presentableId').isPresentableId().value
-        const extName = ctx.checkParams('extName').optional().in(['data', 'file']).value
         const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
         ctx.validate(false)
 
@@ -25,13 +24,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             userContractId
         })
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', data: authResult.toObject()})
         }
 
         const {authToken} = authResult.data
         await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId: authToken.masterResourceId,
-            payLoad: {nodeId, presentableId}
+            payLoad: {nodeId, presentableId, partyTwoUserId: authToken.partyTwoUserId}
         }).then(resourceInfo => {
             authToken.authResourceIds = authToken.authResourceIds.filter(x => x !== authToken.masterResourceId)
             if (authToken.authResourceIds.length) {
@@ -58,7 +57,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }
         const {authToken} = authResult.data
         await ctx.service.resourceAuthService.getAuthResourceInfo({
-            resourceId, payLoad: {presentableId: authToken.targetId}
+            resourceId, payLoad: {presentableId: authToken.targetId, partyTwoUserId: authToken.partyTwoUserId}
         }).then(resourceInfo => {
             return responseResourceFile.call(this, resourceInfo, resourceId)
         }).catch(ctx.error)
@@ -73,7 +72,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const resourceId = ctx.checkParams("resourceId").isResourceId().value
         const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
-        const extName = ctx.checkParams('extName').optional().in(['data']).value
+
         ctx.validate(false)
 
         const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})

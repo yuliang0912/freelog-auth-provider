@@ -43,9 +43,9 @@ module.exports = class AuthTokenService extends Service {
      * 保存资源授权结果
      * @returns {Promise<void>}
      */
-    async saveResourceAuthResult({resourceId, authSchemeId, userInfo, nodeInfo, authResult}) {
+    async saveResourceAuthResult({resourceId, authSchemeId, userId, nodeInfo, authResult}) {
 
-        if (!authResult.isAuth || !userInfo) {
+        if (!authResult.isAuth) {
             return
         }
 
@@ -54,8 +54,8 @@ module.exports = class AuthTokenService extends Service {
         const model = {
             partyOne: authSchemeId,
             targetId: resourceId,
-            partyTwo: nodeInfo ? nodeInfo.nodeId : userInfo.userId,
-            partyTwoUserId: userInfo.userId,
+            partyTwo: nodeInfo ? nodeInfo.nodeId : userId,
+            partyTwoUserId: userId,
             contractType: 0, //资源不通过合同,直接授权使用.
             authCode: authResult.authCode,
             masterResourceId: resourceId,

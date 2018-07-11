@@ -17,15 +17,15 @@ class ResourceAuthService extends Service {
     async resourceAuth({resourceId, nodeId}) {
 
         const {ctx, app} = this
-        const userId = ctx.request.userId
+        const userId = ctx.request.userId || 0
 
-        const authResultCache = await ctx.service.authTokenService.getAuthToken({
+        const authTokenCache = await ctx.service.authTokenService.getAuthToken({
             targetId: resourceId,
             partyTwo: nodeId || userId,
             partyTwoUserId: userId
         })
-        if (authResultCache) {
-            return authResultCache
+        if (authTokenCache) {
+            return this._authTokenToAuthResult(authTokenCache)
         }
 
         const userInfo = ctx.request.identityInfo.userInfo || null
@@ -52,8 +52,8 @@ class ResourceAuthService extends Service {
                 partyOneUserId: authScheme.userId
             }))
             if (authSchemeAuthResult.isAuth) {
-                ctx.service.authTokenService.saveResourceAuthResult({
-                    resourceId, userInfo, nodeInfo,
+                await ctx.service.authTokenService.saveResourceAuthResult({
+                    resourceId, userId, nodeInfo,
                     authResult: authSchemeAuthResult,
                     authSchemeId: authScheme.authSchemeId
                 })
@@ -61,7 +61,19 @@ class ResourceAuthService extends Service {
             }
         }
 
-        return new commonAuthResult(authCodeEnum.ResourcePolicyUngratified)
+        return new commonAuthResult(authCodeEnum.PolicyAuthFailed)
+    }
+
+    /**
+     * 授权token转换成授权结果
+     * @param authToken
+     * @returns {Promise<module.CommonAuthResult|*>}
+     * @private
+     */
+    async _authTokenToAuthResult(authToken) {
+        const authResult = new commonAuthResult(authToken.authCode)
+        authResult.data.authToken = authToken
+        return authResult
     }
 
     /***
