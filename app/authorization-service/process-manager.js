@@ -134,9 +134,8 @@ const AuthProcessManager = class AuthProcessManager {
         }
 
         if (!result.data.policySegment) {
-            result.authCode = contractType === freelogContractType.ResourceToResource
-                ? authCodeEnum.NotFoundResourceContract : contractType === freelogContractType.ResourceToNode
-                    ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserPresentableContract
+            result.authCode = contractType === freelogContractType.ResourceToResource ? authCodeEnum.NotFoundResourceContract
+                : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserPresentableContract
             result.addError('未能通过资源策略授权')
         }
 

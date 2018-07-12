@@ -205,8 +205,7 @@ const responseResourceFile = async function (resourceInfo, fileName) {
     ctx.set('content-type', resourceInfo.mimeType)
     ctx.set('content-length', result.headers['content-length'])
     ctx.set('freelog-resource-type', resourceInfo.resourceType)
-    ctx.set('freelog-meta', crypto.base64Encode(JSON.stringify(resourceInfo.meta)))
-    ctx.set('freelog-system-meta', crypto.base64Encode(JSON.stringify(resourceInfo.systemMeta)))
+    ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
+    ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
     ctx.body = result.res
-
 }
