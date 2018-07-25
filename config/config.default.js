@@ -70,7 +70,7 @@ module.exports = appInfo => {
         },
 
         mongoose: {
-            url: "mongodb://192.168.2.239:27017/auth"
+            url: "mongodb://127.0.0.1:27017/auth"
         },
 
         multipart: {
@@ -94,7 +94,7 @@ module.exports = appInfo => {
 
         rabbitMq: {
             connOptions: {
-                host: '192.168.164.152',
+                host: '192.168.164.154',
                 port: 5672,
                 login: 'guest',
                 password: 'guest',

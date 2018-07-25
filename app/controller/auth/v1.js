@@ -202,8 +202,10 @@ const responseResourceFile = async function (resourceInfo, fileName) {
         ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
     }
     ctx.attachment(fileName || resourceInfo.resourceId)
+    Object.keys(result.headers).forEach(key => {
+        ctx.set(key, result.headers[key])
+    })
     ctx.set('content-type', resourceInfo.mimeType)
-    ctx.set('content-length', result.headers['content-length'])
     ctx.set('freelog-resource-type', resourceInfo.resourceType)
     ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
     ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
