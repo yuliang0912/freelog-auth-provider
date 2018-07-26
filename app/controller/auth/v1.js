@@ -1,7 +1,6 @@
 'use strict'
 
 const Controller = require('egg').Controller
-const crypto = require('egg-freelog-base/app/extend/helper/crypto_helper')
 const authProcessManager = require('../../authorization-service/process-manager')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
@@ -14,6 +13,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentable(ctx) {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
+        const extName = ctx.checkParams('extName').optional().in(['data', 'info']).value
         const presentableId = ctx.checkParams('presentableId').isPresentableId().value
         const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
         ctx.validate(false)
@@ -36,6 +36,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             if (authToken.authResourceIds.length) {
                 ctx.set('freelog-sub-resourceIds', authToken.authResourceIds.toString())
                 ctx.set('freelog-sub-resource-auth-token', authToken.token)
+            }
+            if (extName === 'info') {
+                Reflect.deleteProperty(resourceInfo, 'resourceUrl')
+                return ctx.success(resourceInfo)
             }
             return responseResourceFile.call(this, resourceInfo, presentableId)
         }).catch(ctx.error)
