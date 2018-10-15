@@ -4,6 +4,7 @@
 
 'use strict'
 
+const lodash = require('lodash')
 const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
 module.exports = class AuthTokenProvider extends MongoBaseOperation {
@@ -18,12 +19,11 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
      * @returns {*}
      */
     createAuthToken(model) {
-        return super.findOneAndUpdate({
-            targetId: model.targetId,
-            partyTwo: model.partyTwo,
-            partyTwoUserId: model.partyTwoUserId,
-        }, model).then(oldInfo => {
-            return oldInfo ? super.findById(oldInfo._id) : super.create(model)
+
+        const condition = lodash.pick(model, ['targetId', 'partyTwo', 'partyTwoUserId'])
+
+        return super.findOneAndUpdate(condition, model, {new: true}).then(authToken => {
+            return authToken ? authToken : super.create(model)
         })
     }
 

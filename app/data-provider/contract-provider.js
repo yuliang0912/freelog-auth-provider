@@ -79,16 +79,7 @@ module.exports = class ContractProvider extends MongoBaseOperation {
     /**
      * 更新合约状态
      */
-    updateContractFsmState(contractId, fsmState, status) {
-        return super.update({_id: contractId}, {fsmState, status})
-    }
-
-    /**
-     * 获取数量
-     * @param condition
-     * @returns {Promise.<*>|Promise}
-     */
-    getCount(condition) {
-        return super.count(condition)
+    updateContractFsmState({contractId, oldFsmState, fsmState, status}) {
+        return super.updateOne({_id: contractId, fsmState: oldFsmState}, {fsmState, status})
     }
 }

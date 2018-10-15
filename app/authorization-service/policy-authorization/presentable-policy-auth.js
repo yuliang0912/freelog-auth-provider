@@ -1,5 +1,6 @@
 'use strict'
 
+const lodash = require('lodash')
 const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 
@@ -12,10 +13,11 @@ module.exports = ({policySegment}) => {
 
     const authResult = new AuthResult(authCodeEnum.BasedOnNodePolicy, {policySegment})
 
-    const isInitialTerminatMode = policySegment.status === 1 && policySegment.fsmDescription.length === 1
-        && policySegment.activatedStates.some(m => m === policySegment.initialState)
+    const fsmStates = Object.keys(policySegment.fsmStates)
+    const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1
+        && fsmStates.some(m => m.toLocaleLowerCase() === 'initial' || m.toLocaleLowerCase() === 'init')
 
-    if (!isInitialTerminatMode) {
+    if (!isInitialTerminateMode) {
         authResult.authCode = authCodeEnum.NotFoundUserPresentableContract
         authResult.addError('presentable策略不满足initial-terminate模式,请签约')
     }

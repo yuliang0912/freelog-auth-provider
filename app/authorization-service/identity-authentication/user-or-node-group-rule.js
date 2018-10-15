@@ -83,7 +83,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     //其他分组默认不通过
-    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
+    authResult.authCode = authCodeEnum.PolicyIdentityAuthenticationFailed
 
     return authResult
 }

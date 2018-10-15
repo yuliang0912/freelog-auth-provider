@@ -19,15 +19,10 @@ module.exports = class ContractChangeHistoryProvider extends MongoBaseOperation 
      * @returns {Promise.<T>|Promise}
      */
     addHistory(contractId, changeModel) {
-
         return super.findOneAndUpdate({contractId: contractId}, {
             $addToSet: {histories: changeModel},
-        }).then(changeHistory => {
-            if (!changeHistory) {
-                return super.create({contractId, histories: [changeModel]})
-            }
-            changeHistory.histories.push(changeModel)
-            return changeHistory
+        }, {new: true}).then(changeHistory => {
+            return changeHistory ? changeHistory : super.create({contractId, histories: [changeModel]})
         })
     }
 }

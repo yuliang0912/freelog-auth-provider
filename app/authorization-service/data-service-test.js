@@ -7,7 +7,7 @@
 
 const event = require('events')
 
-module.exports = class AuthDataSservice extends event {
+module.exports = class AuthDataService extends event {
 
     constructor() {
         super()

@@ -24,11 +24,12 @@ const AuthProcessManager = class AuthProcessManager {
         if (!Reflect.has(presentableAuthTree, 'nodeInfo')) {
             throw new Error('presentableAuthTreeAuthorization Error:参数信息不完整')
         }
+        const {authTree, nodeInfo} = presentableAuthTree
         const authResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
         const unActivatedNodeContracts = [], unActivatedResourceContracts = [], resourceContracts = [],
             nodeContracts = []
 
-        presentableAuthTree.authTree.forEach(current => {
+        authTree.forEach(current => {
 
             let {contractInfo} = current
             let contractIsActivated = ContractAuthorization.isActivated(contractInfo)
@@ -60,16 +61,16 @@ const AuthProcessManager = class AuthProcessManager {
                 policySegment: contract.policySegment,
                 contractType: contract.contractType,
                 partyOneUserId: contract.partyOneUserId,
-                partyTwoInfo: presentableAuthTree.nodeInfo,
+                partyTwoInfo: nodeInfo,
                 partyTwoUserInfo: contract.partyTwoUserInfo
             }
             return IdentityAuthentication.main(params)
         })
         const nodeContractIdentityAuthResults = await Promise.all(nodeContractIdentityAuthTasks)
-        const identityAuthFaildNodeContract = nodeContractIdentityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFaildNodeContract.length) {
+        const identityAuthFailedNodeContract = nodeContractIdentityAuthResults.filter(x => !x.isAuth)
+        if (identityAuthFailedNodeContract.length) {
             authResult.authCode = authCodeEnum.NodeContractIdentityAuthenticationFailed
-            authResult.data.identityAuthFaildNodeContracts = identityAuthFaildNodeContract
+            authResult.data.identityAuthFaildNodeContracts = identityAuthFailedNodeContract
             return authResult
         }
 
@@ -85,10 +86,10 @@ const AuthProcessManager = class AuthProcessManager {
             return IdentityAuthentication.main(params)
         })
         const resourceContractIdentityAuthResults = await Promise.all(resourceContractIdentityAuthTasks)
-        const identityAuthFaildResourceContract = resourceContractIdentityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFaildResourceContract.length) {
+        const identityAuthFailedResourceContract = resourceContractIdentityAuthResults.filter(x => !x.isAuth)
+        if (identityAuthFailedResourceContract.length) {
             authResult.authCode = authCodeEnum.ResourceContractIdentityAuthenticationFailed
-            authResult.data.identityAuthFaildResourceContracts = identityAuthFaildResourceContract
+            authResult.data.identityAuthFailedResourceContracts = identityAuthFailedResourceContract
             return authResult
         }
 
@@ -111,7 +112,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param policySegment
      * @param contractType 此处为虚拟的授权甲乙方关系.参考合同类型的设定
      * @param partyOneUserId 甲方用户ID
-     * @param partyTwoInfo 只有乙方是节点时,此处才需要传入noedeInfo
+     * @param partyTwoInfo 只有乙方是节点时,此处才需要传入nodeInfo
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
@@ -138,7 +139,6 @@ const AuthProcessManager = class AuthProcessManager {
                 : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserPresentableContract
             result.addError('未能通过资源策略授权')
         }
-
         return result
     }
 

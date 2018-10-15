@@ -142,7 +142,7 @@ module.exports = Object.freeze({
     /**
      * 策略身份认证失败
      */
-    PolciyIdentityAuthenticationFailed: 601,
+    PolicyIdentityAuthenticationFailed: 601,
 
     /**
      * 策略授权失败

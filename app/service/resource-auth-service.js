@@ -2,9 +2,11 @@
 
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
+const {ArgumentError} = require('egg-freelog-base/error')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const JsonWebToken = require('egg-freelog-base/app/extend/helper/jwt_helper')
+
 
 class ResourceAuthService extends Service {
 
@@ -31,7 +33,7 @@ class ResourceAuthService extends Service {
         const userInfo = ctx.request.identityInfo.userInfo || null
         const nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
         if (nodeInfo && nodeInfo.userId !== userId) {
-            ctx.error({msg: '节点信息与登录用户不匹配', data: {nodeInfo, userInfo}})
+            throw new ArgumentError('节点信息与登录用户不匹配', {nodeInfo, userInfo})
         }
 
         const params = {

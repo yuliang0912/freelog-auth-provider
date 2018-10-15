@@ -6,7 +6,10 @@
 
 module.exports = {
 
-    get webApi() {
-        return this.app.webApi
+    /**
+     * 节点信息校验
+     */
+    nodeInfoValidate() {
+
     }
 }

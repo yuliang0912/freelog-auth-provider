@@ -40,35 +40,6 @@ module.exports = appInfo => {
 
         middleware: ['errorHandler', 'identiyAuthentication'],
 
-        /**
-         * DB-mysql相关配置
-         */
-        knex: {
-            contract: {
-                client: 'mysql',
-                connection: {
-                    host: '192.168.2.239',
-                    user: 'root',
-                    password: 'yuliang@@',
-                    database: 'fr_contract',
-                    charset: 'utf8',
-                    timezone: '+08:00',
-                    bigNumberStrings: true,
-                    supportBigNumbers: true,
-                    connectTimeout: 1500,
-                    typeCast: (field, next) => {
-                        if (field.type === 'JSON') {
-                            return JSON.parse(field.string())
-                        }
-                        return next()
-                    }
-                },
-                pool: {max: 10, min: 2},
-                acquireConnectionTimeout: 800,
-                debug: false
-            },
-        },
-
         mongoose: {
             url: "mongodb://127.0.0.1:27017/auth"
         },
@@ -94,7 +65,7 @@ module.exports = appInfo => {
 
         rabbitMq: {
             connOptions: {
-                host: '192.168.164.154',
+                host: '192.168.164.165',
                 port: 5672,
                 login: 'guest',
                 password: 'guest',
@@ -110,7 +81,7 @@ module.exports = appInfo => {
             },
             queues: [
                 {
-                    name: 'auth-contract-event-receive-queue',
+                    name: 'auth#contract-event-receive-queue',
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
                         {
@@ -119,17 +90,17 @@ module.exports = appInfo => {
                         },
                         {
                             exchange: 'freelog-pay-exchange',
-                            routingKey: 'pay.payment.contract'
+                            routingKey: 'event.payment.order'
                         }
                     ]
                 },
                 {
-                    name: 'auth-event-handle-result',
+                    name: 'auth#event-register-completed-queue',
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
                         {
-                            exchange: 'freelog-contract-exchange',
-                            routingKey: 'auth.event.handle.result.#'
+                            exchange: 'freelog-event-exchange',
+                            routingKey: 'register.event.completed'
                         }
                     ]
                 }
@@ -152,6 +123,8 @@ module.exports = appInfo => {
         logger: {
             level: 'NONE'
         },
+
+        customLoader: ['app/contract-service/contract-service.js', 'app/event-handler', 'app/mq-service']
     }
 
     return config;

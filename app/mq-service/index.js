@@ -1,30 +1,79 @@
 'use strict'
 
 const Patrun = require('patrun')
-const Promise = require('bluebird')
-const eventHandler = require('./mq-event-handler')
-const mqEventType = require('../enum/mq-event-type').authService
 const rabbit = require('../extend/helper/rabbit_mq_client')
-const fsmEventHandler = require('../contract-service/contract-fsm-event-handler')
+const outsideSystemEvent = require('../enum/outside-system-event')
 
 module.exports = class RabbitMessageQueueEventHandler {
 
     constructor(app) {
         this.app = app
-        this.rabbitClient = null
-        this.handlerPatrun = this.__registerEventHandler__()
+        this.patrun = Patrun()
+        this.__registerEventHandler__()
         this.subscribe()
     }
 
     /**
      * 订阅rabbitMQ消息
-     * @returns {Promise<void>}
      */
-    async subscribe() {
-        await new rabbit(this.app.config.rabbitMq).connect().then(client => {
-            this.rabbitClient = client
-            client.subscribe('auth-event-handle-result', (...args) => this.handleMessage(...args))
-            client.subscribe('auth-contract-event-receive-queue', (...args) => this.handleMessage(...args))
+    subscribe() {
+        new rabbit(this.app.config.rabbitMq).connect().then(client => {
+            const handlerFunc = this.handleMessage.bind(this)
+            client.subscribe('auth#contract-event-receive-queue', handlerFunc)
+            client.subscribe('auth#event-register-completed-queue', handlerFunc)
+
+            // client.publish({
+            //     routingKey: 'contract.event.register', eventName: 'endOfCycle', body: {
+            //         subjectId: '5b0f57d1503ced3fbc3dee71',
+            //         eventRegisterNo: 'endOfCycle_5b0f57d1503ced3fbc3dee71_1234567894894',
+            //         applyRegisterDate: new Date(),
+            //         cycleCount: 0,
+            //         initiatorType: 1,
+            //         callbackParams: {
+            //             contractId: '5b0f57d1503ced3fbc3dee71',
+            //             eventId: '1234567894894'
+            //         }
+            //     }
+            // })
+
+            // client.publish({
+            //     routingKey: 'contract.event.register', eventName: 'dateArrived', body: {
+            //         subjectId: '5b0f57d1503ced3fbc3dee71',
+            //         eventRegisterNo: 'dateArrived_5b0f57d1503ced3fbc3dee71_1234567894894111',
+            //         triggerDate: new Date(),
+            //         initiatorType: 1,
+            //         callbackParams: {
+            //             contractId: '5b0f57d1503ced3fbc3dee71',
+            //             eventId: '1234567894894111'
+            //         }
+            //     }
+            // })
+
+            // client.publish({
+            //     routingKey: 'contract.event.register', eventName: 'PresentableSignEvent', body: {
+            //         subjectId: '5b0f57d1503ced3fbc3dee71',
+            //         eventRegisterNo: 'PresentableSignEvent_5b0f57d1503ced3fbc3dee71_1234567894894111',
+            //         initiatorType: 1,
+            //         callbackParams: {
+            //             contractId: '5b0f57d1503ced3fbc3dee71',
+            //             eventId: '1234567894894111'
+            //         }
+            //     }
+            // })
+
+            client.publish({
+                routingKey: 'contract.event.unregister', eventName: 'PresentableSignCountTallyEvent', body: {
+                    subjectId: '5b0f57d1503ced3fbc3dee71',
+                    comparisonValue: 100,
+                    comparisonOperator: 2, // 1= 2> 3>= 4< 5<=
+                    eventRegisterNo: 'PreallyEvent_5b003ced3fbc3dee71_1234567',
+                    initiatorType: 1,
+                    callbackParams: {
+                        contractId: '5b0f57d1503ced3fbc3dee71',
+                        eventId: '1234567894894111'
+                    }
+                }
+            })
         }).catch(console.error)
     }
 
@@ -37,14 +86,14 @@ module.exports = class RabbitMessageQueueEventHandler {
      */
     async handleMessage(message, headers, deliveryInfo, messageObject) {
 
-        const givenEventHandler = this.handlerPatrun.find({
+        const givenEventHandler = this.patrun.find({
             queueName: deliveryInfo.queue,
             routingKey: messageObject.routingKey,
             eventName: headers.eventName
         })
 
         if (givenEventHandler) {
-            await givenEventHandler({message, headers, deliveryInfo, messageObject}).catch(console.error)
+            await givenEventHandler({message, headers, deliveryInfo, messageObject})
         } else {
             console.log(`不能处理的未知事件,queueName:${deliveryInfo.queue},routingKey:${messageObject.routingKey},eventName:${headers.eventName}`)
         }
@@ -58,65 +107,36 @@ module.exports = class RabbitMessageQueueEventHandler {
      */
     __registerEventHandler__() {
 
-        const patrun = Patrun()
+        const {patrun, app} = this
+        const {PaymentOrderStatusChangedEvent, TransferRecordTradeStatusChangedEvent, RegisteredEventTriggerEvent, InquirePaymentEvent, InquireTransferEvent, RegisterCompletedEvent} = outsideSystemEvent
 
-        //直接触发合同事件
-        patrun.add({
-            queueName: 'auth-contract-event-receive-queue',
-            routingKey: 'event.contract.trigger'
-        }, async ({message, headers, deliveryInfo, messageObject}) => {
-            messageObject.messageId = require('uuid').v4().replace(/-/g, "")
-            return fsmEventHandler.contractEventTriggerHandler(headers.eventName, message.contractId, message).then(result => {
-                this._handleResultReport({message, headers, deliveryInfo, messageObject, result})
-            }).catch(error => {
-                this._handleResultReport({message, headers, deliveryInfo, messageObject, error})
-            })
+        //注册到事件中心的事件触发了
+        patrun.add({routingKey: 'event.contract.trigger'}, ({message}) => {
+            app.emit(RegisteredEventTriggerEvent, message)
         })
 
-        //触发合同支付事件
-        patrun.add({
-            queueName: 'auth-contract-event-receive-queue',
-            routingKey: 'pay.payment.contract',
-            eventName: 'paymentContractEvent'
-        }, async ({message, headers, deliveryInfo, messageObject}) => {
-            return eventHandler.paymentContractHandler(message).then(result => {
-                this._handleResultReport({message, headers, deliveryInfo, messageObject, result})
-            }).catch(error => {
-                this._handleResultReport({message, headers, deliveryInfo, messageObject, error})
-            })
+        //支付中心支付订单状态变更事件
+        patrun.add({routingKey: 'event.payment.order', eventName: 'paymentOrderStatusChangedEvent'}, ({message}) => {
+            app.emit(PaymentOrderStatusChangedEvent, message)
         })
 
-        //授权服务事件处理结果订阅
-        patrun.add({queueName: 'auth-event-handle-result'}, async ({message}) => {
-            return this.app.dal.eventHandleResultProvider.create(message).catch(console.log)
+        patrun.add({routingKey: 'event.payment.order', eventName: 'TransferRecordTradeStatusChanged'}, ({message}) => {
+            app.emit(TransferRecordTradeStatusChangedEvent, message)
         })
 
-        return patrun
-    }
+        //支付中心确认函事件(支付)
+        patrun.add({routingKey: 'event.payment.order', eventName: 'inquirePaymentEvent'}, ({message}) => {
+            app.emit(InquirePaymentEvent, message)
+        })
 
+        //支付中心确认函事件(转账)
+        patrun.add({routingKey: 'event.payment.order', eventName: 'inquireTransferEvent'}, ({message}) => {
+            app.emit(InquireTransferEvent, message)
+        })
 
-    //处理结果报告
-    _handleResultReport({message, headers, deliveryInfo, messageObject, result, error}) {
-
-        const msgArgs = {
-            routingKey: `${mqEventType.mqEventHandleResultEvent.routingKey}.${deliveryInfo.routingKey}`,
-            eventName: mqEventType.mqEventHandleResultEvent.eventName,
-            body: {
-                baseInfo: {
-                    messageId: messageObject.messageId,
-                    exchange: deliveryInfo.exchange,
-                    routingKey: deliveryInfo.routingKey
-                },
-                message: message,
-                headers: headers,
-                result: result || null,
-                error: error ? error.toString() : null
-            }
-        }
-
-        //延迟2秒是为了让其他应用有时间写入DB.然后再接受到回调事件
-        Promise.delay(2000).then(() => {
-            this.rabbitClient.publish(msgArgs).then(ret => console.log('发送事件回执结果:' + ret)).catch(console.error)
+        //事件注册完成事件
+        patrun.add({routingKey: 'register.event.completed'}, ({message, header}) => {
+            app.emit(RegisterCompletedEvent, message, header.eventName)
         })
     }
 }

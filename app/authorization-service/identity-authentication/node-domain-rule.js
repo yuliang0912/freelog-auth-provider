@@ -18,7 +18,7 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
     }
 
     if (contractType !== freelogContractType.ResourceToNode) {
-        authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
+        authResult.authCode = authCodeEnum.PolicyIdentityAuthenticationFailed
         authResult.addError('不满足乙方节点身份认证策略')
         return authResult
     }
@@ -40,7 +40,7 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
         return authResult
     }
 
-    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
+    authResult.authCode = authCodeEnum.PolicyIdentityAuthenticationFailed
     authResult.addError('不满足乙方节点身份认证策略')
 
     return authResult

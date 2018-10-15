@@ -40,4 +40,12 @@ module.exports = class CommonAuthResult {
             errors: this.errors
         }
     }
+
+    /**
+     * JSON序列化
+     * @returns {{isAuth: boolean, authCode: *, data: {}, errors: Array}}
+     */
+    toJSON() {
+        return this.toObject()
+    }
 }

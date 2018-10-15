@@ -43,7 +43,7 @@ module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInf
     }
 
     //其他默认不通过
-    authResult.authCode = authCodeEnum.PolciyIdentityAuthenticationFailed
+    authResult.authCode = authCodeEnum.PolicyIdentityAuthenticationFailed
     authResult.addError('乙方用户认证不通过')
 
     return authResult

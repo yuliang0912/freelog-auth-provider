@@ -50,7 +50,6 @@ class ContractAuthorization {
     /**
      * 合同激活状态检查
      * @param contract
-     * @returns {Promise<void>}
      */
     isActivated(contract) {
 

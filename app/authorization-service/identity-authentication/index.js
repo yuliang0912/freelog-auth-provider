@@ -33,7 +33,7 @@ class FreelogPolicyIdentityAuthentication {
         const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
         for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
             const stepRule = this.authRuleSteps[i]
-            params.authUserObject = policySegment.users.find(t => t.userType.toUpperCase() === stepRule.userType)
+            params.authUserObject = policySegment.authorizedObjects.find(t => t.userType.toUpperCase() === stepRule.userType)
             if (!params.authUserObject) {
                 continue
             }
@@ -56,7 +56,7 @@ class FreelogPolicyIdentityAuthentication {
 
         if (!authResults.length) {
             throw Object.assign(new Error('策略中存在系统未知的身份认证方式'), {
-                data: {users: policySegment.users}
+                data: {authorizedObjects: policySegment.authorizedObjects}
             })
         }
 

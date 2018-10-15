@@ -15,20 +15,16 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const nodeId = ctx.checkQuery('nodeId').toInt().value
         const extName = ctx.checkParams('extName').optional().in(['data', 'info']).value
         const presentableId = ctx.checkParams('presentableId').isPresentableId().value
-        const userContractId = ctx.checkQuery('userContractId').optional().isContractId().value
         ctx.validate(false)
 
-        const authResult = await ctx.service.presentableAuthService.authProcessHandler({
-            nodeId,
-            presentableId,
-            userContractId
-        }).catch(console.error)
+        const {presentableAuthService, resourceAuthService} = ctx.service
+        const authResult = await presentableAuthService.authProcessHandler({nodeId, presentableId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
         }
 
         const {authToken} = authResult.data
-        await ctx.service.resourceAuthService.getAuthResourceInfo({
+        await resourceAuthService.getAuthResourceInfo({
             resourceId: authToken.masterResourceId,
             payLoad: {nodeId, presentableId, partyTwoUserId: authToken.partyTwoUserId}
         }).then(resourceInfo => {
@@ -41,7 +37,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 Reflect.deleteProperty(resourceInfo, 'resourceUrl')
                 return ctx.success(resourceInfo)
             }
-            return responseResourceFile.call(this, resourceInfo, presentableId)
+            return this._responseResourceFile(ctx, resourceInfo, presentableId)
         }).catch(ctx.error)
     }
 
@@ -55,15 +51,16 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const token = ctx.checkQuery('token').isMongoObjectId('token格式错误').value
         ctx.validate(false)
 
-        const authResult = await ctx.service.presentableAuthService.tokenAuthHandler({token, resourceId})
+        const {presentableAuthService, resourceAuthService} = ctx.service
+        const authResult = await presentableAuthService.tokenAuthHandler({token, resourceId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
         }
         const {authToken} = authResult.data
-        await ctx.service.resourceAuthService.getAuthResourceInfo({
+        await resourceAuthService.getAuthResourceInfo({
             resourceId, payLoad: {presentableId: authToken.targetId, partyTwoUserId: authToken.partyTwoUserId}
         }).then(resourceInfo => {
-            return responseResourceFile.call(this, resourceInfo, resourceId)
+            return this._responseResourceFile(ctx, resourceInfo, resourceId)
         }).catch(ctx.error)
     }
 
@@ -81,14 +78,14 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult.toObject()})
+            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
         }
 
         //基于策略的直接授权,目前token缓存172800秒(2天)
         await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId, payLoad: {nodeId, userId: ctx.request.userId, resourceId}
         }).then(resourceInfo => {
-            return responseResourceFile.call(this, resourceInfo)
+            return this._responseResourceFile(ctx, resourceInfo, resourceId)
         }).catch(ctx.error)
     }
 
@@ -129,9 +126,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             })
         }))
 
-        const allTasks = Array.from(allPolicySegments.values()).map(item => {
-            return authProcessManager.policyIdentityAuthentication(item).then(authResult => item.authResult = authResult.toObject())
-        })
+        const allTasks = Array.from(allPolicySegments.values())
+            .map(item => authProcessManager.policyIdentityAuthentication(item).then(authResult => item.authResult = authResult))
 
         await Promise.all(allTasks)
 
@@ -174,9 +170,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const policyIdentityAuthTasks = presentableInfo.policy.reduce((acc, policySegment) => {
             if (policySegment.status === 1) {
-                acc.push(authProcessManager.policyIdentityAuthentication(Object.assign({}, params, {policySegment})).then(authResult => {
-                    policySegment.authResult = authResult.toObject()
-                }))
+                const task = authProcessManager.policyIdentityAuthentication(Object.assign({}, params, {policySegment}))
+                    .then(authResult => policySegment.authResult = authResult)
+                acc.push(task)
             }
             return acc
         }, [])
@@ -191,27 +187,22 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         ctx.success(returnResult)
     }
-}
 
-
-/**
- * 响应输出resource-file信息
- * @returns {Promise<void>}
- */
-const responseResourceFile = async function (resourceInfo, fileName) {
-
-    const {ctx} = this
-    const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
-    if (!/^2[\d]{2}$/.test(result.status)) {
-        ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
+    /**
+     * 响应输出resource-file信息
+     * @returns {Promise<void>}
+     */
+    async _responseResourceFile(ctx, resourceInfo, fileName) {
+        const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
+        if (!/^2[\d]{2}$/.test(result.status)) {
+            ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
+        }
+        ctx.attachment(fileName || resourceInfo.resourceId)
+        Object.keys(result.headers).forEach(key => ctx.set(key, result.headers[key]))
+        ctx.set('content-type', resourceInfo.mimeType)
+        ctx.set('freelog-resource-type', resourceInfo.resourceType)
+        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
+        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
+        ctx.body = result.res
     }
-    ctx.attachment(fileName || resourceInfo.resourceId)
-    Object.keys(result.headers).forEach(key => {
-        ctx.set(key, result.headers[key])
-    })
-    ctx.set('content-type', resourceInfo.mimeType)
-    ctx.set('freelog-resource-type', resourceInfo.resourceType)
-    ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
-    ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
-    ctx.body = result.res
 }

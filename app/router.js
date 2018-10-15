@@ -7,9 +7,16 @@ module.exports = app => {
 
     //获取合同列表
     router.get('/v1/contracts/list', contract.v1.list)
-
     router.post('/v1/contracts/test', contract.v1.testContractFsm)
-    router.post('/v1/contracts/signingLicenses', contract.v1.signingLicenses)
+    router.post('/v1/contracts/createUserPresentableContract', contract.v1.createUserPresentableContract)
+    router.put('/v1/contracts/setDefault', contract.v1.setDefault)
+
+    //合同事件执行
+    router.post('/v1/contracts/events/payment', contract.events.payment)
+    router.post('/v1/contracts/events/escrowRefunded', contract.events.escrowRefunded)
+    router.post('/v1/contracts/events/signingLicenses', contract.events.signingLicenses)
+    router.post('/v1/contracts/events/escrowConfiscated', contract.events.escrowConfiscated)
+    router.post('/v1/contracts/events/customEventInvoking', contract.events.customEventInvoking)
 
     /**
      * 获取合同记录

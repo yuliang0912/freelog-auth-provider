@@ -6,9 +6,13 @@
 
 const lodash = require('lodash')
 const Controller = require('egg').Controller
-const contractFsmEventHandler = require('../../contract-service/contract-fsm-event-handler')
 
 module.exports = class ContractController extends Controller {
+
+    constructor({app}) {
+        super(...arguments)
+        this.contractProvider = app.dal.contractProvider
+    }
 
     /**
      * 当前登录用户的合约列表(作为甲方和作为乙方)
@@ -17,12 +21,13 @@ module.exports = class ContractController extends Controller {
      */
     async index(ctx) {
 
-        const page = ctx.checkQuery("page").default(1).gt(0).toInt().value
+        const page = ctx.checkQuery("page").default(1).toInt().gt(0).value
         const pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
         const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
         const partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
         const partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
         const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
+        const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
         ctx.validate()
 
         const condition = {}
@@ -38,16 +43,19 @@ module.exports = class ContractController extends Controller {
         if (resourceIds) {
             condition.resourceId = {$in: resourceIds.split(',')}
         }
+        if (isDefault) {
+            condition.isDefault = 1
+        }
         if (!Object.keys(condition).length) {
             ctx.error({msg: '最少需要一个查询条件'})
         }
 
         var dataList = []
-        const totalItem = await ctx.dal.contractProvider.getCount(condition)
+        const totalItem = await this.contractProvider.count(condition)
 
-        const projection = "_id segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
+        const projection = "_id contractName segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await ctx.dal.contractProvider.getContractList(condition, projection, page, pageSize)
+            dataList = await this.contractProvider.getContractList(condition, projection, page, pageSize)
         }
 
         ctx.success({page, pageSize, totalItem, dataList})
@@ -68,7 +76,7 @@ module.exports = class ContractController extends Controller {
 
         const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
 
-        await ctx.dal.contractProvider.getContracts(condition, projection).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.find(condition, projection).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -81,7 +89,7 @@ module.exports = class ContractController extends Controller {
         const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         ctx.validate()
 
-        await ctx.dal.contractProvider.getContractById(contractId).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.getContractById(contractId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -93,19 +101,19 @@ module.exports = class ContractController extends Controller {
         const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId('合同ID格式错误').toSplitArray().len(1, 100).value
         ctx.validate()
 
-        const contractInfos = await ctx.dal.contractProvider.find({
+        const {app} = ctx
+        const contractInfos = await this.contractProvider.find({
             _id: {$in: contractIds},
             partyTwoUserId: ctx.request.userId,
             fsmState: 'none'
         })
 
         const tasks = contractInfos.map(contractInfo => {
-            contractInfo = contractInfo.toObject()
             return new Promise((resolve, reject) => {
-                ctx.app.once(`${ctx.app.event.contractEvent.initialContractEvent}_${contractInfo.contractId}`, function () {
+                app.once(`initialContractEvent_${contractInfo.contractId}`, function () {
                     resolve(contractInfo)
                 })
-                contractFsmEventHandler.initContractFsm(contractInfo).catch(reject)
+                app.contractService.initialContractFsm(contractInfo).catch(reject)
             })
         })
 
@@ -130,6 +138,64 @@ module.exports = class ContractController extends Controller {
         await ctx.service.contractService.createUserContract({presentableId: targetId, segmentId}).then(ctx.success)
     }
 
+
+    /**
+     * 更新合同信息
+     * @param ctx
+     */
+    async update(ctx) {
+
+        const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
+        const remark = ctx.checkBody('remark').exist().type('string').len(0, 500).value
+
+        ctx.validate()
+
+        const contractInfo = await this.contractProvider.findById(contractId)
+        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId) {
+            ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
+        }
+
+        await contractInfo.updateOne({remark}).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
+    }
+
+    /**
+     * 创建C端用户合同
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async createUserPresentableContract(ctx) {
+
+        const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
+        const presentableId = ctx.checkBody('presentableId').exist().isMongoObjectId().value
+        ctx.validate()
+
+        await ctx.service.contractService.createUserContract({presentableId, segmentId})
+            .then(ctx.success).catch(ctx.error)
+    }
+
+    /**
+     * 设置合同未默认执行合同
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async setDefault(ctx) {
+
+        const contractId = ctx.checkQuery('contractId').exist().notEmpty().isMongoObjectId().value
+        ctx.validate()
+
+        const contractInfo = await this.contractProvider.findById(contractId)
+        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUer) {
+            ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
+        }
+        if (contractInfo.isDefault) {
+            return ctx.success(true)
+        }
+
+        await this.contractProvider.updateOne(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then(() => {
+            return contractInfo.updateOne({isDefault: 1})
+        }).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
+    }
+
     /**
      * 测试状态机事件驱动
      * @param ctx
@@ -142,7 +208,7 @@ module.exports = class ContractController extends Controller {
 
         ctx.allowContentType({type: 'json'}).validate()
 
-        await contractFsmEventHandler.contractEventTriggerHandler(eventId, contractId).then(ctx.success).catch(ctx.error)
+        await ctx.app.contractService.execContractFsmEvent(contractId, eventId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -181,67 +247,7 @@ module.exports = class ContractController extends Controller {
 
         const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
 
-        await ctx.dal.contractProvider.getContracts(condition, projection).then(ctx.success)
-    }
-
-    /**
-     * 给合同签协议
-     * @param ctx
-     * @returns {Promise.<void>}
-     */
-    async signingLicenses(ctx) {
-
-        const contractId = ctx.checkBody('contractId').exist().isContractId().value
-        const eventId = ctx.checkBody('eventId').exist().isEventId().value
-        const licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
-        const nodeId = ctx.checkBody('nodeId').optional().toInt().gt(0).value
-        const userId = ctx.request.userId
-
-        ctx.allowContentType({type: 'json'}).validate()
-
-        const contractInfo = await ctx.dal.contractProvider.getContract({_id: contractId}).then(app.toObject)
-
-        if (!contractInfo) {
-            ctx.error({msg: '未找到有效的合同', data: {contractInfo, userId}})
-        }
-        if (contractInfo.status === 4 || contractInfo.status === 5) {
-            ctx.error({msg: '合同已经终止', data: {contractStatus: contractInfo.status}})
-        }
-
-        //如果是资源-节点合同
-        if (contractInfo.contractType === ctx.app.contractType.ResourceToNode) {
-            const nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
-            if (!nodeInfo || nodeInfo.ownerUserId !== userId) {
-                ctx.error({msg: '参数nodeId错误', data: {nodeId, userId}})
-            }
-            if (nodeId !== contractInfo.partyTwo) {
-                ctx.error({msg: '没有执行合同的权限', data: {nodeId, userId}})
-            }
-        } else if (contractInfo.partyTwo !== userId) {
-            ctx.error({msg: '没有执行合同的权限', data: {userId}})
-        }
-
-        const eventModel = contractInfo.policySegment.fsmDescription.find(item => {
-            return item.event.eventId === eventId && item.event.type === 'signing' ||
-                item.currentState === contractInfo.fsmState && item.event.type === 'compoundEvents' &&
-                item.event.params.some(subEvent => subEvent.eventId === eventId && subEvent.type === 'signing')
-        })
-
-        if (!eventModel) {
-            ctx.error({msg: '未找到事件'})
-        }
-
-        if (eventModel.event.type === 'compoundEvents') {
-            const eventParams = eventModel.event.params.find(subEvent => subEvent.eventId === eventId).params
-            const diffLicenseIds = lodash.difference(eventParams, licenseIds)
-            if (diffLicenseIds.length || eventParams.length !== licenseIds.length) {
-                ctx.error({
-                    msg: '参数licenseIds与事件中的协议参数不匹配', data: {contractLicenseIds: eventParams, licenseIds}
-                })
-            }
-        }
-
-        await contractFsmEventHandler.contractEventExecute(contractInfo, eventModel.event, eventId).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.getContracts(condition, projection).then(ctx.success)
     }
 
     /**
@@ -255,12 +261,12 @@ module.exports = class ContractController extends Controller {
 
         ctx.validate()
 
-        const contractInfo = await ctx.dal.contractProvider.getContractById(contractId)
+        const contractInfo = await this.contractProvider.getContractById(contractId)
         if (!contractInfo) {
             ctx.error({msg: '未找到合同'})
         }
 
-        const result = await contractFsmEventHandler.isCanExecEvent(eventId, contractInfo)
+        const result = ctx.app.contractService.isCanExecEvent(contractInfo, eventId)
 
         ctx.success({contractInfo, eventId, isCanExec: result})
     }
@@ -289,4 +295,29 @@ module.exports = class ContractController extends Controller {
             policies: signObjects, contractType, nodeInfo, partyTwo
         }).then(ctx.success).catch(ctx.error)
     }
+
+    /**
+     * 合同交易账户授权 (已弃用,修改为签名认证)
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async contractAccountAuthorization(ctx) {
+
+        const amount = ctx.checkBody('amount').exist().isInt().gt(0).value
+        const accountId = ctx.checkBody('accountId').exist().isTransferAccountId().value
+        const contractId = ctx.checkBody('contractId').exist().isContractId().value
+        const operationUserId = ctx.checkBody('operationUserId').exist().toInt().value
+        const tradeRecordId = ctx.checkBody('outsideTradeNo').exist().isMd5().value
+        ctx.allowContentType({type: 'json'}).validate(false)
+
+        const tradeRecord = await ctx.dal.contractTradeRecordProvider.findOne({tradeRecordId, contractId})
+        if (!tradeRecord || tradeRecord.status !== 1) {
+            ctx.error({msg: '未找到合同交易记录或者交易已经处理完毕', data: {tradeRecord}})
+        }
+
+        const isAuthorization = tradeRecord.amount === amount && tradeRecord.fromAccountId === accountId && operationUserId === tradeRecord.userId
+
+        ctx.success(isAuthorization)
+    }
 }
+

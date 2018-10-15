@@ -2,9 +2,14 @@
 
 const Service = require('egg').Service;
 const authService = require('../authorization-service/process-manager')
-const contractFsmEventHandler = require('../contract-service/contract-fsm-event-handler')
+const {LogicError, ArgumentError, ApplicationError} = require('egg-freelog-base/error')
 
 class ContractService extends Service {
+
+    constructor({app}) {
+        super(...arguments)
+        this.contractProvider = app.dal.contractProvider
+    }
 
     /**
      * 批量签约(保证原子性)
@@ -22,50 +27,47 @@ class ContractService extends Service {
             return existContracts
         }
 
-        const {ctx} = this
+        const {ctx, app} = this
         const resourceMap = new Map()
         const userInfo = ctx.request.identityInfo.userInfo
         const contractObjects = new Map(signObjects.map(x => [x.targetId, x]))
         const authSchemeInfos = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
 
         if (authSchemeInfos.length !== contractObjects.size) {
-            ctx.error({msg: '参数targetId校验失败,数据不完全匹配', data: {signObjects}})
+            throw new ArgumentError('参数targetId校验失败,数据不完全匹配', {signObjects})
         }
 
         const identityAuthTasks = []
-        authSchemeInfos.forEach(item => {
-
-            const contractObject = contractObjects.get(item.authSchemeId)
-            const policySegment = item.policy.find(x => x.segmentId === contractObject.segmentId)
+        authSchemeInfos.forEach(({authSchemeId, policy, userId, resourceId}) => {
+            const contractObject = contractObjects.get(authSchemeId)
+            const policySegment = policy.find(x => x.segmentId === contractObject.segmentId)
             if (!policySegment) {
-                ctx.error({
-                    msg: '参数segmentId校验失败',
-                    data: {targetId: item.authSchemeId, segmentId: contractObject.segmentId, policy: item.policy}
+                throw new ArgumentError('参数segmentId校验失败', {
+                    targetId: authSchemeId, policy,
+                    segmentId: contractObject.segmentId,
                 })
             }
-            contractObject.partyOneUserId = item.userId
+            contractObject.partyOneUserId = userId
             contractObject.partyTwoUserId = userInfo.userId
-            contractObject.policySegment = policySegment
-            contractObject.partyOne = item.authSchemeId
+            contractObject.partyOne = authSchemeId
             contractObject.partyTwo = partyTwo
-            contractObject.resourceId = item.resourceId
+            contractObject.resourceId = resourceId
             contractObject.contractType = contractType
-            contractObject.languageType = item.languageType
+            contractObject.policySegment = policySegment
 
-            resourceMap.set(item.resourceId, null)
+            resourceMap.set(resourceId, null)
             identityAuthTasks.push(authService.policyIdentityAuthentication({
-                policySegment,
-                contractType,
-                partyOneUserId: item.userId,
+                policySegment, contractType,
+                partyOneUserId: userId,
                 partyTwoInfo: nodeInfo,
                 partyTwoUserInfo: userInfo
             }))
         })
 
         const identityAuthResults = await Promise.all(identityAuthTasks)
-        const identityAuthFaildResults = identityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFaildResults.length) {
-            ctx.error({msg: '待签约列表中存在部分策略身份认证失败', data: {identityAuthFaildResults}})
+        const identityAuthFailedResults = identityAuthResults.filter(x => !x.isAuth)
+        if (identityAuthFailedResults.length) {
+            throw new ApplicationError('待签约列表中存在部分策略身份认证失败', {identityAuthFailedResults})
         }
 
         await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/list?resourceIds=${Array.from(resourceMap.keys()).toString()}`).then(list => {
@@ -80,7 +82,7 @@ class ContractService extends Service {
             }
         })
 
-        const createdContracts = await ctx.dal.contractProvider.batchCreateContract(models)
+        const createdContracts = await app.contractService.batchCreateContract(models, false)
 
         return [...createdContracts, ...existContracts]
     }
@@ -98,23 +100,23 @@ class ContractService extends Service {
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
 
-        await app.dal.contractProvider.getContract({
+        await this.contractProvider.getContract({
             targetId: presentableId,
-            partyTwo: userInfo.userId,
+            partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUer,
-            segmentId
+            isTerminate: 0, segmentId
         }).then(oldContract => {
-            oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: oldContract})
+            oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: {oldContract}})
         })
 
         const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentable || !presentable.isOnline) {
-            ctx.error({msg: `targetId:${presentableId}错误或者presentable未上线`, data: {presentable}})
+            throw new ArgumentError(`targetId:${presentableId}错误或者presentable未上线`, {presentable})
         }
 
         const policySegment = presentable.policy.find(t => t.segmentId === segmentId)
         if (!policySegment || policySegment.status !== 1) {
-            ctx.error({msg: 'segmentId错误,未找到策略段', data: {policySegment}})
+            throw new ArgumentError(`segmentId错误,未找到策略段`, {policySegment})
         }
 
         const authResult = await authService.policyIdentityAuthentication({
@@ -124,17 +126,18 @@ class ContractService extends Service {
             partyTwoUserInfo: userInfo
         })
         if (!authResult.isAuth) {
-            ctx.error({msg: 'presentable策略段身份认证失败', data: {policyUsers: policySegment.users, userInfo}})
+            throw new ApplicationError('presentable策略段身份认证失败,不能签约', {
+                authorizedObjects: policySegment.authorizedObjects, userInfo
+            })
         }
 
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentable.nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
-            ctx.error({msg: '未找到节点信息或者节点已不存在', data: {presentable, nodeInfo}})
+            throw new LogicError('未找到节点信息或者节点已不存在', {presentable, nodeInfo})
         }
 
         const contractModel = {
-            segmentId,
-            policySegment,
+            segmentId, policySegment,
             targetId: presentableId,
             partyOne: presentable.nodeId,
             partyTwo: userInfo.userId,
@@ -145,22 +148,11 @@ class ContractService extends Service {
             contractType: app.contractType.PresentableToUer
         }
 
-        const contractInfo = await ctx.dal.contractProvider.createContract(contractModel).then(app.toObject).then(contractInfo => {
-            let awaitIninial = new Promise((resolve) => {
-                app.once(`${app.event.contractEvent.initialContractEvent}_${contractInfo.contractId}`, function () {
-                    resolve(contractInfo)
-                })
-            })
-            contractFsmEventHandler.initContractFsm(contractInfo).catch(console.error)
-            return awaitIninial
-        })
-
-        return ctx.dal.contractProvider.getContractById(contractInfo.contractId)
+        return app.contractService.createContract(contractModel, true)
     }
 
     /**
      * 检查是否存在重复的合同
-     * @returns {Promise<void>}
      * @private
      */
     async _checkDuplicateContract(partyTwo, signObjects = []) {
@@ -177,7 +169,7 @@ class ContractService extends Service {
             signObjectKeyMap.set(`${current.targetId}_${current.segmentId}`, current)
         })
 
-        const contractList = await this.ctx.dal.contractProvider.find({
+        const contractList = await this.contractProvider.find({
             partyTwo,
             targetId: {$in: statistics.targetIds},
             segmentId: {$in: statistics.segmentIds}

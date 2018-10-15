@@ -8,6 +8,11 @@ const Service = require('egg').Service
 
 module.exports = class AuthTokenService extends Service {
 
+    constructor({app}) {
+        super(...arguments)
+        this.authTokenProvider = app.dal.authTokenProvider
+    }
+
     /**
      * 保存用户的presentable授权结果
      * @param presentableAuthTree
@@ -21,7 +26,7 @@ module.exports = class AuthTokenService extends Service {
             return
         }
 
-        const {ctx, app} = this
+        const {app} = this
 
         const model = {
             partyOne: presentableAuthTree.nodeId,
@@ -36,7 +41,7 @@ module.exports = class AuthTokenService extends Service {
             signature: '待完成'
         }
 
-        return ctx.dal.authTokenProvider.createAuthToken(model)
+        return this.authTokenProvider.createAuthToken(model)
     }
 
     /**
@@ -48,8 +53,6 @@ module.exports = class AuthTokenService extends Service {
         if (!authResult.isAuth) {
             return
         }
-
-        const {ctx} = this
 
         const model = {
             partyOne: authSchemeId,
@@ -64,7 +67,7 @@ module.exports = class AuthTokenService extends Service {
             signature: '待完成'
         }
 
-        return ctx.dal.authTokenProvider.createAuthToken(model)
+        return this.authTokenProvider.createAuthToken(model)
     }
 
     /**
@@ -73,9 +76,7 @@ module.exports = class AuthTokenService extends Service {
      */
     async getAuthToken({targetId, partyTwo, partyTwoUserId}) {
 
-        const {ctx} = this
-
-        return ctx.dal.authTokenProvider.getEffectiveAuthToken({
+        return this.authTokenProvider.getEffectiveAuthToken({
             targetId,
             partyTwoUserId,
             partyTwo: partyTwo.toString()
@@ -91,9 +92,7 @@ module.exports = class AuthTokenService extends Service {
      */
     async getAuthTokenById({token, partyTwo, partyTwoUserId}) {
 
-        const {ctx} = this
-
-        return ctx.dal.authTokenProvider.getEffectiveAuthToken({
+        return this.authTokenProvider.getEffectiveAuthToken({
             _id: token,
             partyTwoUserId,
             partyTwo: partyTwo.toString()
