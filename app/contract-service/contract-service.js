@@ -86,14 +86,13 @@ module.exports = class ContractService {
      * 初始化合同状态机
      * @param contractInfo
      */
-    initialContractFsm(contractInfo) {
+    async initialContractFsm(contractInfo) {
 
         if (contractInfo.status !== contractStatusEnum.uninitialized) {
             throw new ApplicationError('合同已经激活,不能重复操作')
         }
 
         const initialState = Object.keys(contractInfo.contractClause.fsmStates).find(x => /^(init|initial)$/i.test(x))
-
         contractInfo.isFirst = true
         contractInfo.contractClause.currentFsmState = initialState
 

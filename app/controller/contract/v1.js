@@ -104,22 +104,12 @@ module.exports = class ContractController extends Controller {
         const {app} = ctx
         const contractInfos = await this.contractProvider.find({
             _id: {$in: contractIds},
-            partyTwoUserId: ctx.request.userId,
-            fsmState: 'none'
+            partyTwoUserId: ctx.request.userId, status: 1
         })
 
-        const tasks = contractInfos.map(contractInfo => {
-            return new Promise((resolve, reject) => {
-                app.once(`initialContractEvent_${contractInfo.contractId}`, function () {
-                    resolve(contractInfo)
-                })
-                app.contractService.initialContractFsm(contractInfo).catch(reject)
-            })
-        })
+        contractInfos.forEach(contractInfo => app.contractService.initialContractFsm(contractInfo))
 
-        await Promise.all(tasks).then(contracts => {
-            return contracts.map(x => new Object({contractId: x.contractId}))
-        }).then(ctx.success).catch(ctx.error)
+        ctx.success(contractInfos.map(x => new Object({contractId: x.contractId})))
     }
 
     /**

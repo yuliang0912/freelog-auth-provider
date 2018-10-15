@@ -28,6 +28,7 @@ module.exports = class ContractFsmStateTransitioningEventHandler {
 
         //没有可注册的事件,则不需要执行锁与注册等操作 (先不考虑环境变量以及表达式等)
         if (!allowedRegisterEvents.length) {
+            await contractInfo.updateOne({'contractClause.currentFsmState': fsmState})
             this.emitContractFsmStateTransitionCompletedEvent(contractInfo, fsmState, prevFsmState, lifeCycle.fsm.currEvent.eventId)
             //执行取消注册事件
             this.registerFsmEventHelper.registerAndUnregisterContractEvents({
@@ -36,8 +37,9 @@ module.exports = class ContractFsmStateTransitioningEventHandler {
             return
         }
 
-        await this.contractProvider.updateOne({_id: contractId, 'contractClause.currentFsmState': prevFsmState}, {
-            status: contractStatusEnum.locked, 'contractClause.currentFsmState': fsmState
+        await this.contractProvider.updateOne({
+            status: contractStatusEnum.locked,
+            'contractClause.currentFsmState': fsmState
         }).catch(error => this.errorHandler(error, lifeCycle))
 
         await this.eventRegisterProgressProvider.create({

@@ -33,6 +33,7 @@ module.exports = class ContractFsm {
      * 状态机切换状态后的回调函数
      */
     onEnterState(lifeCycle) {
+
         if (this.contract.isFirst || lifeCycle.from !== 'none') {
             globalInfo.app.emit(ContractFsmStateChangedEvent, lifeCycle)
         }
