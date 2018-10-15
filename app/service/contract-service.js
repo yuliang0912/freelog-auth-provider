@@ -82,7 +82,7 @@ class ContractService extends Service {
             }
         })
 
-        const createdContracts = await app.contractService.batchCreateContract(models, false)
+        const createdContracts = await app.contractService.batchCreateContract(models, true)
 
         return [...createdContracts, ...existContracts]
     }

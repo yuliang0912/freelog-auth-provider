@@ -22,6 +22,7 @@ module.exports = class ContractFsmTransitionCompletedHandler {
     async handler({contractInfo, prevState, currentState, eventId}) {
 
         const currentStateInfo = contractInfo.contractClause.fsmStates[currentState]
+        console.log(currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active'))
         if (currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')) {
             contractInfo.status = contractStatusEnum.active
         }

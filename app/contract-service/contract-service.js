@@ -2,6 +2,7 @@
 
 const Patrun = require('patrun')
 const ContractFsm = require('./lib/contract-fsm')
+const {ApplicationError} = require('egg-freelog-base/error')
 const GenerateContract = require('./lib/generate-contract')
 const contractStatusEnum = require('../enum/contract-status-enum')
 const contractServiceSymbol = Symbol.for('auth#contractServiceSymbol')
@@ -64,18 +65,18 @@ module.exports = class ContractService {
     async singletonEventHandler({contractInfo, eventInfo, userInfo}) {
 
         if (!userInfo || contractInfo.partyOneUserId !== userInfo.userId && contractInfo.partyTwoUserId !== userInfo.userId) {
-            throw new Error(`当前用户没有操作权限`)
+            throw new ApplicationError(`当前用户没有操作权限`)
         }
         if (contractInfo.status === contractStatusEnum.locked) {
-            throw new Error(`系统正在计算合同数据,请稍后再试`)
+            throw new ApplicationError(`系统正在计算合同数据,请稍后再试`)
         }
         if (!eventInfo.code.startsWith('S')) {
-            throw new Error(`非单例事件,错误的调用`)
+            throw new ApplicationError(`非单例事件,错误的调用`)
         }
 
         const singletonEventHandler = this.patrun.find({eventCode: eventInfo.code})
         if (!singletonEventHandler) {
-            throw new Error(`单例事件处理函数不支持当前事件`)
+            throw new ApplicationError(`单例事件处理函数不支持当前事件`)
         }
 
         return singletonEventHandler.handler(...arguments)
@@ -88,7 +89,7 @@ module.exports = class ContractService {
     initialContractFsm(contractInfo) {
 
         if (contractInfo.status !== contractStatusEnum.uninitialized) {
-            throw new Error('合同已经激活,不能重复操作')
+            throw new ApplicationError('合同已经激活,不能重复操作')
         }
 
         const initialState = Object.keys(contractInfo.contractClause.fsmStates).find(x => /^(init|initial)$/i.test(x))
@@ -128,10 +129,10 @@ module.exports = class ContractService {
         const contractFsm = new ContractFsm(contractInfo)
 
         if (contractInfo.status === contractStatusEnum.locked) {
-            return Promise.reject(`contract locked`)
+            return new ApplicationError('合同已被锁定,暂时无法执行', {contractInfo, eventId})
         }
         if (contractFsm.cannot(eventId)) {
-            return Promise.reject(`合同${contractInfo.contractId}不能执行指定事件${eventId}`)
+            return new ApplicationError(`合同${contractInfo.contractId}不能执行指定事件${eventId}`, {contractInfo, eventId})
         }
 
         return contractFsm.execEvent({eventId})
@@ -150,7 +151,7 @@ module.exports = class ContractService {
         const contractFsm = new ContractFsm(contractInfo)
 
         if (contractInfo.status === contractStatusEnum.locked) {
-            return Promise.reject(`contract locked`)
+            return new ApplicationError('合同已被锁定,暂时无法执行', {contractInfo, eventId})
         }
 
         return contractFsm.execEvent({eventId})

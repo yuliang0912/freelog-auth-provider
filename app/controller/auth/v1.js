@@ -73,6 +73,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const resourceId = ctx.checkParams("resourceId").isResourceId().value
         const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
+        const extName = ctx.checkParams('extName').optional().in(['data', 'info']).value
 
         ctx.validate(false)
 
@@ -85,6 +86,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         await ctx.service.resourceAuthService.getAuthResourceInfo({
             resourceId, payLoad: {nodeId, userId: ctx.request.userId, resourceId}
         }).then(resourceInfo => {
+            if (extName === 'info') {
+                Reflect.deleteProperty(resourceInfo, 'resourceUrl')
+                return ctx.success(resourceInfo)
+            }
             return this._responseResourceFile(ctx, resourceInfo, resourceId)
         }).catch(ctx.error)
     }
