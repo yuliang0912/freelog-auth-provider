@@ -38,7 +38,7 @@ class ContractAuthorization {
         }
 
         const identityAuthResult = await policyIdentityAuthentication.main({
-            policySegment: contract.policySegment,
+            policySegment: contract.contractClause,
             contractType: contract.contractType,
             partyOneUserId: contract.partyOneUserId,
             partyTwoInfo, partyTwoUserInfo

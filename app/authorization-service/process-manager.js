@@ -58,7 +58,7 @@ const AuthProcessManager = class AuthProcessManager {
         //节点身份认证异步任务集
         const nodeContractIdentityAuthTasks = nodeContracts.map(contract => {
             let params = {
-                policySegment: contract.policySegment,
+                policySegment: contract.contractClause,
                 contractType: contract.contractType,
                 partyOneUserId: contract.partyOneUserId,
                 partyTwoInfo: nodeInfo,
@@ -77,7 +77,7 @@ const AuthProcessManager = class AuthProcessManager {
         //节点作者身份认证异步任务集
         const resourceContractIdentityAuthTasks = resourceContracts.map(contract => {
             let params = {
-                policySegment: contract.policySegment,
+                policySegment: contract.contractClause,
                 contractType: contract.contractType,
                 partyOneUserId: contract.partyOneUserId,
                 partyTwoInfo: null,
