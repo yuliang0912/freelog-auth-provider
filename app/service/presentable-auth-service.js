@@ -88,7 +88,7 @@ class PresentableAuthService extends Service {
             item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
         })
 
-        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
+        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree).catch(console.error)
         if (!presentableTreeAuthResult.isAuth) {
             return this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentableTreeAuthResult})
         }
