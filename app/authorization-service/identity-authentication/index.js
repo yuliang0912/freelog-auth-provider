@@ -33,6 +33,7 @@ class FreelogPolicyIdentityAuthentication {
         const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
         for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
             const stepRule = this.authRuleSteps[i]
+            console.log(policySegment)
             params.authUserObject = policySegment.authorizedObjects.find(t => t.userType.toUpperCase() === stepRule.userType)
             if (!params.authUserObject) {
                 continue
