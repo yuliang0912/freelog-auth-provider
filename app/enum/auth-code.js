@@ -130,14 +130,14 @@ module.exports = Object.freeze({
     NotFoundUserInfo: 505,
 
     /**
-     * 无法确定执行哪个用户合同(多个合同存在时)
+     * [过时的]无法确定执行哪个用户合同(多个合同存在时,新版本已经设置了默认合同 此错误码已无意义)
      */
     UnsureExecuteUserContracts: 506,
 
     /**
-     * 用户token无效
+     * 资源授权token无效
      */
-    UserTokenInvalid: 507,
+    ResourceAuthTokenInvalid: 507,
 
     /**
      * 策略身份认证失败

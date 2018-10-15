@@ -33,7 +33,7 @@ module.exports = class AuthTokenService extends Service {
             targetId: presentableAuthTree.presentableId,
             partyTwo: userId.toString(),
             partyTwoUserId: userId,
-            contractType: app.contractType.PresentableToUer,
+            contractType: app.contractType.PresentableToUser,
             authCode: authResult.authCode,
             masterResourceId: presentableAuthTree.masterResourceId,
             authResourceIds: presentableAuthTree.authTree.map(x => x.resourceId),

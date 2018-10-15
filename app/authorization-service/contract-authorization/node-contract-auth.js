@@ -17,7 +17,7 @@ module.exports = ({contract}) => {
         result.authCode = authCodeEnum.NotFoundNodeContract
         result.addError('节点未签约合同')
     }
-    else if (contract.status === 3 || contract.policySegment.activatedStates.some(x => x === contract.fsmState)) {
+    else if (contract.isActivated) {
         result.authCode = authCodeEnum.BasedOnNodeContract
     }
     else {

@@ -66,7 +66,7 @@ module.exports = class ContractFsmTransitionCompletedHandler {
      * 发送消费事件
      */
     sendConsumptionEvent(contractInfo) {
-        if (contractInfo.contractType === this.app.contractType.PresentableToUer) {
+        if (contractInfo.contractType === this.app.contractType.PresentableToUser) {
             this.app.rabbitClient.publish(Object.assign({}, PresentableConsumptionEvent, {
                 body: {
                     presentableId: contractInfo.targetId,

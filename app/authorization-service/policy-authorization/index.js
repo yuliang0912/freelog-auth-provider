@@ -60,7 +60,7 @@ class PolicyAuthorization {
         patrun.add({contractType: contractType.ResourceToResource}, resourcePolicyAuth)
         patrun.add({contractType: contractType.ResourceToNode}, resourcePolicyAuth)
         //节点策略
-        patrun.add({contractType: contractType.PresentableToUer}, presentablePolicyAuth)
+        patrun.add({contractType: contractType.PresentableToUser}, presentablePolicyAuth)
 
         return patrun
     }

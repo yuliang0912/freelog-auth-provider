@@ -103,7 +103,7 @@ class ContractService extends Service {
         await this.contractProvider.getContract({
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
-            contractType: app.contractType.PresentableToUer,
+            contractType: app.contractType.PresentableToUser,
             isTerminate: 0, segmentId
         }).then(oldContract => {
             oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: {oldContract}})
@@ -121,7 +121,7 @@ class ContractService extends Service {
 
         const authResult = await authService.policyIdentityAuthentication({
             policySegment,
-            contractType: app.contractType.PresentableToUer,
+            contractType: app.contractType.PresentableToUser,
             partyOneUserId: presentable.userId,
             partyTwoUserInfo: userInfo
         })
@@ -145,7 +145,7 @@ class ContractService extends Service {
             partyTwoUserId: userInfo.userId,
             resourceId: presentable.resourceId,
             contractName: presentable.presentableName,
-            contractType: app.contractType.PresentableToUer
+            contractType: app.contractType.PresentableToUser
         }
 
         return app.contractService.createContract(contractModel, true)

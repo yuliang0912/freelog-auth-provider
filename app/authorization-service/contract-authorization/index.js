@@ -73,7 +73,7 @@ class ContractAuthorization {
         patrun.add({contractType: contractType.ResourceToNode}, nodeContractAuth)
 
         //用户合同校验
-        patrun.add({contractType: contractType.PresentableToUer}, userContractAuth)
+        patrun.add({contractType: contractType.PresentableToUser}, userContractAuth)
 
         //资源合同校验
         patrun.add({contractType: contractType.ResourceToResource}, resourceContractAuth)

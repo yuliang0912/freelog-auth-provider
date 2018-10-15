@@ -17,11 +17,11 @@ module.exports = ({contract}) => {
 
     const result = new commonAuthResult(authCodeEnum.Default, {contract})
 
-    if (!contract || contract.contractType !== contractType.PresentableToUer) {
+    if (!contract || contract.contractType !== contractType.PresentableToUser) {
         result.authCode = authCodeEnum.NotFoundUserPresentableContract
         result.addError('用户未签约合同')
     }
-    else if (contract.status === 3 || contract.policySegment.activatedStates.some(x => x === contract.fsmState)) {
+    else if (contract.isActivated) {
         result.authCode = authCodeEnum.BasedOnUserContract
     }
     else {

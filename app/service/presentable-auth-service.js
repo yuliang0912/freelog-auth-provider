@@ -116,8 +116,8 @@ class PresentableAuthService extends Service {
             partyTwo: userId,
             partyTwoUserId: userId
         })
-        if (!authTokenCache || authTokenCache.contractType !== app.contractType.PresentableToUer || !authTokenCache.authResourceIds.some(x => x === resourceId)) {
-            return new commonAuthResult(authCodeEnum.UserTokenInvalid)
+        if (!authTokenCache || authTokenCache.contractType !== app.contractType.PresentableToUser || !authTokenCache.authResourceIds.some(x => x === resourceId)) {
+            return new commonAuthResult(authCodeEnum.ResourceAuthTokenInvalid)
         }
 
         return this._authTokenToAuthResult(authTokenCache)
@@ -144,7 +144,7 @@ class PresentableAuthService extends Service {
         const {app} = this
         const params = {
             policySegments: presentableInfo.policy,
-            contractType: app.contractType.PresentableToUer,
+            contractType: app.contractType.PresentableToUser,
             partyOneUserId: presentableInfo.userId
         }
 
@@ -169,7 +169,7 @@ class PresentableAuthService extends Service {
         const {app} = this
         const allContracts = await this.contractProvider.find({
             targetId: presentableInfo.presentableId, partyTwo: userInfo.userId,
-            contractType: app.contractType.PresentableToUer
+            contractType: app.contractType.PresentableToUser
         })
 
         const defaultContract = allContracts.find(x => x.isDefault)
@@ -198,7 +198,7 @@ class PresentableAuthService extends Service {
         const {app} = this
         const params = {
             policySegments: presentableInfo.policy,
-            contractType: app.contractType.PresentableToUer,
+            contractType: app.contractType.PresentableToUser,
             partyOneUserId: presentableInfo.userId,
             partyTwoUserInfo: userInfo
         }

@@ -170,7 +170,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const params = {
             partyTwoUserInfo: userInfo,
             partyOneUserId: presentableInfo.userId,
-            contractType: ctx.app.contractType.PresentableToUer
+            contractType: ctx.app.contractType.PresentableToUser
         }
 
         const policyIdentityAuthTasks = presentableInfo.policy.reduce((acc, policySegment) => {

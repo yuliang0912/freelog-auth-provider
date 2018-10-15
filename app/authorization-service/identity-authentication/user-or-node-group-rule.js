@@ -45,7 +45,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     //所有登录用户都可以访问,则通过
-    if (contractType === app.contractType.PresentableToUer && authUserObject.users.some(item => item.toUpperCase() === 'REGISTERED_USERS')) {
+    if (contractType === app.contractType.PresentableToUser && authUserObject.users.some(item => item.toUpperCase() === 'REGISTERED_USERS')) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }

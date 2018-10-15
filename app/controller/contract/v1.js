@@ -174,7 +174,7 @@ module.exports = class ContractController extends Controller {
         ctx.validate()
 
         const contractInfo = await this.contractProvider.findById(contractId)
-        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUer) {
+        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUser) {
             ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
         }
         if (contractInfo.isDefault) {
