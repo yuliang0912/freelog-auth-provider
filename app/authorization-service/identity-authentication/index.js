@@ -5,11 +5,10 @@
 'use strict'
 
 const Patrun = require('patrun')
-const nodeDomainRele = require('./node-domain-rule')
+const authCodeEnum = require('../../enum/auth-code')
+const nodeDomainRule = require('./node-domain-rule')
 const userIndividualRule = require('./user-individual-rule')
 const userOrNodeGroupRule = require('./user-or-node-group-rule')
-const authCodeEnum = require('../../enum/auth-code')
-const contractType = require('egg-freelog-base/app/enum/contract_type')
 
 class FreelogPolicyIdentityAuthentication {
 
@@ -84,7 +83,7 @@ class FreelogPolicyIdentityAuthentication {
         const patrun = Patrun()
 
         //节点域名认证
-        patrun.add({ruleName: 'nodeDomainAuth', userType: 'DOMAIN'}, nodeDomainRele)
+        patrun.add({ruleName: 'nodeDomainAuth', userType: 'DOMAIN'}, nodeDomainRule)
 
         //用户个体认证
         patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, userIndividualRule)

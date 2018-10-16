@@ -13,10 +13,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
 
     const app = globalInfo.app
     const authResult = new AuthResult(authCodeEnum.Default, {
-        authUserObject,
-        contractType,
-        partyTwoInfo,
-        partyTwoUserInfo
+        authUserObject, contractType, partyTwoInfo, partyTwoUserInfo
     })
 
     //如果没有分组认证的策略,则默认返回

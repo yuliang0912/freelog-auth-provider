@@ -3,7 +3,6 @@
 const Patrun = require('patrun')
 const outsideSystemEvent = require('../enum/outside-system-event')
 const ContractEventTriggerHandler = require('./contract-event-trigger-handler')
-const {ContractFsmStateChangedEvent, ContractFsmEventTriggerEvent, ContractFsmStateTransitionCompletedEvent} = require('../enum/contract-fsm-event')
 const RegisteredEventTriggerHandler = require('./outside-events-handler/registered-event-trigger-handler')
 const InquirePaymentEventHandler = require('./outside-events-handler/inquire-payment-event-handler')
 const InquireTransferEventHandler = require('./outside-events-handler/inquire-transfer-event-handler')
@@ -11,6 +10,7 @@ const TradeStatusChangedEventHandler = require('./outside-events-handler/trade-s
 const EventRegisterCompletedEventHandler = require('./outside-events-handler/event-register-completed-event-handler')
 const ContractFsmStateTransitioningEventHandler = require('./internal-event-handler/fsm-state-transitioning-handler')
 const ContractFsmTransitionCompletedHandler = require('./internal-event-handler/fsm-state-transition-completed-handler')
+const {ContractFsmStateChangedEvent, ContractFsmEventTriggerEvent, ContractFsmStateTransitionCompletedEvent} = require('../enum/contract-fsm-event')
 
 module.exports = class AppEventsListener {
 
