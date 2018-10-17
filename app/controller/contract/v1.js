@@ -55,7 +55,7 @@ module.exports = class ContractController extends Controller {
 
         const projection = "_id contractName segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await this.contractProvider.getContractList(condition, projection, page, pageSize)
+            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projection, {createDate: 1})
         }
 
         ctx.success({page, pageSize, totalItem, dataList})
@@ -89,7 +89,7 @@ module.exports = class ContractController extends Controller {
         const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         ctx.validate()
 
-        await this.contractProvider.getContractById(contractId).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.findById(contractId).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -217,10 +217,10 @@ module.exports = class ContractController extends Controller {
 
         const condition = {}
         if (resourceIds) {
-            if (!partyTwo) {
-                ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
-            }
             condition.resourceId = {$in: resourceIds}
+        }
+        if (resourceIds && !partyTwo) {
+            ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
         }
         if (contractIds) {
             condition._id = {$in: contractIds}
@@ -235,9 +235,9 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '最少需要一个可选查询条件'})
         }
 
-        const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status fsmState createDate"
+        const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
 
-        await this.contractProvider.getContracts(condition, projection).then(ctx.success)
+        await this.contractProvider.find(condition, projection).then(ctx.success)
     }
 
     /**
@@ -251,7 +251,7 @@ module.exports = class ContractController extends Controller {
 
         ctx.validate()
 
-        const contractInfo = await this.contractProvider.getContractById(contractId)
+        const contractInfo = await this.contractProvider.findById(contractId)
         if (!contractInfo) {
             ctx.error({msg: '未找到合同'})
         }

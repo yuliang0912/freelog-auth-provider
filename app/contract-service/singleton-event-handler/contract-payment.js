@@ -24,12 +24,12 @@ module.exports = class ContractPaymentHandler {
         /**
          * TODO:获取事件,根据事件描述,做动态身份,金额校验.然后获取到环境参数,参与后续交易
          */
-        const {contractAccountName, amount} = eventInfo.params
+        const {contractAccountName} = eventInfo.params
         const contractAccountDeclaration = contractInfo.contractClause.fsmDeclarations[contractAccountName]
         const contractAccountId = contractAccountDeclaration && contractAccountDeclaration.declareType === 'contractAccount'
             ? contractAccountDeclaration.accountId : contractAccountName
 
-        const transactionAmount = this._getMoneyAmount(contractInfo, amount)
+        const transactionAmount = this._getMoneyAmount(contractInfo, eventInfo.params.amount)
         if (amount !== transactionAmount) {
             throw new ArgumentError(`交易金额不正确`, {amount, transactionAmount})
         }

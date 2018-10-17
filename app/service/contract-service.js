@@ -100,7 +100,7 @@ class ContractService extends Service {
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
 
-        await this.contractProvider.getContract({
+        await this.contractProvider.find({
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUser,

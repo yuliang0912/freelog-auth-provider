@@ -62,14 +62,13 @@ class PresentableAuthService extends Service {
         }
 
         const partyTwoUserIds = new Set()
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`).catch(ctx.error)
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')
         }
 
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
-
-        const contractMap = await this.contractProvider.getContracts({_id: {$in: contractIds}}).then(dataList => {
+        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
             const contractMap = new Map()
             dataList.forEach(currentContract => {
                 partyTwoUserIds.add(currentContract.partyTwoUserId)

@@ -22,7 +22,7 @@ module.exports = class ContractChangeHistoryProvider extends MongoBaseOperation 
         return super.findOneAndUpdate({contractId: contractId}, {
             $addToSet: {histories: changeModel},
         }, {new: true}).then(changeHistory => {
-            return changeHistory ? changeHistory : super.create({contractId, histories: [changeModel]})
+            return changeHistory || super.create({contractId, histories: [changeModel]})
         })
     }
 }

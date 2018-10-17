@@ -21,59 +21,6 @@ module.exports = class RabbitMessageQueueEventHandler {
             const handlerFunc = this.handleMessage.bind(this)
             client.subscribe('auth#contract-event-receive-queue', handlerFunc)
             client.subscribe('auth#event-register-completed-queue', handlerFunc)
-
-            // client.publish({
-            //     routingKey: 'contract.event.register', eventName: 'endOfCycle', body: {
-            //         subjectId: '5b0f57d1503ced3fbc3dee71',
-            //         eventRegisterNo: 'endOfCycle_5b0f57d1503ced3fbc3dee71_1234567894894',
-            //         applyRegisterDate: new Date(),
-            //         cycleCount: 0,
-            //         initiatorType: 1,
-            //         callbackParams: {
-            //             contractId: '5b0f57d1503ced3fbc3dee71',
-            //             eventId: '1234567894894'
-            //         }
-            //     }
-            // })
-
-            // client.publish({
-            //     routingKey: 'contract.event.register', eventName: 'dateArrived', body: {
-            //         subjectId: '5b0f57d1503ced3fbc3dee71',
-            //         eventRegisterNo: 'dateArrived_5b0f57d1503ced3fbc3dee71_1234567894894111',
-            //         triggerDate: new Date(),
-            //         initiatorType: 1,
-            //         callbackParams: {
-            //             contractId: '5b0f57d1503ced3fbc3dee71',
-            //             eventId: '1234567894894111'
-            //         }
-            //     }
-            // })
-
-            // client.publish({
-            //     routingKey: 'contract.event.register', eventName: 'PresentableSignEvent', body: {
-            //         subjectId: '5b0f57d1503ced3fbc3dee71',
-            //         eventRegisterNo: 'PresentableSignEvent_5b0f57d1503ced3fbc3dee71_1234567894894111',
-            //         initiatorType: 1,
-            //         callbackParams: {
-            //             contractId: '5b0f57d1503ced3fbc3dee71',
-            //             eventId: '1234567894894111'
-            //         }
-            //     }
-            // })
-
-            client.publish({
-                routingKey: 'contract.event.unregister', eventName: 'PresentableSignCountTallyEvent', body: {
-                    subjectId: '5b0f57d1503ced3fbc3dee71',
-                    comparisonValue: 100,
-                    comparisonOperator: 2, // 1= 2> 3>= 4< 5<=
-                    eventRegisterNo: 'PreallyEvent_5b003ced3fbc3dee71_1234567',
-                    initiatorType: 1,
-                    callbackParams: {
-                        contractId: '5b0f57d1503ced3fbc3dee71',
-                        eventId: '1234567894894111'
-                    }
-                }
-            })
         }).catch(console.error)
     }
 
