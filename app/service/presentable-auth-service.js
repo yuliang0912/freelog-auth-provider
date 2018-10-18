@@ -223,15 +223,13 @@ class PresentableAuthService extends Service {
 
         const {ctx} = this
 
+        const postData = {presentableId: presentableInfo.presentableId, segmentId: policySegment.segmentId}
         return ctx.curlIntranetApi(`${ctx.webApi.contractInfo}/createUserPresentableContract`, {
             type: 'post',
             contentType: 'json',
-            data: {
-                presentableId: presentableInfo.presentableId,
-                segmentId: policySegment.segmentId
-            },
+            data: postData,
         }).catch(error => {
-            throw new ApiInvokingError('创建用户合同失败', {message: error.message})
+            throw new ApiInvokingError('创建用户合同失败', {message: error.message, postData})
         })
     }
 
