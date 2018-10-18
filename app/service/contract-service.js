@@ -100,13 +100,15 @@ class ContractService extends Service {
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
 
-        await this.contractProvider.find({
+        await this.contractProvider.findOne({
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUser,
             isTerminate: 0, segmentId
         }).then(oldContract => {
-            oldContract && ctx.error({msg: "已经存在一份同样的合约,不能重复签订", errCode: 105, data: {oldContract}})
+            if (oldContract) {
+                throw new ApplicationError('已经存在一份同样的合约,不能重复签订', oldContract)
+            }
         })
 
         const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
