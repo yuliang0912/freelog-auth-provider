@@ -74,7 +74,8 @@ module.exports = class ContractFsmTransitionCompletedHandler {
                     userContractId: contractInfo.contractId,
                     userId: contractInfo.partyTwoUserId,
                     nodeId: parseInt(contractInfo.partyOne)
-                }
+                },
+                options: {mandatory: true}
             }))
         }
     }

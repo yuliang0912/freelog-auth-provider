@@ -43,7 +43,7 @@ module.exports = class ContractEventsController extends Controller {
      * @returns {Promise<void>}
      */
     async payment(ctx) {
-        const amount = ctx.checkBody('amount').exist().isInt().gt(0).value
+        const amount = ctx.checkBody('amount').exist().toInt().gt(0).value
         const fromAccountId = ctx.checkBody('fromAccountId').exist().isTransferAccountId().value
         const password = ctx.checkBody('password').exist().isNumeric().len(6, 6).value
         ctx.validate()

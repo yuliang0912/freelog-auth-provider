@@ -3,6 +3,7 @@
 const uuid = require('uuid')
 const lodash = require('lodash')
 const cryptoHelper = require('egg-freelog-base/app/extend/helper/crypto_helper')
+const {ApiInvokingError} = require('egg-freelog-base/error')
 
 module.exports = class contractPaymentService {
 
@@ -59,15 +60,18 @@ module.exports = class contractPaymentService {
 
         const {app} = this
         const identityInfo = {tokenType: 'token-client', userInfo: {userId}}
+        const postData = {
+            fromAccountId, toAccountId, amount, password,
+            outsideTradeNo: tradeRecordId,
+            outsideTradeDesc: contractInfo.contractName
+        }
         return app.curlFromClient(`${app.webApi.pay}/inquirePayment`, {
             type: 'post',
             contentType: 'json',
-            data: {
-                fromAccountId, toAccountId, amount, password,
-                outsideTradeNo: tradeRecordId,
-                outsideTradeDesc: contractInfo.contractName
-            },
+            data: postData,
             headers: {authentication: cryptoHelper.base64Encode(JSON.stringify(identityInfo))}
+        }).catch(error => {
+            throw new ApiInvokingError('支付接口(inquirePayment)调用失败', {message: error.toString(), postData, userId})
         })
     }
 }
