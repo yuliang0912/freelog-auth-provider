@@ -9,6 +9,7 @@ const contractServiceSymbol = Symbol.for('auth#contractServiceSymbol')
 const LicenseSignHandler = require('./singleton-event-handler/sign-license')
 const ContractPaymentHandler = require('./singleton-event-handler/contract-payment')
 const EscrowConfiscatedHandler = require('./singleton-event-handler/escrow-confiscated')
+const EscrowRefundedHandler = require('./singleton-event-handler/escrow-refunded-event')
 
 module.exports = class ContractService {
 
@@ -168,6 +169,8 @@ module.exports = class ContractService {
         patrun.add({eventCode: "S201"}, new ContractPaymentHandler(app))
         patrun.add({eventCode: "S210"}, new ContractPaymentHandler(app))
         patrun.add({eventCode: "S211"}, new EscrowConfiscatedHandler(app))
+        patrun.add({eventCode: "S212"}, new EscrowRefundedHandler(app))
+        
     }
 }
 

@@ -6,7 +6,7 @@
 
 const EscrowTransferService = require('../lib/escrow-transfer-service')
 
-module.exports = class SignLicenseHandler {
+module.exports = class EscrowRefundedHandler {
 
     constructor(app) {
         this.app = app
