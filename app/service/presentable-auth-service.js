@@ -3,7 +3,7 @@
 const lodash = require('lodash')
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
-const {LogicError, ArgumentError} = require('egg-freelog-base/error')
+const {LogicError, ArgumentError, ApiInvokingError} = require('egg-freelog-base/error')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 
@@ -231,7 +231,7 @@ class PresentableAuthService extends Service {
                 segmentId: policySegment.segmentId
             },
         }).catch(error => {
-            ctx.error({msg: '创建用户合同失败', errCode: error.errCode, retCode: error.retCode, data: error.toString()})
+            throw new ApiInvokingError('创建用户合同失败', {message: error.message})
         })
     }
 
