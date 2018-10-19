@@ -24,12 +24,12 @@ module.exports = class ContractPaymentHandler {
         /**
          * TODO:获取事件,根据事件描述,做动态身份,金额校验.然后获取到环境参数,参与后续交易
          */
-        const {contractAccountName} = eventInfo.params
+        const {contractAccountName, currencyUnit} = eventInfo.params
         const contractAccountDeclaration = contractInfo.contractClause.fsmDeclarations[contractAccountName]
         const contractAccountId = contractAccountDeclaration && contractAccountDeclaration.declareType === 'contractAccount'
             ? contractAccountDeclaration.accountId : contractAccountName
 
-        const transactionAmount = this._getMoneyAmount(contractInfo, eventInfo.params.amount)
+        const transactionAmount = this._getMoneyAmount(contractInfo, eventInfo.params.amount, currencyUnit)
         if (amount !== transactionAmount) {
             throw new ArgumentError(`交易金额不正确`, {amount, transactionAmount})
         }
@@ -48,16 +48,21 @@ module.exports = class ContractPaymentHandler {
      * @param contractInfo
      * @private
      */
-    _getMoneyAmount(contractInfo, amount) {
+    _getMoneyAmount(contractInfo, amount, currencyUnit) {
+
+        var minUnitAmount = 0
         const {type, literal, handle} = amount
         if (type === 'literal') {
-            return parseInt(literal)
+            minUnitAmount = parseInt(literal)
         }
         if (type === 'invocation') {
             throw new ApplicationError('暂不支持表达式', {contractInfo, amount})
             //表达式调用
         }
-        return 100
+        if (currencyUnit.toLocaleLowerCase() === 'feather') {
+            minUnitAmount = minUnitAmount * 1000
+        }
+        return minUnitAmount
     }
 
     /**

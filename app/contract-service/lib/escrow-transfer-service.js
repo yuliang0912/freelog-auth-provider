@@ -16,8 +16,7 @@ module.exports = class EscrowTransferService {
      */
     async escrowTransfer({contractInfo, eventId, fromAccountId, toAccountId, userInfo, transferType = 2}) {
 
-        transferType = 1
-        const signObject = {accountId: fromAccountId, transferType, amount: 1, userId: userInfo.userId, tradeType: 2}
+        const signObject = {accountId: fromAccountId, transferType, userId: userInfo.userId, tradeType: 2}
         const signString = Object.keys(signObject).sort().map(x => `${x}=${signObject[x]}`).join('&')
         const authCode = cryptoHelper.rsaSha256Sign(signString, this.privateKey)
 

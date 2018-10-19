@@ -51,13 +51,9 @@ module.exports = class ContractService {
         }
 
         const generateContracts = await Promise.all(generateContractTasks)
-        const contracts = await this.contractProvider.insertMany(generateContracts)
-
-        if (isInitial) {
-            contracts.forEach(contractInfo => this.initialContractFsm(contractInfo))
-        }
-
-        return contracts
+        return this.contractProvider.insertMany(generateContracts).tap(contracts => {
+            isInitial && contracts.forEach(contractInfo => this.initialContractFsm(contractInfo))
+        })
     }
 
     /**
@@ -87,7 +83,7 @@ module.exports = class ContractService {
      * 初始化合同状态机
      * @param contractInfo
      */
-    async initialContractFsm(contractInfo) {
+    initialContractFsm(contractInfo) {
 
         if (contractInfo.status !== contractStatusEnum.uninitialized) {
             throw new ApplicationError('合同已经激活,不能重复操作')
@@ -170,7 +166,7 @@ module.exports = class ContractService {
         patrun.add({eventCode: "S210"}, new ContractPaymentHandler(app))
         patrun.add({eventCode: "S211"}, new EscrowConfiscatedHandler(app))
         patrun.add({eventCode: "S212"}, new EscrowRefundedHandler(app))
-        
+
     }
 }
 
