@@ -11,6 +11,7 @@ const resourcePolicyAuth = require('./resource-policy-auth')
 const presentablePolicyAuth = require('./presentable-policy-auth')
 const policyIdentityAuthentication = require('../identity-authentication/index')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 class PolicyAuthorization {
 
@@ -28,7 +29,7 @@ class PolicyAuthorization {
 
         const policyAuthHandler = this.certificationRules.find({contractType})
         if (!policyAuthHandler) {
-            throw new Error('policy-authentication Error: 不被支持的合同')
+            throw new ApplicationError('policy-authentication Error: 不被支持的合同')
         }
 
         const policyAuthResult = policyAuthHandler({policySegment, contractType})

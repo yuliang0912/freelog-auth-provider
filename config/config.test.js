@@ -26,5 +26,9 @@ module.exports = {
             password: 'test_user_2018',
             authMechanism: 'AMQPLAIN'
         },
-    }
+    },
+
+    logger: {
+        level: 'ERROR'
+    },
 }

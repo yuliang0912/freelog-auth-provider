@@ -8,6 +8,7 @@ const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 const globalInfo = require('egg-freelog-base/globalInfo')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
 
@@ -28,11 +29,11 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     if (contractType === app.contractType.ResourceToNode && (!partyTwoInfo || !Reflect.has(partyTwoInfo, 'nodeId'))) {
-        throw new Error('user-or-node-group-rule Error:乙方节点信息缺失')
+        throw new ApplicationError('user-or-node-group-rule Error:乙方节点信息缺失')
     }
 
     if (!partyTwoUserInfo) {
-        throw new Error('user-or-node-group-rule Error:乙方用户身份信息缺失')
+        throw new ApplicationError('user-or-node-group-rule Error:乙方用户身份信息缺失')
     }
 
     //如果分组策略中允许所有节点签约,并且存在节点信息

@@ -2,6 +2,7 @@
 
 const authCodeEnum = require('../enum/auth-code')
 const commonAuthResult = require('./common-auth-result')
+const {ApplicationError} = require('egg-freelog-base/error')
 const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 //身份认证
 const IdentityAuthentication = require('./identity-authentication/index')
@@ -22,7 +23,7 @@ const AuthProcessManager = class AuthProcessManager {
     async presentableAuthTreeAuthorization(presentableAuthTree) {
 
         if (!Reflect.has(presentableAuthTree, 'nodeInfo')) {
-            throw new Error('presentableAuthTreeAuthorization Error:参数信息不完整')
+            throw new ApplicationError('presentableAuthTreeAuthorization Error:参数信息不完整')
         }
         const {authTree, nodeInfo} = presentableAuthTree
         const authResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)

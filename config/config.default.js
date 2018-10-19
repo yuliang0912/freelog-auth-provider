@@ -121,7 +121,7 @@ module.exports = appInfo => {
         },
 
         logger: {
-            level: 'NONE'
+            level: 'INFO'
         },
 
         customLoader: ['app/contract-service/contract-service.js', 'app/event-handler', 'app/mq-service']

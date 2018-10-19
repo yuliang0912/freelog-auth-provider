@@ -5,6 +5,7 @@
 'use strict'
 
 const lodash = require('lodash')
+const {ApplicationError} = require('egg-freelog-base/error')
 const MongoBaseOperation = require('egg-freelog-database/lib/database/mongo-base-operation')
 
 module.exports = class AuthTokenProvider extends MongoBaseOperation {
@@ -32,10 +33,10 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
      * @param presentable
      * @param userId
      */
-    getEffectiveAuthToken(condition) {
+    async getEffectiveAuthToken(condition) {
 
         if (!super.type.object(condition)) {
-            return Promise.reject(new Error("condition must be object"))
+            throw new ApplicationError("condition must be object")
         }
 
         //授权有效期最少还有5秒的token

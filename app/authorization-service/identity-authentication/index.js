@@ -9,6 +9,7 @@ const authCodeEnum = require('../../enum/auth-code')
 const nodeDomainRule = require('./node-domain-rule')
 const userIndividualRule = require('./user-individual-rule')
 const userOrNodeGroupRule = require('./user-or-node-group-rule')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 class FreelogPolicyIdentityAuthentication {
 
@@ -54,9 +55,7 @@ class FreelogPolicyIdentityAuthentication {
         }
 
         if (!authResults.length) {
-            throw Object.assign(new Error('策略中存在系统未知的身份认证方式'), {
-                data: {authorizedObjects: policySegment.authorizedObjects}
-            })
+            throw new ApplicationError('策略中存在系统未知的身份认证方式', {authorizedObjects: policySegment.authorizedObjects})
         }
 
         return authResults[0]

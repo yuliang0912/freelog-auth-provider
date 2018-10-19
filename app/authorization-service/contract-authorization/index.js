@@ -12,6 +12,7 @@ const userContractAuth = require('./user-contract-auth')
 const resourceContractAuth = require('./resource-contract-auth')
 const policyIdentityAuthentication = require('../identity-authentication/index')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 class ContractAuthorization {
 
@@ -29,7 +30,7 @@ class ContractAuthorization {
 
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
-            throw new Error('contract-authorization Error: 不被支持的合同')
+            throw new ApplicationError('contract-authorization Error: 不被支持的合同')
         }
 
         const contractAuthResult = contractAuthHandler({contract})
@@ -55,7 +56,7 @@ class ContractAuthorization {
 
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
-            throw new Error('contract-authorization Error: 不被支持的合同')
+            throw new ApplicationError('contract-authorization Error: 不被支持的合同')
         }
 
         return contractAuthHandler({contract}).isAuth

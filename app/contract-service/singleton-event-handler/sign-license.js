@@ -2,6 +2,7 @@
 
 const lodash = require('lodash')
 const {ContractFsmEventTriggerEvent} = require('../../enum/contract-fsm-event')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class SignLicenseHandler {
 
@@ -19,7 +20,7 @@ module.exports = class SignLicenseHandler {
 
         //如果有多个协议,必须一次全部签署
         if (!Array.isArray(licenseIds) || licenseIds.length !== licenseResourceId.length || lodash.difference(licenseIds, licenseResourceId).length) {
-            throw new Error(`协议ID与事件中规定的协议不匹配`)
+            throw new ApplicationError(`协议ID与事件中规定的协议不匹配`)
         }
 
         return this.licenseSignRecordProvider.create({

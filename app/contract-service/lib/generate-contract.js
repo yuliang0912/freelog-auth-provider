@@ -4,6 +4,7 @@ const uuid = require('uuid')
 const lodash = require('lodash')
 const contractStatusEnum = require('../../enum/contract-status-enum')
 const baseHelper = require('egg-freelog-base/app/extend/helper')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class GenerateContract {
 
@@ -64,7 +65,7 @@ module.exports = class GenerateContract {
         })
 
         if (!/^2\d{2}$/.test(response.status)) {
-            throw new Error('创建合同账户失败')
+            throw new ApplicationError('创建合同账户失败')
         }
 
         return baseHelper.convertApiResult(response.data)

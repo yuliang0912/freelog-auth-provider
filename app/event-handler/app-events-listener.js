@@ -1,6 +1,7 @@
 'use strict'
 
 const Patrun = require('patrun')
+const {ApplicationError} = require('egg-freelog-base/error')
 const outsideSystemEvent = require('../enum/outside-system-event')
 const ContractEventTriggerHandler = require('./contract-event-trigger-handler')
 const RegisteredEventTriggerHandler = require('./outside-events-handler/registered-event-trigger-handler')
@@ -47,7 +48,7 @@ module.exports = class AppEventsListener {
 
         const eventHandler = this.patrun.find({event: eventName.toString()})
         if (!eventHandler) {
-            throw new Error(`尚未注册事件${eventName}的处理者`)
+            throw new ApplicationError(`尚未注册事件${eventName}的处理者`)
         }
 
         this.app.on(eventName, eventHandler.handler.bind(eventHandler))

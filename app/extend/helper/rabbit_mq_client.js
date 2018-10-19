@@ -9,6 +9,7 @@ const amqp = require('amqp')
 const uuid = require('uuid')
 const Emitter = require('events')
 const Promise = require("bluebird")
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class rabbitMqClient extends Emitter {
 
@@ -17,7 +18,7 @@ module.exports = class rabbitMqClient extends Emitter {
             return instance
         }
         if (!rabbitConfig) {
-            throw new Error("未找到RabbitMQ配置项")
+            throw new ApplicationError("未找到RabbitMQ配置项")
         }
         super()
         this.config = rabbitConfig
@@ -41,7 +42,7 @@ module.exports = class rabbitMqClient extends Emitter {
             return Promise.resolve(this.instance)
         }
         return new Promise((...args) => this._startConnect(...args)).timeout(timeout).catch(Promise.TimeoutError, (err) => {
-            return Promise.reject(new Error('rabbitMQ connect timeout'))
+            return Promise.reject(new ApplicationError('rabbitMQ connect timeout'))
         })
     }
 
@@ -54,7 +55,7 @@ module.exports = class rabbitMqClient extends Emitter {
     publish({routingKey, eventName, body, options}) {
         return new Promise((resolve, reject) => {
             if (!this.isReady) {
-                return reject(new Error("rabbitMq is not ready"))
+                return reject(new ApplicationError("rabbitMq is not ready"))
             }
             this.exchange.publish(routingKey, body || {}, Object.assign({
                 mandatory: true, //无法匹配路由时,是否触发basic-return事件
@@ -70,7 +71,7 @@ module.exports = class rabbitMqClient extends Emitter {
             })
         }).timeout(10000).catch(Promise.TimeoutError, (err) => {
             this.emit('publishTimeout', routingKey, body, options, this.config.exchange.name)
-            return Promise.reject(new Error('消息发送已超时'))
+            return Promise.reject(new ApplicationError('消息发送已超时'))
         })
     }
 
@@ -81,10 +82,10 @@ module.exports = class rabbitMqClient extends Emitter {
      */
     subscribe(queueName, callback) {
         if (!Array.isArray(this.config.queues) || this.config.queues.length === 0) {
-            throw new Error("当前exchange上没有队列,请查看配置文件")
+            throw new ApplicationError("当前exchange上没有队列,请查看配置文件")
         }
         if (!this.config.queues.some(t => t.name === queueName)) {
-            throw new Error("当前exchange上不存在指定的队列名")
+            throw new ApplicationError("当前exchange上不存在指定的队列名")
         }
 
         // if (toString.call(callback) !== '[object Function]') {
@@ -125,7 +126,7 @@ module.exports = class rabbitMqClient extends Emitter {
      */
     static get Instance() {
         if (!instance) {
-            throw new Error("请确保使用前已经在application中创建过rabbitmqClient")
+            throw new ApplicationError("请确保使用前已经在application中创建过rabbitmqClient")
         }
         return instance
     }

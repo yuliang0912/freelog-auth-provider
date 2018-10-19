@@ -3,6 +3,7 @@
 const StateMachine = require('javascript-state-machine')
 const globalInfo = require('egg-freelog-base/globalInfo')
 const {ContractFsmStateChangedEvent} = require('../../enum/contract-fsm-event')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class ContractFsm {
 
@@ -19,10 +20,10 @@ module.exports = class ContractFsm {
     async execEvent(event, ...otherArgs) {
         const {eventId} = event
         if (!Reflect.has(this, eventId)) {
-            throw new Error(`无效的事件,${eventId}`)
+            throw new ApplicationError(`无效的事件,${eventId}`)
         }
         if (this.cannot(eventId)) {
-            throw new Error(`合同当前状态,不能执行${event.eventId}事件`)
+            throw new ApplicationError(`合同当前状态,不能执行${event.eventId}事件`)
         }
         this.currEvent = event
         this[eventId](...otherArgs)
