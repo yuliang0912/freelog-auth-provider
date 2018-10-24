@@ -55,7 +55,7 @@ module.exports = app => {
             return true
         }
         const currentStateInfo = this.contractClause.fsmStates[this.contractClause.currentFsmState]
-        return currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')
+        return currentStateInfo && currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')
     })
 
     ContractSchema.virtual("isLocked").get(function () {

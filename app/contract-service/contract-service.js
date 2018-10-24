@@ -34,6 +34,9 @@ module.exports = class ContractService {
         if (isInitial) {
             this.initialContractFsm(contractInfo)
         }
+        if (contractBaseInfo.isDefault) {
+            this.contractProvider.updateOne(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0})
+        }
         return contractInfo
     }
 

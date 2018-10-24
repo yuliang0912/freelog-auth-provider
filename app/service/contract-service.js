@@ -95,7 +95,7 @@ class ContractService extends Service {
      * @param partyTwo
      * @returns {Promise<void>}
      */
-    async createUserContract({presentableId, segmentId}) {
+    async createUserContract({presentableId, segmentId, isDefault}) {
 
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
@@ -139,7 +139,7 @@ class ContractService extends Service {
         }
 
         const contractModel = {
-            segmentId, policySegment,
+            segmentId, policySegment, isDefault,
             targetId: presentableId,
             partyOne: presentable.nodeId,
             partyTwo: userInfo.userId,
