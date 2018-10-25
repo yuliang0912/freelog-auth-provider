@@ -36,7 +36,13 @@ module.exports = class ContractService {
             this.initialContractFsm(contractInfo)
         }
         if (contractBaseInfo.isDefault) {
-            this.contractProvider.updateOne(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0})
+            const condition = {
+                _id: {$ne: contractBaseInfo.contractId},
+                targetId: contractBaseInfo.targetId,
+                partyTwo: contractBaseInfo.partyTwo,
+                contractType: contractBaseInfo.contractType
+            }
+            this.contractProvider.updateOne(condition, {isDefault: 0})
         }
         return contractInfo
     }
