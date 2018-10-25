@@ -1,6 +1,7 @@
 'use strict'
 
 const Patrun = require('patrun')
+const lodash = require('lodash')
 const ContractFsm = require('./lib/contract-fsm')
 const {ApplicationError} = require('egg-freelog-base/error')
 const GenerateContract = require('./lib/generate-contract')
