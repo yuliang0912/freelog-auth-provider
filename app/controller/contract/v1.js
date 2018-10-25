@@ -162,9 +162,10 @@ module.exports = class ContractController extends Controller {
 
         const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
         const presentableId = ctx.checkBody('presentableId').exist().isMongoObjectId().value
+        const isDefault = ctx.checkBody('isDefault').default(0).optional().toInt().in([0, 1]).value
         ctx.validate()
 
-        await ctx.service.contractService.createUserContract({presentableId, segmentId})
+        await ctx.service.contractService.createUserContract({presentableId, segmentId, isDefault})
             .then(ctx.success).catch(ctx.error)
     }
 
