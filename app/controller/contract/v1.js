@@ -183,11 +183,8 @@ module.exports = class ContractController extends Controller {
         if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUser) {
             ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
         }
-        if (contractInfo.isDefault) {
-            return ctx.success(true)
-        }
 
-        await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then(() => {
+        await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then((ret) => {
             return contractInfo.updateOne({isDefault: 1})
         }).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
     }
