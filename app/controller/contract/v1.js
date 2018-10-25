@@ -187,7 +187,7 @@ module.exports = class ContractController extends Controller {
             return ctx.success(true)
         }
 
-        await this.contractProvider.updateOne(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then(() => {
+        await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then(() => {
             return contractInfo.updateOne({isDefault: 1})
         }).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
     }

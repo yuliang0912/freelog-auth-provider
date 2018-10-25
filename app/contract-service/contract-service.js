@@ -42,7 +42,7 @@ module.exports = class ContractService {
                 partyTwo: contractBaseInfo.partyTwo,
                 contractType: contractBaseInfo.contractType
             }
-            this.contractProvider.updateOne(condition, {isDefault: 0})
+            this.contractProvider.updateMany(condition, {isDefault: 0})
         }
         return contractInfo
     }
