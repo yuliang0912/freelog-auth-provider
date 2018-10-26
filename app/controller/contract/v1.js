@@ -24,8 +24,8 @@ module.exports = class ContractController extends Controller {
         const page = ctx.checkQuery("page").default(1).toInt().gt(0).value
         const pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
         const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
-        const partyOne = ctx.checkQuery('partyOne').default(0).toInt().value
-        const partyTwo = ctx.checkQuery('partyTwo').default(0).toInt().value
+        const partyOne = ctx.checkQuery('partyOne').optional().value
+        const partyTwo = ctx.checkQuery('partyTwo').optional().value
         const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
         ctx.validate()
@@ -34,10 +34,10 @@ module.exports = class ContractController extends Controller {
         if (contractType) {
             condition.contractType = contractType
         }
-        if (partyOne) {
+        if (partyOne !== undefined) {
             condition.partyOne = partyOne
         }
-        if (partyTwo) {
+        if (partyTwo !== undefined) {
             condition.partyTwo = partyTwo
         }
         if (resourceIds) {
@@ -53,9 +53,9 @@ module.exports = class ContractController extends Controller {
         var dataList = []
         const totalItem = await this.contractProvider.count(condition)
 
-        const projection = "_id contractName segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
+        //const projection = "_id contractName segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projection, {createDate: 1})
+            dataList = await this.contractProvider.findPageList(condition, page, pageSize, null, {createDate: 1})
         }
 
         ctx.success({page, pageSize, totalItem, dataList})
@@ -76,7 +76,7 @@ module.exports = class ContractController extends Controller {
 
         const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
 
-        await this.contractProvider.find(condition, projection).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.find(condition).then(ctx.success).catch(ctx.error)
     }
 
     /**
@@ -213,7 +213,7 @@ module.exports = class ContractController extends Controller {
 
         const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
         const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
-        const partyTwo = ctx.checkQuery('partyTwo').optional().toInt().gt(0).value
+        const partyTwo = ctx.checkQuery('partyTwo').optional().value
         const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
 
         ctx.validate()
@@ -222,13 +222,13 @@ module.exports = class ContractController extends Controller {
         if (resourceIds) {
             condition.resourceId = {$in: resourceIds}
         }
-        if (resourceIds && !partyTwo) {
+        if (resourceIds && partyTwo === undefined) {
             ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
         }
         if (contractIds) {
             condition._id = {$in: contractIds}
         }
-        if (partyTwo) {
+        if (partyTwo !== undefined) {
             condition.partyTwo = partyTwo
         }
         if (contractType) {
@@ -238,9 +238,9 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '最少需要一个可选查询条件'})
         }
 
-        const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
+        //const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
 
-        await this.contractProvider.find(condition, projection).then(ctx.success)
+        await this.contractProvider.find(condition).then(ctx.success)
     }
 
     /**
