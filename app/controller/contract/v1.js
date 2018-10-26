@@ -43,8 +43,8 @@ module.exports = class ContractController extends Controller {
         if (resourceIds) {
             condition.resourceId = {$in: resourceIds.split(',')}
         }
-        if (isDefault) {
-            condition.isDefault = 1
+        if (isDefault !== undefined) {
+            condition.isDefault = isDefault
         }
         if (!Object.keys(condition).length) {
             ctx.error({msg: '最少需要一个查询条件'})
