@@ -93,6 +93,20 @@ module.exports = class ContractController extends Controller {
     }
 
     /**
+     * 查询历史合同
+     * @returns {Promise<void>}
+     */
+    async terminateContracts(ctx) {
+
+        const targetId = ctx.checkQuery('targetId').exist().notEmpty().value
+        const partyTwo = ctx.checkQuery('partyTwo').exist().notEmpty().value
+        const segmentId = ctx.checkQuery('segmentId').exist().isMd5().value
+
+        await this.contractProvider.find({isTerminate: 1, targetId, partyTwo, segmentId})
+            .then(ctx.success).catch(ctx.error)
+    }
+
+    /**
      * 初始化合同
      * @returns {Promise<void>}
      */

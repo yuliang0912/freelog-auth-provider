@@ -24,6 +24,8 @@ module.exports = app => {
     router.get('/v1/contracts/contractRecords', contract.v1.contractRecords)
     router.get('/v1/contracts/isCanExecEvent', contract.v1.isCanExecEvent)
     router.get('/v1/contracts/initial', contract.v1.initial)
+    router.get('/v1/contracts/terminateContracts', contract.v1.terminateContracts)
+
 
     //请求获取授权方案和presentable中的策略身份认证结果
     router.get('/v1/auths/authSchemeIdentityAuth', auth.v1.authSchemeIdentityAuth)
