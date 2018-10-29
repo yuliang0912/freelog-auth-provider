@@ -146,7 +146,7 @@ class ContractService extends Service {
             partyOneUserId: presentable.userId,
             partyTwoUserId: userInfo.userId,
             resourceId: presentable.resourceId,
-            contractName: presentable.presentableName,
+            contractName: policySegment.policyName,
             contractType: app.contractType.PresentableToUser
         }
 

@@ -100,10 +100,14 @@ module.exports = class ContractController extends Controller {
 
         const targetId = ctx.checkQuery('targetId').exist().notEmpty().value
         const partyTwo = ctx.checkQuery('partyTwo').exist().notEmpty().value
-        const segmentId = ctx.checkQuery('segmentId').exist().isMd5().value
+        const segmentId = ctx.checkQuery('segmentId').optional().exist().isMd5().value
 
-        await this.contractProvider.find({isTerminate: 1, targetId, partyTwo, segmentId})
-            .then(ctx.success).catch(ctx.error)
+        const condition = {isTerminate: 1, targetId, partyTwo}
+        if (segmentId) {
+            condition.segmentId = segmentId
+        }
+
+        await this.contractProvider.find(condition).then(ctx.success).catch(ctx.error)
     }
 
     /**
