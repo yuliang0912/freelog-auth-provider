@@ -26,7 +26,7 @@ module.exports = class ContractFsmTransitionCompletedHandler {
         if (currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')) {
             contractInfo.status = contractStatusEnum.active
         }
-        else if (Object.keys(currentStateInfo.transition).length === 0) {
+        else if (Object.keys(currentStateInfo.transition).length === 1 && Object.keys(currentStateInfo.transition).some(x => x.toLowerCase() === 'terminate')) {
             contractInfo.status = contractStatusEnum.terminate
             contractInfo.isTerminate = 1
         } else {

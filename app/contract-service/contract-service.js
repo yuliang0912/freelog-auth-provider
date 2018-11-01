@@ -137,6 +137,9 @@ module.exports = class ContractService {
         if (contractInfo.status === contractStatusEnum.locked) {
             return new ApplicationError('合同已被锁定,暂时无法执行', {contractInfo, eventId})
         }
+        if (contractInfo.status === contractStatusEnum.terminate) {
+            return new ApplicationError('合同已终止,不能执行事件', {contractInfo, eventId})
+        }
         if (contractFsm.cannot(eventId)) {
             return new ApplicationError(`合同${contractInfo.contractId}不能执行指定事件${eventId}`, {contractInfo, eventId})
         }
@@ -158,6 +161,9 @@ module.exports = class ContractService {
 
         if (contractInfo.status === contractStatusEnum.locked) {
             return new ApplicationError('合同已被锁定,暂时无法执行', {contractInfo, eventId})
+        }
+        if (contractInfo.status === contractStatusEnum.terminate) {
+            return new ApplicationError('合同已终止,不能执行事件', {contractInfo, eventId})
         }
 
         return contractFsm.execEvent({eventId})

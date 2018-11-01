@@ -37,6 +37,11 @@ class ContractService extends Service {
             throw new ArgumentError('参数targetId校验失败,数据不完全匹配', {signObjects})
         }
 
+        const resourceReContractableSignAuthFailed = await this._checkReContractableAuth(Array.from(contractObjects.keys()))
+        if (resourceReContractableSignAuthFailed.length) {
+            throw new ArgumentError('签约的授权方案中存在部分不同没有执行到允许重签的状态', resourceReContractableSignAuthFailed)
+        }
+
         const identityAuthTasks = []
         authSchemeInfos.forEach(({authSchemeId, policy, userId, resourceId}) => {
             const contractObject = contractObjects.get(authSchemeId)
@@ -184,6 +189,34 @@ class ContractService extends Service {
         })
 
         return {existContracts, signObjects: Array.from(signObjectKeyMap.values())}
+    }
+
+    /**
+     * 检查重签授权
+     * @private
+     */
+    async _checkReContractableAuth(authSchemeIds) {
+
+        const {ctx} = this
+        const schemeAuthContracts = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/authSchemes/schemeAuthTree/schemeAuthTreeContractIds?authSchemeIds=${authSchemeIds.toString()}`)
+        const resourceReContractableSignAuthFailed = []
+
+        for (let i = 0, j = schemeAuthContracts.length; i < j; i++) {
+            const {authSchemeId, authTree} = schemeAuthContracts[i]
+            const contractIds = authTree.map(x => x.contractId)
+            const contracts = await this.contractProvider.find({_id: {$in: contractIds}})
+            contracts.forEach(item => {
+                const authResult = authService.resourceReContractableSignAuth(item)
+                if (!authResult.isAuth) {
+                    resourceReContractableSignAuthFailed.push({authSchemeId, contract: item})
+                }
+            })
+            if (resourceReContractableSignAuthFailed.length) {
+                break
+            }
+        }
+
+        return resourceReContractableSignAuthFailed
     }
 }
 

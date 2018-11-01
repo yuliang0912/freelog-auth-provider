@@ -155,6 +155,15 @@ const AuthProcessManager = class AuthProcessManager {
     async policyIdentityAuthentication({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
         return IdentityAuthentication.main(...arguments)
     }
+
+    /**
+     * 资源转签授权
+     * @param contract
+     * @returns {module.CommonAuthResult|*|commonAuthResult}
+     */
+    async resourceReContractableSignAuth(contract) {
+        return ContractAuthorization.resourceReContractableSignAuth(contract)
+    }
 }
 
 module.exports = new AuthProcessManager()

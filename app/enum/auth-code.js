@@ -51,6 +51,11 @@ module.exports = Object.freeze({
     BasedOnDomain: 263,
 
     /**
+     * 给予重签授权
+     */
+    BasedOnReContractable: 264,
+
+    /**
      * 基于最后一次授权结果的缓存授权
      */
     BaseOnLatestAuthCache: 299,
@@ -148,6 +153,11 @@ module.exports = Object.freeze({
      * 策略授权失败
      */
     PolicyAuthFailed: 602,
+
+    /**
+     * 转签授权失败
+     */
+    ReContractableAuthFailed: 701,
 
     /**
      * 系统异常
