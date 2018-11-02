@@ -244,7 +244,7 @@ class PresentableAuthService extends Service {
 
         const exposePresentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "presentableIntro", "nodeId", "policy", "resourceId", "resourceInfo"])
 
-        authResult.data = Object.assign(authResult.data || {}, exposePresentableInfo)
+        authResult.data = Object.assign(authResult.data || {}, {presentableInfo: exposePresentableInfo})
 
         return authResult
     }
