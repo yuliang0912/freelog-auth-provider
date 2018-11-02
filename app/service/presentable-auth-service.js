@@ -148,11 +148,14 @@ class PresentableAuthService extends Service {
         }
 
         const policyAuthorizationResult = authService.policyAuthorization(params)
+
+        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
+
         if (!policyAuthorizationResult.isAuth) {
-            return new commonAuthResult(authCodeEnum.NotFoundUserInfo)
+            policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
 
-        return this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
+        return policyAuthorizationResult
     }
 
     /**
@@ -204,6 +207,8 @@ class PresentableAuthService extends Service {
 
         const result = new commonAuthResult(authCodeEnum.BasedOnUserContract)
         const presentablePolicyAuthResult = await authService.policyAuthorization(params)
+
+        this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentablePolicyAuthResult})
 
         if (!presentablePolicyAuthResult.isAuth) {
             return presentablePolicyAuthResult
