@@ -330,5 +330,23 @@ module.exports = class ContractController extends Controller {
 
         ctx.success(isAuthorization)
     }
+
+
+    async fixContactData(ctx) {
+
+        const contracts = await this.contractProvider.find({}, 'contractClause')
+
+        contracts.forEach(contract => {
+            const fsmStates = contract.contractClause.fsmStates
+            Object.keys(fsmStates).forEach(key => {
+                if (!fsmStates[key].authorization.some(x => x.toLowerCase() === 'recontractable')) {
+                    fsmStates[key].authorization.push('recontractable')
+                    contract.updateOne({contractClause: contract.contractClause}).exec()
+                }
+            })
+        })
+
+        ctx.success(contracts)
+    }
 }
 

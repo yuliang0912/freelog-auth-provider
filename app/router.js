@@ -26,6 +26,7 @@ module.exports = app => {
     router.get('/v1/contracts/initial', contract.v1.initial)
     router.get('/v1/contracts/terminateContracts', contract.v1.terminateContracts)
 
+    router.get('/v1/contracts/fixContactData', contract.v1.fixContactData)
 
     //请求获取授权方案和presentable中的策略身份认证结果
     router.get('/v1/auths/authSchemeIdentityAuth', auth.v1.authSchemeIdentityAuth)
