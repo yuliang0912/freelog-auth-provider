@@ -231,6 +231,7 @@ module.exports = class ContractController extends Controller {
 
         const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
         const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
+        const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().value
         const partyTwo = ctx.checkQuery('partyTwo').optional().value
         const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
 
@@ -251,6 +252,12 @@ module.exports = class ContractController extends Controller {
         }
         if (contractType) {
             condition.contractType = contractType
+        }
+        if (targetIds) {
+            condition.targetId = {$in: targetIds}
+        }
+        if (targetIds && partyTwo === undefined) {
+            ctx.error({msg: '参数targetIds必须与partyTwo组合使用'})
         }
         if (!Object.keys(condition).length) {
             ctx.error({msg: '最少需要一个可选查询条件'})
