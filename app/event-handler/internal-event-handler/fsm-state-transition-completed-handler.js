@@ -1,7 +1,7 @@
 'use strict'
 
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {PresentableConsumptionEvent} = require('../../enum/rabbit-mq-event')
+const {PresentableConsumptionEvent, PresentableOnlineAuthEvent} = require('../../enum/rabbit-mq-event')
 
 /**
  * 状态机状态过渡完成事件处理
@@ -36,6 +36,9 @@ module.exports = class ContractFsmTransitionCompletedHandler {
         if (contractInfo.status === contractStatusEnum.active && !contractInfo.isConsumptive) {
             contractInfo.isConsumptive = 1
             this.sendConsumptionEvent(contractInfo)
+        }
+        if (currentStateInfo.authorization.some(x => /^(presentable|recontractable)$/i.test(x))) {
+            this.sendPresentableOnlineAuthEvent(contractInfo)
         }
 
         await this.saveContractStatusData({contractInfo, prevState, currentState, eventId})
@@ -74,6 +77,22 @@ module.exports = class ContractFsmTransitionCompletedHandler {
                     userContractId: contractInfo.contractId,
                     userId: contractInfo.partyTwoUserId,
                     nodeId: parseInt(contractInfo.partyOne)
+                },
+                options: {mandatory: true}
+            }))
+        }
+    }
+
+    /**
+     * 发送presentable获取到上线授权事件
+     * @param contractInfo
+     */
+    sendPresentableOnlineAuthEvent(contractInfo) {
+        if (contractInfo.contractType === this.app.contractType.ResourceToNode) {
+            this.app.rabbitClient.publish(Object.assign({}, PresentableOnlineAuthEvent, {
+                body: {
+                    presentableId: contractInfo.targetId,
+                    contractId: contractInfo.contractId
                 },
                 options: {mandatory: true}
             }))

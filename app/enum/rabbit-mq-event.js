@@ -39,4 +39,12 @@ module.exports = {
         routingKey: 'presentable.consumption.event',
         eventName: 'presentableConsumptionEvent'
     }),
+
+    /**
+     * presentable获取到presentable或者recontractable授权事件
+     */
+    PresentableOnlineAuthEvent: Object.freeze({
+        routingKey: 'presentable.onlineAuth.event',
+        eventName: 'presentableOnlineAuthEvent'
+    }),
 }
