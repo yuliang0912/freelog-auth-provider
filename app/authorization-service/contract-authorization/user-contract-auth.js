@@ -2,10 +2,6 @@
  * Created by yuliang on 2017/10/30.
  * 针对presentable授权,主要检测普通用户是否有权限使用presentable
  */
-/**
- * Created by yuliang on 2017/10/30.
- * 针对C端用户授权,主要检测C端用户是否有权限使用presentable
- */
 
 'use strict'
 

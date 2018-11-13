@@ -237,12 +237,16 @@ module.exports = class ContractController extends Controller {
 
         ctx.validate()
 
+        if (resourceIds && partyTwo === undefined) {
+            ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
+        }
+        if (targetIds && partyTwo === undefined) {
+            ctx.error({msg: '参数targetIds必须与partyTwo组合使用'})
+        }
+
         const condition = {}
         if (resourceIds) {
             condition.resourceId = {$in: resourceIds}
-        }
-        if (resourceIds && partyTwo === undefined) {
-            ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
         }
         if (contractIds) {
             condition._id = {$in: contractIds}
@@ -255,9 +259,6 @@ module.exports = class ContractController extends Controller {
         }
         if (targetIds) {
             condition.targetId = {$in: targetIds}
-        }
-        if (targetIds && partyTwo === undefined) {
-            ctx.error({msg: '参数targetIds必须与partyTwo组合使用'})
         }
         if (!Object.keys(condition).length) {
             ctx.error({msg: '最少需要一个可选查询条件'})

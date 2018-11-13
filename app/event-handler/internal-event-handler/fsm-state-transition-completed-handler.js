@@ -48,7 +48,7 @@ module.exports = class ContractFsmTransitionCompletedHandler {
 
         const {contractId, status, isConsumptive} = contractInfo
 
-        const task1 = await this.contractProvider.updateOne({_id: contractId,}, {status, isConsumptive})
+        const task1 = this.contractProvider.updateOne({_id: contractId,}, {status, isConsumptive})
         const task2 = this.contractChangedHistoryProvider.addHistory(contractId, {
             fromState: prevState, toState: currentState, eventId, triggerDate: new Date()
         })
