@@ -91,7 +91,8 @@ module.exports = class ContractFsmTransitionCompletedHandler {
         if (contractInfo.contractType === this.app.contractType.ResourceToNode) {
             this.app.rabbitClient.publish(Object.assign({}, PresentableOnlineAuthEvent, {
                 body: {
-                    presentableId: contractInfo.targetId,
+                    nodeId: parseInt(contractInfo.partyTwo),
+                    resourceId: contractInfo.resourceId,
                     contractId: contractInfo.contractId
                 },
                 options: {mandatory: true}
