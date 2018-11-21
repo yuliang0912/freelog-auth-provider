@@ -205,13 +205,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
         ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
 
-        if (isCache) {
-            ctx.set('ETag', `"${resourceInfo.resourceId}"`)
-            ctx.set('content-type', resourceInfo.mimeType)
-            ctx.body = null
-            ctx.status = 304
-            return
-        }
+        // if (isCache) {
+        //     ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+        //     ctx.set('content-type', resourceInfo.mimeType)
+        //     ctx.body = null
+        //     ctx.status = 304
+        //     return
+        //}
 
         const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
         if (!/^2[\d]{2}$/.test(result.status)) {
