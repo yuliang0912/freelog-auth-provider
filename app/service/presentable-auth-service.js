@@ -147,17 +147,13 @@ class PresentableAuthService extends Service {
             partyOneUserId: presentableInfo.userId
         }
 
-        const policyAuthorizationResult = authService.policyAuthorization(params)
-
-        console.log(policyAuthorizationResult, policyAuthorizationResult.authCode, 'start')
+        const policyAuthorizationResult = await authService.policyAuthorization(params)
 
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
 
         this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
-
-        console.log(policyAuthorizationResult, policyAuthorizationResult.authCode, 'end')
 
         return policyAuthorizationResult
     }
