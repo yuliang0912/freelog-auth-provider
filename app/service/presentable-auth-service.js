@@ -179,7 +179,7 @@ class PresentableAuthService extends Service {
             return this._tryCreateDefaultUserContract({presentableInfo, userInfo})
         }
 
-        const defaultContractAuthResult = authService.contractAuthorization({
+        const defaultContractAuthResult = await authService.contractAuthorization({
             contract: defaultContract, partyTwoUserInfo: userInfo
         })
 
