@@ -199,16 +199,28 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      * @returns {Promise<void>}
      */
     async _responseResourceFile(ctx, resourceInfo, fileName) {
+
+        const isCache = ctx.get('if-none-match') === `"${resourceInfo.resourceId}"`
+        ctx.set('freelog-resource-type', resourceInfo.resourceType)
+        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
+        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
+
+        if (isCache) {
+            ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+            ctx.set('content-type', resourceInfo.mimeType)
+            ctx.body = null
+            ctx.status = 304
+            return
+        }
+
         const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
         if (!/^2[\d]{2}$/.test(result.status)) {
             ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
         }
         ctx.attachment(fileName || resourceInfo.resourceId)
         Object.keys(result.headers).forEach(key => ctx.set(key, result.headers[key]))
-        ctx.set('content-type', resourceInfo.mimeType)
-        ctx.set('freelog-resource-type', resourceInfo.resourceType)
-        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
-        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
         ctx.body = result.res
+        ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+        ctx.set('content-type', resourceInfo.mimeType)
     }
 }
