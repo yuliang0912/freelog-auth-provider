@@ -23,7 +23,6 @@ class PresentableAuthService extends Service {
      */
     async authProcessHandler({nodeId, presentableId}) {
 
-        console.log(111)
         const {ctx} = this
         const userId = ctx.request.userId || 0
         const authTokenCache = await ctx.service.authTokenService.getAuthToken({
@@ -36,6 +35,7 @@ class PresentableAuthService extends Service {
         }
 
         const userInfo = ctx.request.identityInfo.userInfo
+        console.log(userInfo, userId)
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
             throw new ArgumentError('参数nodeId错误', {nodeInfo})
@@ -49,17 +49,13 @@ class PresentableAuthService extends Service {
             throw new LogicError('presentable未上线,无法授权', {presentableInfo})
         }
 
-        console.log(2222)
-
         //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
-        if (userInfo) {
-            console.log(3333)
+        if (userId > 0) {
             const userContractAuthResult = await this._tryUserContractAuth({presentableInfo, userInfo, nodeInfo})
             if (!userContractAuthResult.isAuth) {
                 return userContractAuthResult
             }
         } else {
-            console.log(4444)
             const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
             if (!unLoginUserPresentableAuthResult.isAuth) {
                 return unLoginUserPresentableAuthResult
@@ -154,14 +150,9 @@ class PresentableAuthService extends Service {
 
         const policyAuthorizationResult = authService.policyAuthorization(params)
 
-        console.log(policyAuthorizationResult.authCode)
-
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
-
-        console.log(policyAuthorizationResult, 55555)
-
 
         this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
 
