@@ -149,11 +149,11 @@ class PresentableAuthService extends Service {
 
         const policyAuthorizationResult = authService.policyAuthorization(params)
 
-        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
-
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
+
+        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
 
         return policyAuthorizationResult
     }
