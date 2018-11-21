@@ -35,7 +35,6 @@ class PresentableAuthService extends Service {
         }
 
         const userInfo = ctx.request.identityInfo.userInfo
-        console.log(userInfo, userId)
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
             throw new ArgumentError('参数nodeId错误', {nodeInfo})
@@ -50,7 +49,7 @@ class PresentableAuthService extends Service {
         }
 
         //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
-        if (userId > 0) {
+        if (userInfo) {
             const userContractAuthResult = await this._tryUserContractAuth({presentableInfo, userInfo, nodeInfo})
             if (!userContractAuthResult.isAuth) {
                 return userContractAuthResult
@@ -150,11 +149,15 @@ class PresentableAuthService extends Service {
 
         const policyAuthorizationResult = authService.policyAuthorization(params)
 
+        console.log(policyAuthorizationResult, policyAuthorizationResult.authCode, 'start')
+
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
 
         this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
+
+        console.log(policyAuthorizationResult, policyAuthorizationResult.authCode, 'end')
 
         return policyAuthorizationResult
     }
