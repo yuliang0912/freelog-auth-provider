@@ -195,20 +195,100 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     }
 
     /**
+     * presentable授权树授权测试
+     */
+    async presentableTreeAuthTest(ctx) {
+
+        const nodeId = ctx.checkQuery('nodeId').toInt().value
+        const presentableId = ctx.checkQuery('presentableId').isPresentableId().value
+        ctx.validate()
+
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
+            ctx.error({msg: '参数nodeId错误', data: {nodeInfo, userId: ctx.request.userId}})
+        }
+
+        const authResult = await ctx.service.presentableAuthService.presentableTreeAuthHandler(presentableId, nodeInfo)
+
+        ctx.success(authResult)
+    }
+
+    /**
+     * 获取presentable签约授权结果
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async getPresentableSignAuth(ctx) {
+
+        const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().value
+        ctx.validate()
+
+        const presentableSignAuthResult = [...new Set(presentableIds)].map(presentableId => new Object({
+            presentableId, isAcquireSignAuth: -1
+        }))
+
+        const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTrees?presentableIds=${presentableIds.toString()}`)
+
+        const contractIds = presentableAuthTrees.reduce((acc, current) => {
+            acc = [...acc, ...current.authTree.map(x => x.contractId)]
+            return acc
+        }, [])
+
+        const contractMap = await ctx.dal.contractProvider.find({_id: {$in: contractIds}}).then(dataList => new Map(dataList.map(x => [x.contractId, x])))
+
+        for (let x = 0, y = presentableAuthTrees.length; x < y; x++) {
+            let presentableAuthTree = presentableAuthTrees[x]
+            let presentableSignAuth = presentableSignAuthResult.find(m => m.presentableId === presentableAuthTree.presentableId)
+            presentableSignAuth.isAcquireSignAuth = 1
+            for (let i = 0, j = presentableAuthTree.authTree.length; i < j; i++) {
+                let {contractId, resourceId} = presentableAuthTree.authTree[i]
+                if (!contractMap.has(contractId)) {
+                    continue
+                }
+                let contractInfo = contractMap.get(contractId)
+                let signAuthResult = null
+                if (presentableAuthTree.masterResourceId === resourceId) {
+                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(contractInfo)
+                } else {
+                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(contractInfo)
+                }
+                if (!signAuthResult.isAuth) {
+                    presentableSignAuth.isAcquireSignAuth = 0
+                    break
+                }
+            }
+        }
+
+        ctx.success(presentableSignAuthResult)
+    }
+
+    /**
      * 响应输出resource-file信息
      * @returns {Promise<void>}
      */
     async _responseResourceFile(ctx, resourceInfo, fileName) {
+
+        const isCache = ctx.get('if-none-match') === `"${resourceInfo.resourceId}"`
+        ctx.set('freelog-resource-type', resourceInfo.resourceType)
+        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
+        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
+
+        // if (isCache) {
+        //     ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+        //     ctx.set('content-type', resourceInfo.mimeType)
+        //     ctx.body = null
+        //     ctx.status = 304
+        //     return
+        //}
+
         const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
         if (!/^2[\d]{2}$/.test(result.status)) {
             ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
         }
         ctx.attachment(fileName || resourceInfo.resourceId)
         Object.keys(result.headers).forEach(key => ctx.set(key, result.headers[key]))
-        ctx.set('content-type', resourceInfo.mimeType)
-        ctx.set('freelog-resource-type', resourceInfo.resourceType)
-        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
-        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
         ctx.body = result.res
+        ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+        ctx.set('content-type', resourceInfo.mimeType)
     }
 }

@@ -53,7 +53,12 @@ module.exports = Object.freeze({
     /**
      * 给予重签授权
      */
-    BasedOnReContractable: 264,
+    BasedOnReContractableSign: 264,
+
+    /**
+     * 给予presentable重签授权
+     */
+    BasedOnPresentableSign: 265,
 
     /**
      * 基于最后一次授权结果的缓存授权
@@ -157,7 +162,12 @@ module.exports = Object.freeze({
     /**
      * 转签授权失败
      */
-    ReContractableAuthFailed: 701,
+    ReContractableSignAuthFailed: 701,
+
+    /**
+     * presentable签约授权失败
+     */
+    PresentableSignAuthFailed: 702,
 
     /**
      * 系统异常

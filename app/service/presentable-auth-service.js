@@ -123,6 +123,43 @@ class PresentableAuthService extends Service {
     }
 
     /**
+     * presentable树授权
+     * @param presentableId
+     * @returns {Promise<void>}
+     */
+    async presentableTreeAuthHandler(presentableId, nodeInfo) {
+
+        const {ctx} = this
+        const partyTwoUserIds = new Set()
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
+        if (!presentableAuthTree) {
+            throw new LogicError('presentable授权树数据缺失')
+        }
+
+        const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
+        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
+            const contractMap = new Map()
+            dataList.forEach(currentContract => {
+                partyTwoUserIds.add(currentContract.partyTwoUserId)
+                contractMap.set(currentContract.contractId, currentContract)
+            })
+            return contractMap
+        })
+
+        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
+            return new Map(dataList.map(x => [x.userId, x]))
+        })
+
+        presentableAuthTree.nodeInfo = nodeInfo
+        presentableAuthTree.authTree.forEach(item => {
+            item.contractInfo = contractMap.get(item.contractId)
+            item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
+        })
+
+        return authService.presentableAuthTreeAuthorization(presentableAuthTree)
+    }
+
+    /**
      * 授权token转换成授权结果
      * @param authToken
      * @returns {Promise<module.CommonAuthResult|*>}
@@ -147,13 +184,13 @@ class PresentableAuthService extends Service {
             partyOneUserId: presentableInfo.userId
         }
 
-        const policyAuthorizationResult = authService.policyAuthorization(params)
-
-        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
+        const policyAuthorizationResult = await authService.policyAuthorization(params)
 
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
         }
+
+        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
 
         return policyAuthorizationResult
     }
@@ -179,7 +216,7 @@ class PresentableAuthService extends Service {
             return this._tryCreateDefaultUserContract({presentableInfo, userInfo})
         }
 
-        const defaultContractAuthResult = authService.contractAuthorization({
+        const defaultContractAuthResult = await authService.contractAuthorization({
             contract: defaultContract, partyTwoUserInfo: userInfo
         })
 
