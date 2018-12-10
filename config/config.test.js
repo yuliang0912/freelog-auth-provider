@@ -15,15 +15,15 @@ module.exports = {
     gatewayUrl: "http://172.18.215.224:8895/test",
 
     mongoose: {
-        url: "mongodb://172.18.215.229:27017/auth"
+        url: "mongodb://172.18.215.229:27018/auth"
     },
 
     rabbitMq: {
         connOptions: {
-            host: '172.18.215.229',
-            port: 5672,
-            login: 'test_user_auth',
-            password: 'test_user_2018',
+            host: '172.18.215.231',
+            port: 5673,
+            login: 'test_auth_node',
+            password: 'rabbit@freelog',
             authMechanism: 'AMQPLAIN'
         },
     },
