@@ -28,6 +28,7 @@ module.exports = class ContractController extends Controller {
         const partyTwo = ctx.checkQuery('partyTwo').optional().value
         const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
+        const projection = ctx.checkQuery('projection').optional().toSplitArray().value
         ctx.validate()
 
         const condition = {}
@@ -50,12 +51,14 @@ module.exports = class ContractController extends Controller {
             ctx.error({msg: '最少需要一个查询条件'})
         }
 
-        var dataList = []
+        var dataList = [], projectionStr = null
         const totalItem = await this.contractProvider.count(condition)
+        if (projection && projection.length) {
+            projectionStr = projection.join(' ')
+        }
 
-        //const projection = "_id contractName segmentId contractType targetId resourceId policySegment partyOne partyTwo status createDate"
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await this.contractProvider.findPageList(condition, page, pageSize, null, {createDate: 1})
+            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projectionStr, {createDate: 1})
         }
 
         ctx.success({page, pageSize, totalItem, dataList})
@@ -69,14 +72,15 @@ module.exports = class ContractController extends Controller {
     async list(ctx) {
 
         const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 100).value
-
+        const projection = ctx.checkQuery('projection').optional().toSplitArray().value
         ctx.validate()
 
+        var projectionStr = null
         const condition = {_id: {$in: contractIds}}
-
-        const projection = "_id segmentId contractType targetId resourceId partyOne partyTwo status createDate"
-
-        await this.contractProvider.find(condition).then(ctx.success).catch(ctx.error)
+        if (projection && projection.length) {
+            projectionStr = projection.join(' ')
+        }
+        await this.contractProvider.find(condition, projectionStr).then(ctx.success).catch(ctx.error)
     }
 
     /**

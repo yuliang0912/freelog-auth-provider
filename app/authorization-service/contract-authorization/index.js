@@ -10,6 +10,7 @@ const Patrun = require('patrun')
 const nodeContractAuth = require('./node-contract-auth')
 const userContractAuth = require('./user-contract-auth')
 const resourceContractAuth = require('./resource-contract-auth')
+const resourcePresentableSignAuth = require('./resource-presentable-sign-auth')
 const resourceReContractableSignAuth = require('./resource-recontractable-sign-auth')
 const policyIdentityAuthentication = require('../identity-authentication/index')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
@@ -56,6 +57,15 @@ class ContractAuthorization {
      */
     resourceReContractableSignAuth(contract) {
         return resourceReContractableSignAuth({contract})
+    }
+
+    /**
+     * 资源presentable签约授权
+     * @param contract
+     * @returns {module.CommonAuthResult|*|commonAuthResult}
+     */
+    resourcePresentableSignAuth(contract) {
+        return resourcePresentableSignAuth({contract})
     }
 
     /**

@@ -45,6 +45,7 @@ const AuthProcessManager = class AuthProcessManager {
             }
         })
 
+        authResult.data.presentableAuthTree = presentableAuthTree
         if (unActivatedNodeContracts.length) {
             authResult.authCode = authCodeEnum.NodeContractNotActive
             authResult.data.unActivatedNodeContracts = unActivatedNodeContracts
@@ -163,6 +164,15 @@ const AuthProcessManager = class AuthProcessManager {
      */
     async resourceReContractableSignAuth(contract) {
         return ContractAuthorization.resourceReContractableSignAuth(contract)
+    }
+
+    /**
+     * 资源presentable签约授权
+     * @param contract
+     * @returns {module.CommonAuthResult|*|commonAuthResult}
+     */
+    async resourcePresentableSignAuth(contract) {
+        return ContractAuthorization.resourcePresentableSignAuth(contract)
     }
 }
 

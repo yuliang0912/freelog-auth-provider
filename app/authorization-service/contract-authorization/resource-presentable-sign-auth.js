@@ -1,6 +1,6 @@
 /**
  * Created by yuliang on 2017/10/30.
- * 资源作为供应链的签约授权.
+ * * 资源作为消费品的签约授权.
  */
 
 'use strict'
@@ -13,21 +13,22 @@ module.exports = ({contract}) => {
 
     const result = new commonAuthResult(authCodeEnum.Default, {contract})
 
-    if (!contract || contract.contractType !== contractType.ResourceToResource) {
-        result.authCode = authCodeEnum.NotFoundResourceContract
+    if (!contract || contract.contractType !== contractType.ResourceToNode) {
+        result.authCode = authCodeEnum.NotFoundNodeContract
         result.addError('未找到有效合同')
         return result
     }
 
     const {contractClause} = contract
     const fsmStateDescription = contractClause.currentFsmState ? contractClause.fsmStates[contractClause.currentFsmState] : null
-    if (!fsmStateDescription || !fsmStateDescription.authorization.find(x => x.toLowerCase() === 'recontractable')) {
-        result.authCode = authCodeEnum.ReContractableSignAuthFailed
+
+    if (!fsmStateDescription || !fsmStateDescription.authorization.find(x => x.toLowerCase() === 'presentable')) {
+        result.authCode = authCodeEnum.PresentableSignAuthFailed
         result.addError('资源未获得转签授权')
         return result
     }
 
-    result.authCode = authCodeEnum.BasedOnReContractableSign
+    result.authCode = authCodeEnum.BasedOnPresentableSign
 
     return result
 }

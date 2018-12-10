@@ -4,6 +4,7 @@ const Service = require('egg').Service;
 const authService = require('../authorization-service/process-manager')
 const {LogicError, ArgumentError, ApplicationError} = require('egg-freelog-base/error')
 
+
 class ContractService extends Service {
 
     constructor({app}) {
@@ -39,7 +40,7 @@ class ContractService extends Service {
 
         const resourceReContractableSignAuthFailed = await this._checkReContractableAuth(Array.from(contractObjects.keys()))
         if (resourceReContractableSignAuthFailed.length) {
-            throw new ArgumentError('签约的授权方案中存在部分不同没有执行到允许重签的状态', resourceReContractableSignAuthFailed)
+            throw new ArgumentError('签约的授权方案中存在部分合同没有执行到允许重签的状态', resourceReContractableSignAuthFailed)
         }
 
         const identityAuthTasks = []
@@ -105,20 +106,19 @@ class ContractService extends Service {
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
 
-        await this.contractProvider.findOne({
+        const oldContract = await this.contractProvider.findOne({
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUser,
             isTerminate: 0, segmentId
-        }).then(oldContract => {
-            if (oldContract) {
-                throw new ApplicationError('已经存在一份同样的合约,不能重复签订', oldContract)
-            }
         })
+        if (oldContract) {
+            throw new ApplicationError('已经存在一份同样的合约,不能重复签订', oldContract)
+        }
 
         const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentable || !presentable.isOnline) {
-            throw new ArgumentError(`targetId:${presentableId}错误或者presentable未上线`, {presentable})
+            throw new ArgumentError(`presentableId:${presentableId}错误或者presentable未上线`, {presentable})
         }
 
         const policySegment = presentable.policy.find(t => t.segmentId === segmentId)
@@ -141,6 +141,12 @@ class ContractService extends Service {
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentable.nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
             throw new LogicError('未找到节点信息或者节点已不存在', {presentable, nodeInfo})
+        }
+
+        const contracts = await ctx.service.signAuthService.presentableSignAuth(presentableId)
+        const signAuthFailedContracts = contracts.filter(x => !x.signAuthResult.isAuth)
+        if (signAuthFailedContracts.length) {
+            throw new ApplicationError('节点资源的合约链中存在未获得再签约授权的合约', {signAuthFailedContracts})
         }
 
         const contractModel = {
@@ -198,26 +204,21 @@ class ContractService extends Service {
     async _checkReContractableAuth(authSchemeIds) {
 
         const {ctx} = this
-        const schemeAuthContracts = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/authSchemes/schemeAuthTree/schemeAuthTreeContractIds?authSchemeIds=${authSchemeIds.toString()}`)
+
         const resourceReContractableSignAuthFailed = []
 
-        for (let i = 0, j = schemeAuthContracts.length; i < j; i++) {
-            const {authSchemeId, authTree} = schemeAuthContracts[i]
-            const contractIds = authTree.map(x => x.contractId)
-            const contracts = await this.contractProvider.find({_id: {$in: contractIds}})
-            contracts.forEach(item => {
-                const authResult = authService.resourceReContractableSignAuth(item)
-                if (!authResult.isAuth) {
-                    resourceReContractableSignAuthFailed.push({authSchemeId, contract: item})
+        for (let i = 0, j = authSchemeIds.length; i < j; i++) {
+            const contracts = await ctx.service.signAuthService.resourceSignAuth(authSchemeIds[i])
+            contracts.forEach(contractInfo => {
+                if (!contractInfo.signAuthResult.isAuth) {
+                    resourceReContractableSignAuthFailed.push({authSchemeId: authSchemeIds[i], contract: contractInfo})
                 }
             })
-            if (resourceReContractableSignAuthFailed.length) {
-                break
-            }
         }
 
         return resourceReContractableSignAuthFailed
     }
+
 }
 
 module.exports = ContractService;
