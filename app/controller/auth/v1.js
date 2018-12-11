@@ -200,7 +200,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableTreeAuthTest(ctx) {
 
         const nodeId = ctx.checkQuery('nodeId').toInt().value
-        const presentableId = ctx.checkQuery('presentableId').isPresentableId().value
+        const presentableId = ctx.checkParams('presentableId').isPresentableId().value
         ctx.validate()
 
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
