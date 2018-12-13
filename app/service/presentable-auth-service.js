@@ -137,7 +137,7 @@ class PresentableAuthService extends Service {
             authResult.addError('节点资源合同不完备,请检查是否全部签约')
             return authResult
         }
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableInfo.presentableId}`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')
         }
