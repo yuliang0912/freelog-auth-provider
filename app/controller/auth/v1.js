@@ -253,6 +253,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 }
                 if (!signAuthResult.isAuth) {
                     presentableSignAuth.isAcquireSignAuth = 0
+                    console.log(signAuthResult)
                     break
                 }
             }
