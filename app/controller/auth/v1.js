@@ -223,7 +223,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.validate()
 
         const presentableSignAuthResult = [...new Set(presentableIds)].map(presentableId => new Object({
-            presentableId, isAcquireSignAuth: -1
+            presentableId, isAcquireSignAuth: 0
         }))
 
         const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTrees?presentableIds=${presentableIds.toString()}`)
@@ -253,7 +253,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 }
                 if (!signAuthResult.isAuth) {
                     presentableSignAuth.isAcquireSignAuth = 0
-                    console.log(signAuthResult)
                     break
                 }
             }

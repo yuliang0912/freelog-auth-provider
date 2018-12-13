@@ -13,7 +13,7 @@ module.exports = ({contract}) => {
 
     const result = new commonAuthResult(authCodeEnum.Default, {contract})
 
-    if (!contract || contract.contractType !== contractType.ResourceToResource) {
+    if (!contract) {
         result.authCode = authCodeEnum.NotFoundResourceContract
         result.addError('未找到有效合同')
         return result
