@@ -127,10 +127,16 @@ class PresentableAuthService extends Service {
      * @param presentableId
      * @returns {Promise<void>}
      */
-    async presentableTreeAuthHandler(presentableId, nodeInfo) {
+    async presentableTreeAuthHandler(presentableInfo, nodeInfo) {
 
         const {ctx} = this
         const partyTwoUserIds = new Set()
+
+        if ((presentableInfo.status & 1) !== 1) {
+            let authResult = new commonAuthResult(authCodeEnum.NotFoundNodeContract)
+            authResult.addError('节点资源合同不完备,请检查是否全部签约')
+            return authResult
+        }
         const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')

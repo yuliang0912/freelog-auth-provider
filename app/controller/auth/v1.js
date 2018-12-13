@@ -199,16 +199,15 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async presentableTreeAuthTest(ctx) {
 
-        const nodeId = ctx.checkQuery('nodeId').toInt().value
         const presentableId = ctx.checkParams('presentableId').isPresentableId().value
         ctx.validate()
 
-        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
-        if (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId) {
-            ctx.error({msg: '参数nodeId错误', data: {nodeInfo, userId: ctx.request.userId}})
+        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        if (!presentableInfo || presentableInfo.userId !== ctx.request.userId) {
+            ctx.error({msg: '未找到有效的presentable信息', data: {presentableInfo, userId: ctx.request.userId}})
         }
-
-        const authResult = await ctx.service.presentableAuthService.presentableTreeAuthHandler(presentableId, nodeInfo)
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentableInfo.nodeId}`)
+        const authResult = await ctx.service.presentableAuthService.presentableTreeAuthHandler(presentableInfo, nodeInfo)
 
         ctx.success(authResult)
     }
