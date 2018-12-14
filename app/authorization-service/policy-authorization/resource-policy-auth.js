@@ -13,8 +13,7 @@ module.exports = ({policySegment, contractType}) => {
     const authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy, {policySegment, contractType})
 
     const fsmStates = Object.keys(policySegment.fsmStates)
-    const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1
-        && fsmStates.some(m => m.toLocaleLowerCase() === 'initial' || m.toLocaleLowerCase() === 'init')
+    const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1 && fsmStates.some(m => /^(initial|init)$/i.test(m))
 
     if (!isInitialTerminateMode) {
         authResult.authCode = contractType === freelogContractType.ResourceToResource

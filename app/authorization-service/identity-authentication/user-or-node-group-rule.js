@@ -22,8 +22,9 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
         return authResult
     }
 
+    const {users} = authUserObject
     //如果存在所有访问者分组,则通过
-    if (authUserObject.users.some(item => item.toUpperCase() === 'PUBLIC')) {
+    if (users.some(x => /^PUBLIC$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
@@ -37,13 +38,13 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     //如果分组策略中允许所有节点签约,并且存在节点信息
-    if (contractType === app.contractType.ResourceToNode && authUserObject.users.some(item => item.toUpperCase() === 'NODES')) {
+    if (contractType === app.contractType.ResourceToNode && users.some(x => /^NODES$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
 
     //所有登录用户都可以访问,则通过
-    if (contractType === app.contractType.PresentableToUser && authUserObject.users.some(item => item.toUpperCase() === 'REGISTERED_USERS')) {
+    if (contractType === app.contractType.PresentableToUser && users.some(x => /^REGISTERED_USERS$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
@@ -66,7 +67,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
 
     //校验乙方是否在自定义的节点分组中
     if (contractType === app.contractType.ResourceToNode) {
-        const customNodeGroups = authUserObject.users.filter(item => commonRegex.nodeGroupId.test(item))
+        const customNodeGroups = users.filter(item => commonRegex.nodeGroupId.test(item))
         if (await isExistMember(customNodeGroups, partyTwoInfo.nodeId)) {
             authResult.authCode = authCodeEnum.BasedOnGroup
             return authResult
@@ -74,7 +75,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
     }
 
     //校验乙方的用户主体是否在自定义的用户分组中
-    const customUserGroups = authUserObject.users.filter(item => commonRegex.userGroupId.test(item))
+    const customUserGroups = users.filter(item => commonRegex.userGroupId.test(item))
     if (await isExistMember(customUserGroups, partyTwoUserInfo.userId)) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult

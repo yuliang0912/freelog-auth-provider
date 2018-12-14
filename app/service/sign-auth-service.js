@@ -19,7 +19,7 @@ class SignAuthService extends Service {
     async presentableSignAuth(presentableId) {
 
         const {ctx} = this
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         if (!presentableAuthTree || !presentableAuthTree.authTree.length) {
             throw new ArgumentError('未找到节点资源签署的有效的合约信息')
         }

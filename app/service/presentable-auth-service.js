@@ -62,7 +62,7 @@ class PresentableAuthService extends Service {
         }
 
         const partyTwoUserIds = new Set()
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableId}`)
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')
         }
@@ -137,7 +137,7 @@ class PresentableAuthService extends Service {
             authResult.addError('节点资源合同不完备,请检查是否全部签约')
             return authResult
         }
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTree/${presentableInfo.presentableId}`)
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableInfo.presentableId}/authTree`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')
         }

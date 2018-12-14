@@ -15,14 +15,14 @@ module.exports = ({contract}) => {
 
     if (!contract || contract.contractType !== contractType.ResourceToNode) {
         result.authCode = authCodeEnum.NotFoundNodeContract
-        result.addError('未找到有效合同')
+        result.addError('未找到有效合同,合同类型不正确')
         return result
     }
 
     const {contractClause} = contract
     const fsmStateDescription = contractClause.currentFsmState ? contractClause.fsmStates[contractClause.currentFsmState] : null
 
-    if (!fsmStateDescription || !fsmStateDescription.authorization.find(x => x.toLowerCase() === 'presentable')) {
+    if (!fsmStateDescription || !fsmStateDescription.authorization.find(x => /^presentable$/i.test(x))) {
         result.authCode = authCodeEnum.PresentableSignAuthFailed
         result.addError('资源未获得转签授权')
         return result

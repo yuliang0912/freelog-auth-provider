@@ -30,14 +30,15 @@ module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInf
         return authResult
     }
 
+    const {users} = authUserObject
     //策略中是否存在SELF认证,并且乙方的用户主体与甲方的用户主体一致,则认证通过
-    if (partyTwoUserInfo && authUserObject.users.some(item => item.toUpperCase() === 'SELF') && partyOneUserId === partyTwoUserInfo.userId) {
+    if (partyTwoUserInfo && partyOneUserId === partyTwoUserInfo.userId && users.some(x => /^SELF$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnIndividuals
         return authResult
     }
 
     //如果匹配到乙方用户的邮件或者手机号,则通过认证
-    if (authUserObject.users.some(item => partyTwoUserInfo.email.toLowerCase() === item.toLowerCase() || partyTwoUserInfo.mobile.toString() === item.toString())) {
+    if (users.some(item => partyTwoUserInfo.email.toLowerCase() === item.toLowerCase() || partyTwoUserInfo.mobile.toString() === item.toString())) {
         authResult.authCode = authCodeEnum.BasedOnIndividuals
         return authResult
     }

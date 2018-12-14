@@ -29,13 +29,10 @@ module.exports = ({authUserObject, contractType, partyTwoInfo}) => {
         return authResult
     }
 
-    function nodeDomainCheckRule(domainRule) {
-        return partyTwoInfo.nodeDomain.toLowerCase() === domainRule.toLowerCase() ||
-            `${partyTwoInfo.nodeDomain.toLowerCase()}.freelog.com` === domainRule.toLowerCase()
-    }
-
+    const {users} = authUserObject
+    const nodeDomainCheckRule = new RegExp(`${partyTwoInfo.nodeDomain}(.freelog.com(\/)?)?$`, "i")
     //如果匹配到当前节点的域名,则认证通过
-    if (authUserObject.users.some(nodeDomainCheckRule)) {
+    if (users.some(x => nodeDomainCheckRule.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnIndividuals
         return authResult
     }

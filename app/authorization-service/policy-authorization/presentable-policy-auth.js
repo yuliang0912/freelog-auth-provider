@@ -14,8 +14,7 @@ module.exports = ({policySegment}) => {
     const authResult = new AuthResult(authCodeEnum.BasedOnNodePolicy, {policySegment})
 
     const fsmStates = Object.keys(policySegment.fsmStates)
-    const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1
-        && fsmStates.some(m => m.toLocaleLowerCase() === 'initial' || m.toLocaleLowerCase() === 'init')
+    const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1 && fsmStates.some(m => /^(initial|init)$/i.test(m))
 
     if (!isInitialTerminateMode) {
         authResult.authCode = authCodeEnum.NotFoundUserPresentableContract
