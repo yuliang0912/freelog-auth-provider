@@ -116,7 +116,10 @@ class PresentableAuthService extends Service {
             partyTwoUserId: userId
         })
         if (!authTokenCache || authTokenCache.contractType !== app.contractType.PresentableToUser || !authTokenCache.authResourceIds.some(x => x === resourceId)) {
-            return new commonAuthResult(authCodeEnum.ResourceAuthTokenInvalid)
+            return new commonAuthResult(authCodeEnum.ResourceAuthTokenInvalid, {
+                authTokenCache, resourceId,
+                value: app.contractType.PresentableToUser
+            })
         }
 
         return this._authTokenToAuthResult(authTokenCache)
