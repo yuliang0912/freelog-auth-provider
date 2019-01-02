@@ -59,9 +59,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
         if (!groups.length) {
             return false
         }
-        const existGroups = await app.curl(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`, {dataType: 'json'}).then(res => {
-            return res.data.data
-        })
+        const existGroups = await app.curlIntranetApi(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`)
         return Array.isArray(existGroups) && existGroups.length
     }
 
