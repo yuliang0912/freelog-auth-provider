@@ -57,17 +57,13 @@ module.exports = class GenerateContract {
      */
     async createContractAccount(contractId, currencyType, userId) {
 
-        const response = await this.app.curlIntranetApi(`${this.app.webApi.accountInfo}/createContractAccount`, {
+        return this.app.curlIntranetApi(`${this.app.webApi.accountInfo}/createContractAccount`, {
             type: 'post',
             dataType: 'json',
             contentType: 'json',
             data: {contractId, currencyType, accountName: '合同账户'}
-        }, {userInfo: {userId}})
-
-        if (!/^2\d{2}$/.test(response.status)) {
-            throw new ApplicationError('创建合同账户失败')
-        }
-
-        return baseHelper.convertApiResult(response.data)
+        }, {userInfo: {userId}}).catch(error => {
+            throw new ApplicationError('创建合同账户失败', {error})
+        })
     }
 }
