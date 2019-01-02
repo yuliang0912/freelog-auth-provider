@@ -59,18 +59,14 @@ module.exports = class contractPaymentService {
     async _payment({contractInfo, tradeRecordId, fromAccountId, toAccountId, amount, password, userId}) {
 
         const {app} = this
-        const identityInfo = {tokenType: 'token-client', userInfo: {userId}}
         const postData = {
             fromAccountId, toAccountId, amount, password,
             outsideTradeNo: tradeRecordId,
             outsideTradeDesc: contractInfo.contractName
         }
-        return app.curlFromClient(`${app.webApi.pay}/inquirePayment`, {
-            type: 'post',
-            contentType: 'json',
-            data: postData,
-            headers: {authentication: cryptoHelper.base64Encode(JSON.stringify(identityInfo))}
-        }).catch(error => {
+        return app.curlIntranetApi(`${app.webApi.pay}/inquirePayment`, {
+            type: 'post', contentType: 'json', data: postData
+        }, {userInfo: {userId}}).catch(error => {
             throw new ApiInvokingError('支付接口(inquirePayment)调用失败', {message: error.toString(), postData, userId})
         })
     }

@@ -47,13 +47,11 @@ module.exports = class EscrowTransferService {
     async _transfer({fromAccountId, toAccountId, userInfo, transferType, authCode, refParam, remark}) {
 
         const {app} = this
-        const identityInfo = {tokenType: 'token-client', userInfo}
-        return app.curlFromClient(`${app.webApi.pay}/inquireTransfer`, {
+        return app.curlIntranetApi(`${app.webApi.pay}/inquireTransfer`, {
             type: 'post',
             contentType: 'json',
-            data: {fromAccountId, toAccountId, authCode, amount: 1, transferType, refParam, remark},
-            headers: {authentication: cryptoHelper.base64Encode(JSON.stringify(identityInfo))}
-        })
+            data: {fromAccountId, toAccountId, authCode, amount: 1, transferType, refParam, remark}
+        }, {userInfo})
     }
 }
 

@@ -61,8 +61,6 @@ module.exports = appInfo => {
             errCodeEnum: {}
         },
 
-        gatewayUrl: "http://api.freelog.com",
-
         rabbitMq: {
             connOptions: {
                 host: '192.168.164.165',

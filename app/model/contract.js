@@ -11,6 +11,7 @@ module.exports = app => {
 
     const mongoose = app.mongoose
     const toObjectOptions = {
+        //{virtuals: true},
         transform(doc, ret, options) {
             return Object.assign({contractId: doc.id}, lodash.omit(ret, ['_id', 'isTerminate']))
         }
@@ -40,6 +41,7 @@ module.exports = app => {
         isConsumptive: {type: Number, default: 0, enum: [0, 1], required: true}, //是否消费过
         status: {type: Number, required: true, default: 1}, //默认未开始执行
     }, {
+        //_id: false,
         versionKey: false,
         timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},
         toJSON: toObjectOptions,
@@ -51,6 +53,7 @@ module.exports = app => {
     })
 
     ContractSchema.virtual("isActivated").get(function () {
+
         if (this.status === contractStatusEnum.active) {
             return true
         }

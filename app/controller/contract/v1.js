@@ -71,7 +71,7 @@ module.exports = class ContractController extends Controller {
      */
     async list(ctx) {
 
-        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 100).value
+        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 1000).value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().value
         ctx.validate()
 
