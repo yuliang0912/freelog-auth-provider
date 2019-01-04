@@ -92,7 +92,7 @@ class ResourceAuthService extends Service {
 
         const signature = resourceAuthJwt.createJwt(Object.assign({}, payLoad, {resourceId}), expire)
 
-        return ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/auth/getResource`, {headers: {authorization: `bearer ${signature}`}})
+        return ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/auth/getResource`, {headers: {'resource-signature': `bearer ${signature}`}})
     }
 }
 

@@ -3,7 +3,6 @@
 const uuid = require('uuid')
 const lodash = require('lodash')
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const baseHelper = require('egg-freelog-base/app/extend/helper')
 const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class GenerateContract {

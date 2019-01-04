@@ -25,27 +25,32 @@ class PresentableAuthService extends Service {
 
         const {ctx} = this
         const userId = ctx.request.userId || 0
-        const authTokenCache = await ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId,
-            partyTwo: userId,
-            partyTwoUserId: userId
-        })
-        if (authTokenCache) {
-            return this._authTokenToAuthResult(authTokenCache)
-        }
-
-        const userInfo = ctx.request.identityInfo.userInfo
-        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
-        if (!nodeInfo || nodeInfo.status !== 0) {
-            throw new ArgumentError('参数nodeId错误', {nodeInfo})
-        }
-
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
             throw new ArgumentError('参数presentableId错误或者presentableId与nodeId不匹配', {presentableInfo})
         }
         if (!presentableInfo.isOnline) {
             throw new LogicError('presentable未上线,无法授权', {presentableInfo})
+        }
+        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
+        if (!presentableAuthTree) {
+            throw new LogicError('presentable授权树数据缺失')
+        }
+
+        const authTokenCache = await ctx.service.authTokenService.getAuthToken({
+            targetId: presentableId,
+            partyTwo: userId,
+            partyTwoUserId: userId
+        })
+        if (authTokenCache) {
+            authTokenCache.authResourceIds = presentableAuthTree.authTree.map(x => x.resourceId)
+            return this._authTokenToAuthResult(authTokenCache)
+        }
+
+        const {userInfo} = ctx.request.identityInfo
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        if (!nodeInfo || nodeInfo.status !== 0) {
+            throw new ArgumentError('参数nodeId错误', {nodeInfo})
         }
 
         //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
@@ -62,11 +67,6 @@ class PresentableAuthService extends Service {
         }
 
         const partyTwoUserIds = new Set()
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
-        if (!presentableAuthTree) {
-            throw new LogicError('presentable授权树数据缺失')
-        }
-
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
         const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
             const contractMap = new Map()
@@ -176,6 +176,7 @@ class PresentableAuthService extends Service {
      */
     async _authTokenToAuthResult(authToken) {
         const authResult = new commonAuthResult(authToken.authCode)
+
         authResult.data.authToken = authToken
         return authResult
     }
