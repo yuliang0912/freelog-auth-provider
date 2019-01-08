@@ -25,23 +25,30 @@ class PresentableAuthService extends Service {
 
         const {ctx} = this
         const userId = ctx.request.userId || 0
-        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+
+        //presentable信息出错可能性很低,正常都会进行下面三次请求,故合并批量异步处理
+        const presentableInfoTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
+        const authTokenCacheTask = ctx.service.authTokenService.getAuthToken({
+            targetId: presentableId, partyTwo: userId, partyTwoUserId: userId
+        })
+
+        const {presentableInfo, presentableAuthTree, authTokenCache} = await Promise.all([presentableInfoTask, presentableAuthTreeTask, authTokenCacheTask])
+            .then(([presentableInfo, presentableAuthTree, authTokenCache]) => new Object({
+                authTokenCache,
+                presentableInfo,
+                presentableAuthTree,
+            }))
+
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
             throw new ArgumentError('参数presentableId错误或者presentableId与nodeId不匹配', {presentableInfo})
         }
         if (!presentableInfo.isOnline) {
             throw new LogicError('presentable未上线,无法授权', {presentableInfo})
         }
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         if (!presentableAuthTree) {
             throw new LogicError('presentable授权树数据缺失')
         }
-
-        const authTokenCache = await ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId,
-            partyTwo: userId,
-            partyTwoUserId: userId
-        })
         if (authTokenCache) {
             authTokenCache.authResourceIds = presentableAuthTree.authTree.map(x => x.resourceId)
             return this._authTokenToAuthResult(authTokenCache)
@@ -68,7 +75,7 @@ class PresentableAuthService extends Service {
 
         const partyTwoUserIds = new Set()
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
-        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
+        const contractMapTask = this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
             const contractMap = new Map()
             dataList.forEach(currentContract => {
                 partyTwoUserIds.add(currentContract.partyTwoUserId)
@@ -76,10 +83,12 @@ class PresentableAuthService extends Service {
             })
             return contractMap
         })
-
-        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
+        const partyTwoUserInfoMapTask = ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
             return new Map(dataList.map(x => [x.userId, x]))
         })
+        const {contractMap, partyTwoUserInfoMap} = await Promise.all([contractMapTask, partyTwoUserInfoMapTask]).then(([contractMap, partyTwoUserInfoMap]) => new Object({
+            contractMap, partyTwoUserInfoMap
+        }))
 
         presentableAuthTree.nodeInfo = nodeInfo
         presentableAuthTree.authTree.forEach(item => {
