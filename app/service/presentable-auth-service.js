@@ -75,7 +75,7 @@ class PresentableAuthService extends Service {
 
         const partyTwoUserIds = new Set()
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
-        const contractMapTask = this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
+        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
             const contractMap = new Map()
             dataList.forEach(currentContract => {
                 partyTwoUserIds.add(currentContract.partyTwoUserId)
@@ -83,12 +83,9 @@ class PresentableAuthService extends Service {
             })
             return contractMap
         })
-        const partyTwoUserInfoMapTask = ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
+        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
             return new Map(dataList.map(x => [x.userId, x]))
         })
-        const {contractMap, partyTwoUserInfoMap} = await Promise.all([contractMapTask, partyTwoUserInfoMapTask]).then(([contractMap, partyTwoUserInfoMap]) => new Object({
-            contractMap, partyTwoUserInfoMap
-        }))
 
         presentableAuthTree.nodeInfo = nodeInfo
         presentableAuthTree.authTree.forEach(item => {
