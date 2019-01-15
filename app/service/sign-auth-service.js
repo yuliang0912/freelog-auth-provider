@@ -37,10 +37,7 @@ class SignAuthService extends Service {
 
         const {ctx} = this
         const authSchemeAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/authSchemes/schemeAuthTree/${authSchemeId}`)
-        if (!authSchemeAuthTree) {
-            throw new ArgumentError('未找到资源签署的有效的合约信息')
-        }
-        if (!authSchemeAuthTree.authTree.length) {
+        if (!authSchemeAuthTree || !authSchemeAuthTree.authTree.length) {
             return []
         }
         const authSchemeContractIds = authSchemeAuthTree.authTree.map(x => x.contractId)
