@@ -262,12 +262,20 @@ class PresentableAuthService extends Service {
         const presentablePolicyAuthResult = await authService.policyAuthorization(params)
 
         this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentablePolicyAuthResult})
-
+        //非免费资源,则直接返回授权错误,免费资源则创建合同
         if (!presentablePolicyAuthResult.isAuth) {
             return presentablePolicyAuthResult
         }
 
-        await this._createUserContract({presentableInfo, policySegment: presentablePolicyAuthResult.data.policySegment})
+        try {
+            await this._createUserContract({
+                presentableInfo,
+                policySegment: presentablePolicyAuthResult.data.policySegment
+            })
+        } catch (e) {
+            result.authCode = authCodeEnum.NotFoundUserPresentableContract
+            result.addError(e.toString())
+        }
 
         return result
     }

@@ -18,7 +18,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.validate(false)
 
         const {presentableAuthService, resourceAuthService} = ctx.service
-        const authResult = await presentableAuthService.authProcessHandler({nodeId, presentableId}).catch(ctx.error)
+        var authResult = await presentableAuthService.authProcessHandler({nodeId, presentableId}).catch(ctx.error)
 
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
