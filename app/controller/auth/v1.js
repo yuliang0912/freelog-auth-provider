@@ -189,6 +189,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const returnResult = presentableInfo.policy.map(policySegment => new Object({
             segmentId: policySegment.segmentId,
             status: policySegment.status,
+            purpose: this._getPurposeFromPolicy(policySegment),
             authResult: policySegment.authResult || null
         }))
 
