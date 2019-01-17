@@ -1,0 +1,10 @@
+
+# recontractable和presentable签约授权说明
+
+# recontractable和presentable签约授权仅存在于授权方案的授权策略中,presentable的授权策略不受此约束
+
+## recontractable 授权说明
+
+recontractable代表资源再创作授权.一个资源的策略中只有包含了recontractable授权,才能被作为依赖资源,以供其他资源使用.
+如果资源中不包含recontractable,但是其被作为依赖资源引用了,那么当第三方想签约这个复合资源时,则签约授权校验不通过.
+

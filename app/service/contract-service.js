@@ -40,10 +40,10 @@ class ContractService extends Service {
 
         const resourceReContractableSignAuthFailed = await this._checkReContractableAuth(Array.from(contractObjects.keys()))
         if (resourceReContractableSignAuthFailed.length) {
-            throw new ArgumentError('签约的授权方案中存在部分合同没有执行到允许重签的状态', resourceReContractableSignAuthFailed)
+            throw new ArgumentError('签约的授权方案中存在部分上游合同没有执行到允许再签约授权的状态', resourceReContractableSignAuthFailed)
         }
 
-        const identityAuthTasks = []
+        const identityAuthTasks = [], signAuthResults = []
         authSchemeInfos.forEach(({authSchemeId, policy, userId, resourceId}) => {
             const contractObject = contractObjects.get(authSchemeId)
             const policySegment = policy.find(x => x.segmentId === contractObject.segmentId)
@@ -68,7 +68,18 @@ class ContractService extends Service {
                 partyTwoInfo: nodeInfo,
                 partyTwoUserInfo: userInfo
             }))
+            signAuthResults.push({
+                authSchemeId,
+                policySegment,
+                purpose: this.getPurposeFromPolicy(policySegment)
+            })
         })
+
+        const basePurpose = contractType === app.contractType.ResourceToResource ? 1 : 2
+        const signAuthFailedResults = signAuthResults.filter(x => (x.purpose & basePurpose) !== basePurpose)
+        if (signAuthFailedResults.length) {
+            throw new ApplicationError('待签约列表中存在部分策略不包含再签约授权', {signAuthFailedResults})
+        }
 
         const identityAuthResults = await Promise.all(identityAuthTasks)
         const identityAuthFailedResults = identityAuthResults.filter(x => !x.isAuth)
@@ -219,6 +230,21 @@ class ContractService extends Service {
         return resourceReContractableSignAuthFailed
     }
 
+    /**
+     * 获取策略使用目的(签约授权)
+     * @param policyText
+     * @private
+     */
+    getPurposeFromPolicy({policyText}) {
+        var purpose = 0
+        if (policyText.toLowerCase().includes('recontractable')) {
+            purpose = purpose | 1
+        }
+        if (policyText.toLowerCase().includes('presentable')) {
+            purpose = purpose | 2
+        }
+        return purpose
+    }
 }
 
 module.exports = ContractService;
