@@ -142,6 +142,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             policy: authSchemeInfo.policy.map(policySegment => new Object({
                 segmentId: policySegment.segmentId,
                 status: policySegment.status,
+                purpose: this._getPurposeFromPolicy(policySegment),
                 authResult: allPolicySegments.has(`${authSchemeInfo.userId}_${policySegment.segmentId}`)
                     ? allPolicySegments.get(`${authSchemeInfo.userId}_${policySegment.segmentId}`).authResult
                     : null
@@ -289,5 +290,22 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.body = result.res
         ctx.set('ETag', `"${resourceInfo.resourceId}"`)
         ctx.set('content-type', resourceInfo.mimeType)
+    }
+
+    /**
+     * 获取策略使用目的(签约授权)
+     * @param policyText
+     * @returns {Promise<number>}
+     * @private
+     */
+    async _getPurposeFromPolicy({policyText}) {
+        var purpose = 0
+        if (policyText.toLowerCase().includes('recontractable')) {
+            purpose = purpose | 1
+        }
+        if (policyText.toLowerCase().includes('presentable')) {
+            purpose = purpose | 2
+        }
+        return purpose
     }
 }
