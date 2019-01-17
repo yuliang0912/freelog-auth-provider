@@ -295,10 +295,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     /**
      * 获取策略使用目的(签约授权)
      * @param policyText
-     * @returns {Promise<number>}
      * @private
      */
-    async _getPurposeFromPolicy({policyText}) {
+    _getPurposeFromPolicy({policyText}) {
         var purpose = 0
         if (policyText.toLowerCase().includes('recontractable')) {
             purpose = purpose | 1
