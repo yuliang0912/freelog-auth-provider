@@ -115,6 +115,11 @@ module.exports = Object.freeze({
     NotFoundNodeOwnerUserInfo: 405,
 
     /**
+     * 节点presentable未上线
+     */
+    PresentableNotOnline: 406,
+
+    /**
      * 用户合同未激活
      */
     UserContractNotActive: 501,
@@ -172,5 +177,15 @@ module.exports = Object.freeze({
     /**
      * 系统异常
      */
-    Exception: 900
+    Exception: 900,
+
+    /**
+     * 授权参数错误
+     */
+    AuthArgumentsError: 901,
+
+    /**
+     * 授权数据校验失败错误
+     */
+    AuthDataValidateFailedError: 902
 })

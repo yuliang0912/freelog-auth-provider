@@ -1,7 +1,11 @@
 'use strict'
 
+const lodash = require('lodash')
 const Controller = require('egg').Controller
+const authCodeEnum = require('../../enum/auth-code')
+const commonAuthResult = require('../../authorization-service/common-auth-result')
 const authProcessManager = require('../../authorization-service/process-manager')
+const {ApplicationError} = require('egg-freelog-base/error')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
 
@@ -18,7 +22,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.validate(false)
 
         const {presentableAuthService, resourceAuthService} = ctx.service
-        var authResult = await presentableAuthService.authProcessHandler({nodeId, presentableId}).catch(ctx.error)
+        const authResult = await presentableAuthService.authProcessHandler({nodeId, presentableId}).catch(error => {
+            return new commonAuthResult(authCodeEnum.Exception, {detailMsg: error.toString()})
+        })
 
         if (!authResult.isAuth) {
             ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
@@ -39,7 +45,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 return ctx.success(resourceInfo)
             }
             return this._responseResourceFile(ctx, resourceInfo, presentableId)
-        }).catch(ctx.error)
+        }).catch(error => {
+            return new commonAuthResult(authCodeEnum.Exception, {detailMsg: error.toString()})
+        })
     }
 
     /**
@@ -229,25 +237,21 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTrees?presentableIds=${presentableIds.toString()}`)
 
-        const contractIds = presentableAuthTrees.reduce((acc, current) => {
-            acc = [...acc, ...current.authTree.map(x => x.contractId)]
-            return acc
-        }, [])
-
+        const contractIds = lodash.sortedUniq(lodash.flatMapDeep(presentableAuthTrees, x => x.authTree.map(m => m.contractId)))
         const contractMap = await ctx.dal.contractProvider.find({_id: {$in: contractIds}}).then(dataList => new Map(dataList.map(x => [x.contractId, x])))
 
         for (let x = 0, y = presentableAuthTrees.length; x < y; x++) {
-            let presentableAuthTree = presentableAuthTrees[x]
-            let presentableSignAuth = presentableSignAuthResult.find(m => m.presentableId === presentableAuthTree.presentableId)
+            let {authTree, presentableId, masterResourceId} = presentableAuthTrees[x]
+            let presentableSignAuth = presentableSignAuthResult.find(m => m.presentableId === presentableId)
             presentableSignAuth.isAcquireSignAuth = 1
-            for (let i = 0, j = presentableAuthTree.authTree.length; i < j; i++) {
-                let {contractId, resourceId} = presentableAuthTree.authTree[i]
+            for (let i = 0, j = authTree.length; i < j; i++) {
+                let {contractId, resourceId} = authTree[i]
                 if (!contractMap.has(contractId)) {
                     continue
                 }
                 let contractInfo = contractMap.get(contractId)
                 let signAuthResult = null
-                if (presentableAuthTree.masterResourceId === resourceId) {
+                if (masterResourceId === resourceId) {
                     signAuthResult = await authProcessManager.resourcePresentableSignAuth(contractInfo)
                 } else {
                     signAuthResult = await authProcessManager.resourceReContractableSignAuth(contractInfo)
@@ -261,6 +265,70 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         ctx.success(presentableSignAuthResult)
     }
+
+    /**
+     * 获取一个资源或者presentable的全部合同链路授权(激活授权与再签约授权)
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async getPresentableContractChainAuth(ctx) {
+
+        const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
+        const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().value
+        ctx.validate()
+
+        const {userInfo} = ctx.request.identityInfo
+        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        if (!nodeInfo || nodeInfo.status !== 0 || nodeInfo.ownerUserId !== userInfo.userId) {
+            throw new ApplicationError('参数nodeId错误,未找到有效节点', {nodeInfo})
+        }
+
+        const presentableInfos = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}&nodeId=${nodeId}&userId=${userInfo.userId}&projection=presentableId`)
+        if ([...new Set(presentableIds)].length !== presentableInfos.length) {
+            throw new ApplicationError('presentableId与节点不匹配', {presentableIds, nodeId})
+        }
+
+        const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTrees?presentableIds=${presentableIds.toString()}`)
+        const contractIds = lodash.sortedUniq(lodash.flatMapDeep(presentableAuthTrees, x => x.authTree.map(m => m.contractId)))
+        const contractMap = await ctx.dal.contractProvider.find({_id: {$in: contractIds}}).then(dataList => new Map(dataList.map(x => [x.contractId, x])))
+
+        for (let x = 0, y = presentableAuthTrees.length; x < y; x++) {
+            let {authTree, presentableId, masterResourceId} = presentableAuthTrees[x]
+            let presentableSignAuth = presentableInfos.find(m => m.presentableId === presentableId)
+            presentableSignAuth.authResult = 0 //没有合约的情况(无效值)
+            for (let i = 0, j = authTree.length; i < j; i++) {
+                let {contractId, resourceId} = authTree[i]
+                if (!contractMap.has(contractId)) {
+                    continue
+                }
+                let contractInfo = contractMap.get(contractId)
+                let signAuthResult = null
+                if (masterResourceId === resourceId) {
+                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(contractInfo)
+                } else {
+                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(contractInfo)
+                }
+                if (!signAuthResult.isAuth) {
+                    presentableSignAuth.authResult = 2
+                    break
+                }
+                const contractAuthResult = await authProcessManager.contractAuthorization({
+                    contract: contractInfo,
+                    partyTwoInfo: nodeInfo,
+                    partyTwoUserInfo: userInfo
+                })
+                //目前未区分身份认证与合同激活授权,如有需求可以通过状态码判断
+                if (!contractAuthResult.isAuth) {
+                    presentableSignAuth.authResult = 3
+                    break
+                }
+                presentableSignAuth.authResult = 1
+            }
+        }
+
+        ctx.success(presentableInfos)
+    }
+
 
     /**
      * 响应输出resource-file信息
@@ -290,21 +358,5 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.body = result.res
         ctx.set('ETag', `"${resourceInfo.resourceId}"`)
         ctx.set('content-type', resourceInfo.mimeType)
-    }
-
-    /**
-     * 获取策略使用目的(签约授权)
-     * @param policyText
-     * @private
-     */
-    _getPurposeFromPolicy({policyText}) {
-        var purpose = 0
-        if (policyText.toLowerCase().includes('recontractable')) {
-            purpose = purpose | 1
-        }
-        if (policyText.toLowerCase().includes('presentable')) {
-            purpose = purpose | 2
-        }
-        return purpose
     }
 }

@@ -33,6 +33,7 @@ module.exports = app => {
     router.get('/v1/auths/presentableIdentityAuth', auth.v1.presentableIdentityAuth)
     router.get('/v1/auths/presentable/getPresentableSignAuth', auth.v1.getPresentableSignAuth)
     router.get('/v1/auths/presentables/:presentableId/presentableTreeAuthTest', auth.v1.presentableTreeAuthTest)
+    router.get('/v1/auths/presentables/getPresentableContractChainAuth', auth.v1.getPresentableContractChainAuth)
 
     //请求获取presentable资源
     router.get('/v1/auths/presentable/:presentableId.:extName', auth.v1.presentable)

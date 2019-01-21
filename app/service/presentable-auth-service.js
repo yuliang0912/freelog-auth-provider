@@ -3,7 +3,6 @@
 const lodash = require('lodash')
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
-const {LogicError, ArgumentError, ApiInvokingError} = require('egg-freelog-base/error')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 
@@ -41,13 +40,17 @@ class PresentableAuthService extends Service {
             }))
 
         if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
-            throw new ArgumentError('参数presentableId错误或者presentableId与nodeId不匹配', {presentableInfo})
+            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
+                msg: '参数presentableId错误或者presentableId与nodeId不匹配', presentableInfo
+            })
         }
         if (!presentableInfo.isOnline) {
-            throw new LogicError('presentable未上线,无法授权', {presentableInfo})
+            return new commonAuthResult(authCodeEnum.PresentableNotOnline)
         }
         if (!presentableAuthTree) {
-            throw new LogicError('presentable授权树数据缺失')
+            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
+                msg: 'presentable授权树数据缺失'
+            })
         }
         if (authTokenCache) {
             authTokenCache.authResourceIds = presentableAuthTree.authTree.map(x => x.resourceId)
@@ -57,7 +60,9 @@ class PresentableAuthService extends Service {
         const {userInfo} = ctx.request.identityInfo
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
-            throw new ArgumentError('参数nodeId错误', {nodeInfo})
+            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
+                msg: '参数nodeId错误,未找到有效节点'
+            })
         }
 
         //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
@@ -148,7 +153,9 @@ class PresentableAuthService extends Service {
         }
         const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableInfo.presentableId}/authTree`)
         if (!presentableAuthTree) {
-            throw new LogicError('presentable授权树数据缺失')
+            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
+                msg: 'presentable授权树数据缺失'
+            })
         }
 
         const contractIds = presentableAuthTree.authTree.map(x => x.contractId)

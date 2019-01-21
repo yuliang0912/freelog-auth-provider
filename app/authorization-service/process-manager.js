@@ -110,7 +110,7 @@ const AuthProcessManager = class AuthProcessManager {
     }
 
     /***
-     * 针对策略段尝试获取授权(用户对象满足,策略满足initital-terminate模式)
+     * 针对策略段尝试获取授权(用户对象满足,策略满足initial-terminate模式)
      * @param policySegment
      * @param contractType 此处为虚拟的授权甲乙方关系.参考合同类型的设定
      * @param partyOneUserId 甲方用户ID
@@ -174,6 +174,7 @@ const AuthProcessManager = class AuthProcessManager {
     async resourcePresentableSignAuth(contract) {
         return ContractAuthorization.resourcePresentableSignAuth(contract)
     }
+
 }
 
 module.exports = new AuthProcessManager()
