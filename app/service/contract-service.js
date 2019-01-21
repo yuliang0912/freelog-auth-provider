@@ -40,7 +40,7 @@ class ContractService extends Service {
 
         const resourceReContractableSignAuthFailed = await this._checkReContractableAuth(Array.from(contractObjects.keys()))
         if (resourceReContractableSignAuthFailed.length) {
-            throw new ArgumentError('签约的授权方案中存在部分上游合同没有执行到允许再签约授权的状态', resourceReContractableSignAuthFailed)
+            throw new ArgumentError('签约的授权方案中存在部分上游合同没有执行到允许再签约授权的状态',{resourceReContractableSignAuthFailed})
         }
 
         const identityAuthTasks = [], signAuthResults = []
@@ -226,7 +226,6 @@ class ContractService extends Service {
                 }
             })
         }
-
         return resourceReContractableSignAuthFailed
     }
 

@@ -316,7 +316,7 @@ module.exports = class ContractController extends Controller {
 
         await ctx.service.contractService.batchCreateContracts({
             policies: signObjects, contractType, nodeInfo, partyTwo
-        }).then(ctx.success).catch(ctx.error)
+        }).then(ctx.success)
     }
 
     /**

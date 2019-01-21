@@ -6,12 +6,12 @@
 
 module.exports = {
 
-    gatewayUrl: 'https://api.freelog.com',
+    gatewayUrl: 'http://api.testfreelog.com',
 
     middleware: ['errorHandler', 'localUserIdentity'],
 
     mongoose: {
-        url: "mongodb://119.23.45.143:27017/auth"
+        url: "mongodb://119.23.45.143:27018/auth"
     },
 
     /**
@@ -19,7 +19,7 @@ module.exports = {
      */
 
     localIdentity: {
-        userId: 10026,
+        userId: 50003,
         userName: "余亮",
         nickname: "烟雨落叶",
         email: "4896819@qq.com",
