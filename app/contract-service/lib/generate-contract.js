@@ -62,7 +62,8 @@ module.exports = class GenerateContract {
             contentType: 'json',
             data: {contractId, currencyType, accountName: '合同账户'}
         }, {userInfo: {userId}}).catch(error => {
-            throw new ApplicationError('创建合同账户失败', {error})
+            console.log(error)
+            throw new ApplicationError('创建合同账户失败', {error: error.message})
         })
     }
 }
