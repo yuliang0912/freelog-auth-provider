@@ -356,7 +356,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.attachment(fileName || resourceInfo.resourceId)
         Object.keys(result.headers).forEach(key => ctx.set(key, result.headers[key]))
         ctx.body = result.res
-        ctx.set('ETag', `"${resourceInfo.resourceId}"`)
+        //ctx.set('ETag', `"${resourceInfo.resourceId}"`)
         ctx.set('content-type', resourceInfo.mimeType)
     }
 }
