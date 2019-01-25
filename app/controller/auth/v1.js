@@ -358,5 +358,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.body = result.res
         //ctx.set('ETag', `"${resourceInfo.resourceId}"`)
         ctx.set('content-type', resourceInfo.mimeType)
+        ctx.set('etag', null)
+        ctx.set('last-modified', null)
     }
 }
