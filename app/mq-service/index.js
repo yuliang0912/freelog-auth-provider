@@ -63,7 +63,7 @@ module.exports = class RabbitMessageQueueEventHandler {
         })
 
         //支付中心支付订单状态变更事件
-        patrun.add({routingKey: 'event.payment.order', eventName: 'paymentOrderStatusChangedEvent'}, ({message}) => {
+        patrun.add({routingKey: 'event.payment.order', eventName: 'PaymentOrderTradeStatusChanged'}, ({message}) => {
             app.emit(PaymentOrderStatusChangedEvent, message)
         })
 
