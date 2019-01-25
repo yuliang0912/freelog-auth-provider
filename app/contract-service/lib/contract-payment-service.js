@@ -66,8 +66,6 @@ module.exports = class contractPaymentService {
         }
         return app.curlIntranetApi(`${app.webApi.pay}/inquirePayment`, {
             type: 'post', contentType: 'json', data: postData
-        }, {userInfo: {userId}}).catch(error => {
-            throw new ApiInvokingError('支付接口(inquirePayment)调用失败', {message: error.toString(), postData, userId})
-        })
+        }, {userInfo: {userId}})
     }
 }
