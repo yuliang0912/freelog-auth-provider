@@ -19,7 +19,7 @@ module.exports = {
      */
 
     localIdentity: {
-        userId: 10022,
+        userId: 10026,
         userName: "余亮",
         nickname: "烟雨落叶",
         email: "4896819@qq.com",

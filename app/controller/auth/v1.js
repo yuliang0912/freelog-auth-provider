@@ -349,13 +349,16 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         //     return
         //}
 
+        resourceInfo.resourceUrl = resourceInfo.resourceUrl.replace("-internal", "")
+
         const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
         if (!/^2[\d]{2}$/.test(result.status)) {
             ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
         }
+
         ctx.attachment(fileName || resourceInfo.resourceId)
-        delete result.headers['ETag']
-        delete result.headers['Last-Modified']
+        delete result.headers['etag']
+        delete result.headers['last-modified']
         Object.keys(result.headers).forEach(key => ctx.set(key, result.headers[key]))
         ctx.body = result.res
         //ctx.set('ETag', `"${resourceInfo.resourceId}"`)
