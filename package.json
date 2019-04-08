@@ -12,7 +12,7 @@
     "async": "^2.6.1",
     "bluebird": "^3.5.3",
     "egg": "^2.14.2",
-    "egg-freelog-base": "^1.1.93",
+    "egg-freelog-base": "1.1.93",
     "egg-freelog-database": "^1.0.15",
     "egg-scripts": "^1.2.0",
     "javascript-state-machine": "^3.1.0",

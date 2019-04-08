@@ -339,7 +339,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const isCache = ctx.get('if-none-match') === `"${resourceInfo.resourceId}"`
         ctx.set('freelog-resource-type', resourceInfo.resourceType)
         ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(resourceInfo.meta)))
-        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
+        //ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(resourceInfo.systemMeta)))
 
         // if (isCache) {
         //     ctx.set('ETag', `"${resourceInfo.resourceId}"`)
