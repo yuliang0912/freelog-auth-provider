@@ -21,18 +21,18 @@ module.exports = class ContractEventsController extends Controller {
 
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
         if (contractInfo.partyTwoUserId !== userInfo.userId) {
-            ctx.error({msg: '没有操作权限'})
+            ctx.error({msg: ctx.gettext('授权失败,没有操作权限')})
         }
         if (contractInfo.contractType === ctx.app.contractType.ResourceToNode) {
             if (!nodeId) {
-                ctx.error({msg: '缺少参数nodeId'})
+                ctx.error({msg: ctx.gettext('参数%s缺失', 'nodeId')})
             }
             if (contractInfo.partyTwo !== nodeId.toString() || contractInfo.partyTwoUserId !== userInfo.userId) {
-                ctx.error({msg: '没有操作权限'})
+                ctx.error({msg: ctx.gettext('授权失败,没有操作权限')})
             }
         }
 
-        await ctx.app.contractService.singletonEventHandler({
+        await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, licenseIds, nodeId
         }).then(ctx.success).catch(ctx.error)
     }
@@ -49,7 +49,7 @@ module.exports = class ContractEventsController extends Controller {
         ctx.validate()
 
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
-        await ctx.app.contractService.singletonEventHandler({
+        await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, amount, fromAccountId, password
         }).then(ctx.success).catch(ctx.error)
     }
@@ -64,7 +64,7 @@ module.exports = class ContractEventsController extends Controller {
         ctx.validate()
 
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
-        await ctx.app.contractService.singletonEventHandler({
+        await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, toAccountId
         }).then(ctx.success).catch(ctx.error)
     }
@@ -79,7 +79,7 @@ module.exports = class ContractEventsController extends Controller {
         ctx.validate()
 
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
-        await ctx.app.contractService.singletonEventHandler({
+        await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, toAccountId
         }).then(ctx.success).catch(ctx.error)
     }
@@ -91,7 +91,7 @@ module.exports = class ContractEventsController extends Controller {
      */
     async customEventInvoking(ctx) {
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
-        await ctx.app.contractService.singletonEventHandler({
+        await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo
         }).then(ctx.success).catch(ctx.error)
     }
@@ -110,11 +110,11 @@ module.exports = class ContractEventsController extends Controller {
         const userInfo = ctx.request.identityInfo.userInfo
         const contractInfo = await this.contractProvider.findById(contractId)
         if (!contractInfo || contractInfo.isTerminate) {
-            ctx.error({msg: '未找到有效合同信息'})
+            ctx.error({msg: ctx.gettext('合同信息校验失败')})
         }
         const eventInfo = contractInfo.fsmEvents.find(x => x && x.eventId === eventId && x.currentState === contractInfo.contractClause.currentFsmState)
         if (!eventInfo) {
-            ctx.error({msg: `参数eventId:${eventId}错误,合同状态机不能触发当前事件`})
+            ctx.error({msg: ctx.gettext('参数%s错误,合同状态机不能触发当前事件', 'eventId')})
         }
 
         return {contractInfo, userInfo, eventInfo}

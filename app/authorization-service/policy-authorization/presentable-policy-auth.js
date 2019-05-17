@@ -9,7 +9,7 @@ const authCodeEnum = require('../../enum/auth-code')
  * @param app
  * @returns {{}}
  */
-module.exports = ({policySegment}) => {
+module.exports = (ctx, {policySegment}) => {
 
     const authResult = new AuthResult(authCodeEnum.BasedOnNodePolicy, {policySegment})
 
@@ -18,7 +18,7 @@ module.exports = ({policySegment}) => {
 
     if (!isInitialTerminateMode) {
         authResult.authCode = authCodeEnum.NotFoundUserPresentableContract
-        authResult.addError('presentable策略不满足initial-terminate模式,请签约')
+        authResult.addError(ctx.gettext('非免费策略,请签约'))
     }
 
     return authResult

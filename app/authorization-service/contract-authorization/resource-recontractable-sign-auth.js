@@ -9,13 +9,13 @@ const authCodeEnum = require('../../enum/auth-code')
 const commonAuthResult = require('../common-auth-result')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
 
-module.exports = ({contract}) => {
+module.exports = (ctx, {contract}) => {
 
     const result = new commonAuthResult(authCodeEnum.Default, {contract})
 
     if (!contract || (contract.contractType !== contractType.ResourceToNode && contract.contractType !== contractType.ResourceToResource)) {
         result.authCode = authCodeEnum.NotFoundResourceContract
-        result.addError('未找到有效合同,合同类型不正确')
+        result.addError(ctx.gettext('合同信息校验失败'))
         return result
     }
 
@@ -23,7 +23,7 @@ module.exports = ({contract}) => {
     const fsmStateDescription = contractClause.currentFsmState ? contractClause.fsmStates[contractClause.currentFsmState] : null
     if (!fsmStateDescription || !fsmStateDescription.authorization.find(x => /^recontractable/i.test(x))) {
         result.authCode = authCodeEnum.ReContractableSignAuthFailed
-        result.addError('资源未获得转签授权')
+        result.addError(ctx.gettext('资源未获得转签授权'))
         return result
     }
 

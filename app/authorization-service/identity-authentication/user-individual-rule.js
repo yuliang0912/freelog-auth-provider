@@ -8,7 +8,7 @@ const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
 
-module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInfo}) => {
+module.exports = (ctx, {authUserObject, contractType, partyOneUserId, partyTwoUserInfo}) => {
 
     const authResult = new AuthResult(authCodeEnum.Default, {
         authUserObject,
@@ -26,7 +26,7 @@ module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInf
     if (!partyTwoUserInfo || !partyTwoUserInfo.userId || !Reflect.has(partyTwoUserInfo, 'email') || !Reflect.has(partyTwoUserInfo, 'mobile')) {
         authResult.authCode = contractType === freelogContractType.ResourceToResource ? authCodeEnum.NotFoundResourceOwnerUserInfo
             : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeOwnerUserInfo : authCodeEnum.NotFoundUserInfo
-        authResult.addError('未找到乙方用户信息')
+        authResult.addError(ctx.gettext('未找到乙方用户信息'))
         return authResult
     }
 
@@ -45,7 +45,7 @@ module.exports = ({authUserObject, contractType, partyOneUserId, partyTwoUserInf
 
     //其他默认不通过
     authResult.authCode = authCodeEnum.PolicyIdentityAuthenticationFailed
-    authResult.addError('乙方用户认证不通过')
+    authResult.addError(ctx.gettext('乙方用户认证不通过'))
 
     return authResult
 }

@@ -8,7 +8,7 @@ const {ApplicationError} = require('egg-freelog-base/error')
 module.exports = class ContractFsm {
 
     constructor(contractInfo) {
-        this.contractInfo = contractInfo
+        this.contract = contractInfo
         this.stateMachine = new StateMachine(this.fsmConfig)
         this.stateMachine.execEvent = this.execEvent
         return this.stateMachine
@@ -34,7 +34,6 @@ module.exports = class ContractFsm {
      * 状态机切换状态后的回调函数
      */
     onEnterState(lifeCycle) {
-
         if (this.contract.isFirst || lifeCycle.from !== 'none') {
             globalInfo.app.emit(ContractFsmStateChangedEvent, lifeCycle)
         }
@@ -45,9 +44,9 @@ module.exports = class ContractFsm {
      */
     get fsmConfig() {
         return {
-            init: this.contractInfo.contractClause.currentFsmState,
+            init: this.contract.contractClause.currentFsmState,
             data: {
-                contract: this.contractInfo,
+                contract: this.contract,
                 currEvent: {eventId: 'initial'}
             },
             transitions: this.fsmTransitions,
@@ -59,7 +58,7 @@ module.exports = class ContractFsm {
      * 状态机状态流转数据
      */
     get fsmTransitions() {
-        return this.contractInfo.fsmEvents.map(event => new Object({
+        return this.contract.fsmEvents.map(event => new Object({
             name: event.eventId,
             form: event.currentState,
             to: event.nextState

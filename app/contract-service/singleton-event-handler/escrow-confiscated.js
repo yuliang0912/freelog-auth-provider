@@ -16,7 +16,7 @@ module.exports = class EscrowConfiscatedHandler {
     /**
      * 保证金没收处理
      */
-    async handler({contractInfo, eventInfo, userInfo, toAccountId}) {
+    async handler(ctx, {contractInfo, eventInfo, userInfo, toAccountId}) {
 
         this.authorization(contractInfo, userInfo)
 

@@ -18,9 +18,18 @@ module.exports = class GenerateContract {
 
         const {contractId, policySegment, partyTwoUserId} = contractInfo
 
-        const declarationKeys = Object.keys(policySegment.fsmDeclarations || {})
-        for (let i = 0, j = declarationKeys.length; i < j; i++) {
-            const declaration = policySegment.fsmDeclarations[declarationKeys[i]]
+        // const declarationKeys = Object.keys(policySegment.fsmDeclarations || {})
+        // for (let i = 0, j = declarationKeys.length; i < j; i++) {
+        //     const declaration = policySegment.fsmDeclarations[declarationKeys[i]]
+        //     if (declaration.declareType === 'contractAccount' && /^escrowAccount$/i.test(declaration.type)) {
+        //         //测试.目前声明区域没有货币类型参数
+        //         declaration.currencyType = 1
+        //         let accountInfo = await this.createContractAccount(contractId, declaration.currencyType, partyTwoUserId)
+        //         declaration.accountId = accountInfo.accountId
+        //     }
+        // }
+
+        for (let [key, declaration] of Object.entries(policySegment.fsmDeclarations)) {
             if (declaration.declareType === 'contractAccount' && /^escrowAccount$/i.test(declaration.type)) {
                 //测试.目前声明区域没有货币类型参数
                 declaration.currencyType = 1
@@ -62,7 +71,6 @@ module.exports = class GenerateContract {
             contentType: 'json',
             data: {contractId, currencyType, accountName: '合同账户'}
         }, {userInfo: {userId}}).catch(error => {
-            console.log(error)
             throw new ApplicationError('创建合同账户失败', {error: error.message})
         })
     }

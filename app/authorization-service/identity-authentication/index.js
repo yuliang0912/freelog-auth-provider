@@ -26,7 +26,7 @@ class FreelogPolicyIdentityAuthentication {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async main({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async main(ctx, {policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const authResults = []
 
@@ -41,7 +41,7 @@ class FreelogPolicyIdentityAuthentication {
             if (!authRule) {
                 continue
             }
-            const authResult = await authRule(params)
+            const authResult = await authRule(ctx, params)
 
             if (authResult.isAuth) {
                 authResult.data.segmentId = policySegment.segmentId

@@ -8,7 +8,7 @@ const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
  * @param app
  * @returns {{}}
  */
-module.exports = ({policySegment, contractType}) => {
+module.exports = (ctx, {policySegment, contractType}) => {
 
     const authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy, {policySegment, contractType})
 
@@ -19,7 +19,7 @@ module.exports = ({policySegment, contractType}) => {
         authResult.authCode = contractType === freelogContractType.ResourceToResource
             ? authCodeEnum.NotFoundResourceContract : contractType === freelogContractType.ResourceToNode
                 ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserResourceContract
-        authResult.addError('资源策略不满足initial-terminate模式')
+        authResult.addError(ctx.gettext('非免费策略,请签约'))
     }
 
     return authResult

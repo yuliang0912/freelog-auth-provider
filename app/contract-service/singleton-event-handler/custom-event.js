@@ -17,7 +17,7 @@ module.exports = class CustomEventHandler {
     /**
      * 自定义事件处理
      */
-    async handler({contractInfo, eventInfo, userInfo}) {
+    async handler(ctx, {contractInfo, eventInfo, userInfo}) {
 
         const {customEventName} = eventInfo.params
         const {contractId, contractClause} = contractInfo

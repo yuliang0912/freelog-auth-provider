@@ -18,15 +18,17 @@ module.exports = app => {
     router.post('/v1/contracts/events/escrowConfiscated', contract.events.escrowConfiscated)
     router.post('/v1/contracts/events/customEventInvoking', contract.events.customEventInvoking)
 
+    router.post('batch-sign-release-contracts', '/v1/contracts/batchCreateReleaseContracts', contract.v2.batchCreateReleaseContracts)
+
     /**
      * 获取合同记录
      */
-    router.get('/v1/contracts/contractRecords', contract.v1.contractRecords)
+    //router.get('/v1/contracts/contractRecords', contract.v1.contractRecords)
+    router.get('/v1/contracts/contractRecords', contract.v2.contractRecords)
     router.get('/v1/contracts/isCanExecEvent', contract.v1.isCanExecEvent)
     router.get('/v1/contracts/initial', contract.v1.initial)
     router.get('/v1/contracts/terminateContracts', contract.v1.terminateContracts)
 
-    router.get('/v1/contracts/fixContactData', contract.v1.fixContactData)
 
     //请求获取授权方案和presentable中的策略身份认证结果
     router.get('/v1/auths/authSchemeIdentityAuth', auth.v1.authSchemeIdentityAuth)
@@ -44,6 +46,8 @@ module.exports = app => {
     //直接请求授权资源
     router.get('/v1/auths/resource/:resourceId.:extName', auth.v1.resource)
     router.get('/v1/auths/resource/:resourceId', auth.v1.resource)
+
+    router.get('release-policy-identity-authorization-test', '/v1/auths/releasePolicyIdentityAuthentication', auth.v2.releasePolicyIdentityAuthentication)
 
     //批量签约
     router.post('/v1/contracts/batchCreateAuthSchemeContracts', '/v1/contracts/batchCreateAuthSchemeContracts', contract.v1.batchCreateAuthSchemeContracts)

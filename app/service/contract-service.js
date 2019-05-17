@@ -1,9 +1,10 @@
 'use strict'
 
+const lodash = require('lodash')
 const Service = require('egg').Service;
 const authService = require('../authorization-service/process-manager')
 const {LogicError, ArgumentError, ApplicationError} = require('egg-freelog-base/error')
-
+const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
 
 class ContractService extends Service {
 
@@ -13,93 +14,67 @@ class ContractService extends Service {
     }
 
     /**
-     * 批量签约(保证原子性)
-     * @param policies
+     * 批量签约发行
+     * @param signReleases
      * @param contractType
-     * @param nodeInfo
-     * @param partyTwo
-     * @returns {Promise<*[]>}
+     * @param partyTwoId
+     * @param targetId
+     * @returns {Promise<Array>}
      */
-    async batchCreateContracts({policies, contractType, nodeInfo, partyTwo}) {
+    async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, targetId}) {
 
-        const {existContracts, signObjects} = await this._checkDuplicateContract(partyTwo, policies)
+        const {ctx} = this
+        const releases = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${signReleases.map(x => x.releaseId).toString()}`)
+        if (signReleases.length !== releases.length) {
+            throw new ArgumentError(ctx.gettext('params-validate-failed', 'signReleases'), {signReleases})
+        }
 
-        if (!signObjects.length) {
+        const signReleaseMap = new Map(signReleases.map(x => [x.releaseId, new Set(x.policyIds)]))
+
+        const toBeSignedReleases = []
+        releases.forEach(releaseInfo => releaseInfo.policies.forEach(policy => {
+            const {policyId, policyText, status} = policy
+            const toBeSignedRelease = signReleaseMap.get(releaseInfo.releaseId)
+            if (toBeSignedRelease.has(policyId)) {
+                const policyInfo = releasePolicyCompiler.compile(policyText)
+                policyInfo.status = status
+                policyInfo.policyId = policyId
+                toBeSignedReleases.push({releaseInfo, policyInfo})
+            }
+        }))
+
+        const contractModels = toBeSignedReleases.map(({releaseInfo, policyInfo}) => {
+            const {releaseId, userId, releaseName} = releaseInfo
+            return {
+                contractType, targetId,
+                partyOneUserId: userId,
+                partyTwoUserId: ctx.request.userId,
+                partyOne: releaseId,
+                partyTwo: partyTwoId,
+                policySegment: policyInfo,
+                contractName: releaseName,
+                policyId: policyInfo.policyId,
+                policyStatus: policyInfo.status
+            }
+        })
+
+        if (!contractModels.length) {
+            return []
+        }
+
+        const existContracts = await this.contractProvider.find({
+            partyTwo: partyTwoId,
+            $or: contractModels.map(x => lodash.pick(x, ['partyOne', 'policyId']))
+        })
+
+        const signContractModels = lodash.differenceWith(contractModels, existContracts, (x, y) => x.partyOne === y.partyOne && x.policyId === y.policyId)
+        if (!signContractModels.length) {
             return existContracts
         }
-
-        const {ctx, app} = this
-        const resourceMap = new Map()
-        const userInfo = ctx.request.identityInfo.userInfo
-        const contractObjects = new Map(signObjects.map(x => [x.targetId, x]))
-        const authSchemeInfos = await ctx.curlIntranetApi(`${ctx.webApi.authSchemeInfo}?authSchemeIds=${Array.from(contractObjects.keys()).toString()}`)
-
-        if (authSchemeInfos.length !== contractObjects.size) {
-            throw new ArgumentError('参数targetId校验失败,数据不完全匹配', {signObjects})
+        if (signContractModels.some(x => x.policyStatus !== 1)) {
+            throw new ArgumentError('invalid policies', {invalidPolicies: signContractModels.filter(x => x.policyStatus !== 1)})
         }
-
-        const resourceReContractableSignAuthFailed = await this._checkReContractableAuth(Array.from(contractObjects.keys()))
-        if (resourceReContractableSignAuthFailed.length) {
-            throw new ArgumentError('签约的授权方案中存在部分上游合同没有执行到允许再签约授权的状态',{resourceReContractableSignAuthFailed})
-        }
-
-        const identityAuthTasks = [], signAuthResults = []
-        authSchemeInfos.forEach(({authSchemeId, policy, userId, resourceId}) => {
-            const contractObject = contractObjects.get(authSchemeId)
-            const policySegment = policy.find(x => x.segmentId === contractObject.segmentId)
-            if (!policySegment) {
-                throw new ArgumentError('参数segmentId校验失败', {
-                    targetId: authSchemeId, policy,
-                    segmentId: contractObject.segmentId,
-                })
-            }
-            contractObject.partyOneUserId = userId
-            contractObject.partyTwoUserId = userInfo.userId
-            contractObject.partyOne = authSchemeId
-            contractObject.partyTwo = partyTwo
-            contractObject.resourceId = resourceId
-            contractObject.contractType = contractType
-            contractObject.policySegment = policySegment
-
-            resourceMap.set(resourceId, null)
-            identityAuthTasks.push(authService.policyIdentityAuthentication({
-                policySegment, contractType,
-                partyOneUserId: userId,
-                partyTwoInfo: nodeInfo,
-                partyTwoUserInfo: userInfo
-            }))
-            signAuthResults.push({
-                authSchemeId,
-                policySegment,
-                purpose: this.getPurposeFromPolicy(policySegment)
-            })
-        })
-
-        const basePurpose = contractType === app.contractType.ResourceToResource ? 1 : 2
-        const signAuthFailedResults = signAuthResults.filter(x => (x.purpose & basePurpose) !== basePurpose)
-        if (signAuthFailedResults.length) {
-            throw new ApplicationError('待签约列表中存在部分策略不包含再签约授权', {signAuthFailedResults})
-        }
-
-        const identityAuthResults = await Promise.all(identityAuthTasks)
-        const identityAuthFailedResults = identityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFailedResults.length) {
-            throw new ApplicationError('待签约列表中存在部分策略身份认证失败', {identityAuthFailedResults})
-        }
-
-        await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/list?resourceIds=${Array.from(resourceMap.keys()).toString()}`).then(list => {
-            list.forEach(resource => resourceMap.set(resource.resourceId, resource.resourceName))
-        })
-
-        const models = Array.from(contractObjects.values())
-
-        models.forEach(item => {
-            if (resourceMap.has(item.resourceId)) {
-                item.contractName = resourceMap.get(item.resourceId)
-            }
-        })
-
-        const createdContracts = await app.contractService.batchCreateContract(models, true)
+        const createdContracts = await ctx.app.contractService.batchCreateContract(ctx, signContractModels, true)
 
         return [...createdContracts, ...existContracts]
     }
@@ -124,40 +99,40 @@ class ContractService extends Service {
             isTerminate: 0, segmentId
         })
         if (oldContract) {
-            throw new ApplicationError('已经存在一份同样的合约,不能重复签订', oldContract)
+            throw new ApplicationError(ctx.gettext('已经存在一份同样的合约,不能重复签订'), oldContract)
         }
 
         const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentable || !presentable.isOnline) {
-            throw new ArgumentError(`presentableId:${presentableId}错误或者presentable未上线`, {presentable})
+            throw new ArgumentError(ctx.gettext('节点信息校验失败'), {presentable})
         }
 
         const policySegment = presentable.policy.find(t => t.segmentId === segmentId)
         if (!policySegment || policySegment.status !== 1) {
-            throw new ArgumentError(`segmentId错误,未找到策略段`, {policySegment})
+            throw new ArgumentError(ctx.gettext('参数%s校验失败', 'segmentId'), {segmentId, policySegment})
         }
 
-        const authResult = await authService.policyIdentityAuthentication({
+        const authResult = await authService.policyIdentityAuthentication(ctx, {
             policySegment,
             contractType: app.contractType.PresentableToUser,
             partyOneUserId: presentable.userId,
             partyTwoUserInfo: userInfo
         })
         if (!authResult.isAuth) {
-            throw new ApplicationError('presentable策略段身份认证失败,不能签约', {
+            throw new ApplicationError(ctx.gettext('节点资源策略段身份认证失败,不能签约'), {
                 authorizedObjects: policySegment.authorizedObjects, userInfo
             })
         }
 
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentable.nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
-            throw new LogicError('未找到节点信息或者节点已不存在', {presentable, nodeInfo})
+            throw new LogicError(ctx.gettext('节点信息校验失败'), {presentable, nodeInfo})
         }
 
         const contracts = await ctx.service.signAuthService.presentableSignAuth(presentableId)
         const signAuthFailedContracts = contracts.filter(x => !x.signAuthResult.isAuth)
         if (signAuthFailedContracts.length) {
-            throw new ApplicationError('节点资源的合约链中存在未获得再签约授权的合约', {signAuthFailedContracts})
+            throw new ApplicationError(ctx.gettext('节点资源的合约链中存在未获得再签约授权的合约'), {signAuthFailedContracts})
         }
 
         const contractModel = {
@@ -172,7 +147,7 @@ class ContractService extends Service {
             contractType: app.contractType.PresentableToUser
         }
 
-        return app.contractService.createContract(contractModel, true)
+        return app.contractService.createContract(ctx, contractModel, true)
     }
 
     /**
@@ -227,22 +202,6 @@ class ContractService extends Service {
             })
         }
         return resourceReContractableSignAuthFailed
-    }
-
-    /**
-     * 获取策略使用目的(签约授权)
-     * @param policyText
-     * @private
-     */
-    getPurposeFromPolicy({policyText}) {
-        var purpose = 0
-        if (policyText.toLowerCase().includes('recontractable')) {
-            purpose = purpose | 1
-        }
-        if (policyText.toLowerCase().includes('presentable')) {
-            purpose = purpose | 2
-        }
-        return purpose
     }
 }
 

@@ -6,20 +6,34 @@
 
 module.exports = {
 
-    gatewayUrl: 'https://api.freelog.com',
+    //gatewayUrl: 'https://api.freelog.com',
 
     middleware: ['errorHandler', 'localUserIdentity'],
 
-    mongoose: {
-        url: "mongodb://119.23.45.143:27017/auth"
-    },
+    // mongoose: {
+    //     url: "mongodb://119.23.45.143:27017/auth"
+    // },
+
+    // mongoose: {
+    //     url: "mongodb://119.23.45.143:27018/auth"
+    // },
+
+    // rabbitMq: {
+    //     connOptions: {
+    //         host: '119.23.45.143',
+    //         port: 5673,
+    //         login: 'test_user_auth',
+    //         password: 'rabbit@freelog',
+    //         authMechanism: 'AMQPLAIN'
+    //     },
+    // },
 
     /**
      * 本地开发环境身份信息
      */
 
     localIdentity: {
-        userId: 10026,
+        userId: 50003,
         userName: "余亮",
         nickname: "烟雨落叶",
         email: "4896819@qq.com",

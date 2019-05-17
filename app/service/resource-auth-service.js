@@ -33,7 +33,7 @@ class ResourceAuthService extends Service {
         const userInfo = ctx.request.identityInfo.userInfo || null
         const nodeInfo = nodeId ? await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`) : null
         if (nodeInfo && nodeInfo.userId !== userId) {
-            throw new ArgumentError('节点信息与登录用户不匹配', {nodeInfo, userInfo})
+            throw new ArgumentError(ctx.gettext('节点信息与登录用户不匹配'), {nodeInfo, userInfo})
         }
 
         const params = {
@@ -49,7 +49,7 @@ class ResourceAuthService extends Service {
             if (!authScheme.policy.length) {
                 continue
             }
-            const authSchemeAuthResult = await authService.policyAuthorization(Object.assign(params, {
+            const authSchemeAuthResult = await authService.policyAuthorization(ctx, Object.assign(params, {
                 policySegments: authScheme.policy,
                 partyOneUserId: authScheme.userId
             }))

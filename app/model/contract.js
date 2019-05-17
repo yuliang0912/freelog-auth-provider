@@ -19,19 +19,18 @@ module.exports = app => {
 
     const ContractSchema = new mongoose.Schema({
         contractName: {type: String, default: ''}, //合同名称
-        targetId: {type: String, required: true}, //目标ID,当为资源时是资源的授权方案ID,为消费方案时是presentableId
-        partyOne: {type: String, required: true}, //甲方
-        partyTwo: {type: String, required: true}, //乙方
+        partyOne: {type: String, required: true}, //甲方(发行ID)
+        partyTwo: {type: String, required: true}, //乙方(发行ID或节点ID)
         partyOneUserId: {type: Number, required: true}, //甲方的用户主体ID
         partyTwoUserId: {type: Number, required: true}, //乙方的用户主体ID
         contractType: {type: Number, required: true}, //合约类型
-        resourceId: {type: String, required: true},
-        segmentId: {type: String, required: true},
+        targetId: {type: String, required: true}, //策略的所属对象ID
+        policyId: {type: String, required: true}, //策略ID
+        nodeId: {type: Number, required: false, default: 0}, //节点ID,节点作为甲方或者乙方参与时,需要填
         remark: {type: String, default: ''}, //合同备注
         contractClause: { //合同条款
             authorizedObjects: {type: Array, required: true}, //授权对象
             policyText: {type: String, required: true}, //策略原文
-            policySegmentId: {type: String, required: true}, //策略ID
             fsmDeclarations: {}, //声明数据
             fsmStates: {},  //合同状态描述
             currentFsmState: {type: String, required: true, default: 'none'},
@@ -83,7 +82,7 @@ module.exports = app => {
     })
 
     //同一个策略只有终止了才允许重签,此处唯一约束防止出现多分合同
-    ContractSchema.index({targetId: 1, partyOne: 1, partyTwo: 1, segmentId: 1, isTerminate: 1}, {unique: true});
+    //ContractSchema.index({partyOne: 1, partyTwo: 1, policy: 1, isTerminate: 1}, {unique: true});
 
     return mongoose.model('contract', ContractSchema)
 }

@@ -6,13 +6,12 @@
 
 const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
-const globalInfo = require('egg-freelog-base/globalInfo')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
 const {ApplicationError} = require('egg-freelog-base/error')
 
-module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
+module.exports = async (ctx, {authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
 
-    const app = globalInfo.app
+    const app = ctx.app
     const authResult = new AuthResult(authCodeEnum.Default, {
         authUserObject, contractType, partyTwoInfo, partyTwoUserInfo
     })
@@ -59,7 +58,7 @@ module.exports = async ({authUserObject, contractType, partyTwoInfo, partyTwoUse
         if (!groups.length) {
             return false
         }
-        const existGroups = await app.curlIntranetApi(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`)
+        const existGroups = await ctx.curlIntranetApi(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`)
         return Array.isArray(existGroups) && existGroups.length
     }
 

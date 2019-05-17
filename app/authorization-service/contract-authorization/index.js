@@ -28,19 +28,19 @@ class ContractAuthorization {
      * @param partyTwoInfo
      * @param partyTwoUserInfo
      */
-    async main({contract, partyTwoInfo, partyTwoUserInfo}) {
+    async main(ctx, {contract, partyTwoInfo, partyTwoUserInfo}) {
 
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
             throw new ApplicationError('contract-authorization Error: 不被支持的合同')
         }
 
-        const contractAuthResult = contractAuthHandler({contract})
+        const contractAuthResult = contractAuthHandler(ctx, {contract})
         if (!contractAuthResult.isAuth) {
             return contractAuthResult
         }
 
-        const identityAuthResult = await policyIdentityAuthentication.main({
+        const identityAuthResult = await policyIdentityAuthentication.main(ctx, {
             policySegment: contract.contractClause,
             contractType: contract.contractType,
             partyOneUserId: contract.partyOneUserId,
@@ -55,8 +55,8 @@ class ContractAuthorization {
      * @param contract
      * @returns {module.CommonAuthResult|*|commonAuthResult}
      */
-    resourceReContractableSignAuth(contract) {
-        return resourceReContractableSignAuth({contract})
+    resourceReContractableSignAuth(ctx, contract) {
+        return resourceReContractableSignAuth(ctx, {contract})
     }
 
     /**
@@ -64,22 +64,22 @@ class ContractAuthorization {
      * @param contract
      * @returns {module.CommonAuthResult|*|commonAuthResult}
      */
-    resourcePresentableSignAuth(contract) {
-        return resourcePresentableSignAuth({contract})
+    resourcePresentableSignAuth(ctx, contract) {
+        return resourcePresentableSignAuth(ctx, {contract})
     }
 
     /**
      * 合同激活状态检查
      * @param contract
      */
-    isActivated(contract) {
+    isActivated(ctx, contract) {
 
         const contractAuthHandler = this.certificationRules.find({contractType: contract.contractType})
         if (!contractAuthHandler) {
             throw new ApplicationError('contract-authorization Error: 不被支持的合同')
         }
 
-        return contractAuthHandler({contract}).isAuth
+        return contractAuthHandler(ctx, {contract}).isAuth
     }
 
     /**

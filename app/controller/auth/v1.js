@@ -5,7 +5,8 @@ const Controller = require('egg').Controller
 const authCodeEnum = require('../../enum/auth-code')
 const commonAuthResult = require('../../authorization-service/common-auth-result')
 const authProcessManager = require('../../authorization-service/process-manager')
-const {ApplicationError} = require('egg-freelog-base/error')
+const {ApplicationError, ArgumentError} = require('egg-freelog-base/error')
+const PolicyIdentitySignAuthValidator = require('../../extend/json-schema/policy-identity-sign-auth-validator')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
 
@@ -27,7 +28,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         })
 
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
+            ctx.error({msg: ctx.gettext('授权未能通过'), errCode: authResult.authCode, data: authResult})
         }
 
         const {authToken} = authResult.data
@@ -57,13 +58,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableSubResource(ctx) {
 
         const resourceId = ctx.checkParams('resourceId').isResourceId().value
-        const token = ctx.checkQuery('token').isMongoObjectId('token格式错误').value
+        const token = ctx.checkQuery('token').isMongoObjectId(ctx.gettext('参数%s格式校验失败', 'token')).value
         ctx.validate(false)
 
         const {presentableAuthService, resourceAuthService} = ctx.service
         const authResult = await presentableAuthService.tokenAuthHandler({token, resourceId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
+            ctx.error({msg: ctx.gettext('授权未能通过'), errCode: authResult.authCode, data: authResult})
         }
         const {authToken} = authResult.data
         await resourceAuthService.getAuthResourceInfo({
@@ -88,7 +89,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})
         if (!authResult.isAuth) {
-            ctx.error({msg: '授权未能通过', errCode: authResult.authCode, data: authResult})
+            ctx.error({msg: ctx.gettext('授权未能通过'), errCode: authResult.authCode, data: authResult})
         }
 
         //基于策略的直接授权,目前token缓存172800秒(2天)
@@ -119,7 +120,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         }
         if (nodeId && (!nodeInfo || nodeInfo.ownerUserId !== ctx.request.userId)) {
-            ctx.error({msg: '参数nodeId错误', data: {nodeInfo, userId: ctx.request.userId}})
+            ctx.error({msg: ctx.gettext('参数%s校验失败', 'nodeId'), data: {nodeInfo, userId: ctx.request.userId}})
         }
 
         const allPolicySegments = new Map()
@@ -141,7 +142,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }))
 
         const allTasks = Array.from(allPolicySegments.values())
-            .map(item => authProcessManager.policyIdentityAuthentication(item).then(authResult => item.authResult = authResult))
+            .map(item => authProcessManager.policyIdentityAuthentication(ctx, item).then(authResult => item.authResult = authResult))
 
         await Promise.all(allTasks)
 
@@ -172,7 +173,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || !presentableInfo.isOnline) {
-            ctx.error({msg: 'presentable不存在或者已下线', data: {presentableId}})
+            ctx.error({msg: ctx.gettext('节点资源校验失败'), data: {presentableId}})
         }
 
         const userInfo = ctx.request.identityInfo.userInfo
@@ -185,7 +186,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const policyIdentityAuthTasks = presentableInfo.policy.reduce((acc, policySegment) => {
             if (policySegment.status === 1) {
-                const task = authProcessManager.policyIdentityAuthentication(Object.assign({}, params, {policySegment}))
+                const task = authProcessManager.policyIdentityAuthentication(ctx, Object.assign({}, params, {policySegment}))
                     .then(authResult => policySegment.authResult = authResult)
                 acc.push(task)
             }
@@ -213,7 +214,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || presentableInfo.userId !== ctx.request.userId) {
-            ctx.error({msg: '未找到有效的presentable信息', data: {presentableInfo, userId: ctx.request.userId}})
+            ctx.error({msg: ctx.gettext('节点资源校验失败'), data: {presentableInfo, userId: ctx.request.userId}})
         }
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentableInfo.nodeId}`)
         const authResult = await ctx.service.presentableAuthService.presentableTreeAuthHandler(presentableInfo, nodeInfo)
@@ -252,9 +253,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 let contractInfo = contractMap.get(contractId)
                 let signAuthResult = null
                 if (masterResourceId === resourceId) {
-                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(contractInfo)
+                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(ctx, contractInfo)
                 } else {
-                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(contractInfo)
+                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(ctx, contractInfo)
                 }
                 if (!signAuthResult.isAuth) {
                     presentableSignAuth.isAcquireSignAuth = 0
@@ -280,12 +281,12 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const {userInfo} = ctx.request.identityInfo
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0 || nodeInfo.ownerUserId !== userInfo.userId) {
-            throw new ApplicationError('参数nodeId错误,未找到有效节点', {nodeInfo})
+            throw new ApplicationError(ctx.gettext('节点信息校验失败'), {nodeInfo})
         }
 
         const presentableInfos = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}&nodeId=${nodeId}&userId=${userInfo.userId}&projection=presentableId`)
         if ([...new Set(presentableIds)].length !== presentableInfos.length) {
-            throw new ApplicationError('presentableId与节点不匹配', {presentableIds, nodeId})
+            throw new ApplicationError(ctx.gettext('节点资源与节点不匹配'), {presentableIds, nodeId})
         }
 
         const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/presentableTrees?presentableIds=${presentableIds.toString()}`)
@@ -304,15 +305,15 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 let contractInfo = contractMap.get(contractId)
                 let signAuthResult = null
                 if (masterResourceId === resourceId) {
-                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(contractInfo)
+                    signAuthResult = await authProcessManager.resourcePresentableSignAuth(ctx, contractInfo)
                 } else {
-                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(contractInfo)
+                    signAuthResult = await authProcessManager.resourceReContractableSignAuth(ctx, contractInfo)
                 }
                 if (!signAuthResult.isAuth) {
                     presentableSignAuth.authResult = 2
                     break
                 }
-                const contractAuthResult = await authProcessManager.contractAuthorization({
+                const contractAuthResult = await authProcessManager.contractAuthorization(ctx, {
                     contract: contractInfo,
                     partyTwoInfo: nodeInfo,
                     partyTwoUserInfo: userInfo
@@ -353,7 +354,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const result = await ctx.curl(resourceInfo.resourceUrl, {streaming: true})
         if (!/^2[\d]{2}$/.test(result.status)) {
-            ctx.error({msg: '文件丢失,未能获取到资源源文件信息', data: {['http-status']: result.status}})
+            ctx.error({msg: ctx.gettext('文件丢失,未能获取到资源源文件信息'), data: {['http-status']: result.status}})
         }
 
         ctx.attachment(fileName || resourceInfo.resourceId)

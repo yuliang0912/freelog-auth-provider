@@ -17,7 +17,7 @@ module.exports = class ContractPaymentHandler {
     /**
      * 合同支付事件处理
      */
-    async handler({contractInfo, eventInfo, userInfo, fromAccountId, amount, password}) {
+    async handler(ctx, {contractInfo, eventInfo, userInfo, fromAccountId, amount, password}) {
 
         this._checkUserIdentity()
 

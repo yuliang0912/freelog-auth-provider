@@ -15,7 +15,8 @@ module.exports = appInfo => {
         keys: '20ab72d9397ff78c5058a106c635f008',
 
         i18n: {
-            enable: false
+            enable: true,
+            defaultLocale: 'zh-CN'
         },
 
         /**
@@ -122,7 +123,7 @@ module.exports = appInfo => {
             level: 'INFO'
         },
 
-        customLoader: ['app/contract-service/contract-service.js', 'app/event-handler', 'app/mq-service']
+        customFileLoader: ['app/contract-service/contract-service.js', 'app/event-handler', 'app/mq-service']
     }
 
     return config;

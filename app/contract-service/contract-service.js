@@ -26,14 +26,14 @@ module.exports = class ContractService {
     /**
      * 创建合同
      */
-    async createContract(contractBaseInfo, isInitial = true) {
+    async createContract(ctx, contractBaseInfo, isInitial = true) {
 
         contractBaseInfo._id = contractBaseInfo.contractId = this.app.mongoose.getNewObjectId()
         const contractInfo = await this.generateContractService.generateContract(contractBaseInfo).then(contractInfo => {
             return this.contractProvider.create(contractInfo)
         })
         if (isInitial) {
-            this.initialContractFsm(contractInfo)
+            this.initialContractFsm(ctx, contractInfo)
         }
         if (contractBaseInfo.isDefault) {
             const condition = {
@@ -51,7 +51,7 @@ module.exports = class ContractService {
      * 批量创建合约
      * @returns {Promise<void>}
      */
-    async batchCreateContract(contractBaseInfos, isInitial = true) {
+    async batchCreateContract(ctx, contractBaseInfos, isInitial = true) {
 
         const generateContractTasks = []
         for (var i = 0, j = contractBaseInfos.length; i < j; i++) {
@@ -62,28 +62,28 @@ module.exports = class ContractService {
 
         const generateContracts = await Promise.all(generateContractTasks)
         return this.contractProvider.insertMany(generateContracts).tap(contracts => {
-            isInitial && contracts.forEach(contractInfo => this.initialContractFsm(contractInfo))
+            isInitial && contracts.forEach(contractInfo => this.initialContractFsm(ctx, contractInfo))
         })
     }
 
     /**
      * 单例事件处理
      */
-    async singletonEventHandler({contractInfo, eventInfo, userInfo}) {
+    async singletonEventHandler(ctx, {contractInfo, eventInfo, userInfo}) {
 
         if (!userInfo || contractInfo.partyOneUserId !== userInfo.userId && contractInfo.partyTwoUserId !== userInfo.userId) {
-            throw new ApplicationError(`当前用户没有操作权限`)
+            throw new ApplicationError(ctx.gettext(`当前用户没有操作权限`))
         }
         if (contractInfo.status === contractStatusEnum.locked) {
-            throw new ApplicationError(`系统正在计算合同数据,请稍后再试`)
+            throw new ApplicationError(ctx.gettext(`合同锁定中,系统正在计算合同数据,请稍后再`))
         }
         if (!eventInfo.code.startsWith('S')) {
-            throw new ApplicationError(`非单例事件,错误的调用`)
+            throw new ApplicationError(ctx.gettext(`非单例事件,错误的调用`))
         }
 
         const singletonEventHandler = this.patrun.find({eventCode: eventInfo.code})
         if (!singletonEventHandler) {
-            throw new ApplicationError(`单例事件处理函数不支持当前事件`)
+            throw new ApplicationError(ctx.gettext(`系统错误,单例事件处理函数不支持当前事件`))
         }
 
         return singletonEventHandler.handler(...arguments)
@@ -93,10 +93,10 @@ module.exports = class ContractService {
      * 初始化合同状态机
      * @param contractInfo
      */
-    initialContractFsm(contractInfo) {
+    initialContractFsm(ctx, contractInfo) {
 
         if (contractInfo.status !== contractStatusEnum.uninitialized) {
-            throw new ApplicationError('合同已经激活,不能重复操作')
+            throw new ApplicationError(ctx.gettext('合同已经激活,不能重复操作'))
         }
 
         const initialState = Object.keys(contractInfo.contractClause.fsmStates).find(x => /^(init|initial)$/i.test(x))

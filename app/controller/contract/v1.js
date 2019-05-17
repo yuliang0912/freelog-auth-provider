@@ -6,6 +6,9 @@
 
 const lodash = require('lodash')
 const Controller = require('egg').Controller
+const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
+const SignReleaseValidator = require('../../extend/json-schema/batch-sign-release-validator')
+
 
 module.exports = class ContractController extends Controller {
 
@@ -26,9 +29,9 @@ module.exports = class ContractController extends Controller {
         const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
         const partyOne = ctx.checkQuery('partyOne').optional().value
         const partyTwo = ctx.checkQuery('partyTwo').optional().value
-        const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().value
+        const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().default([]).value
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
-        const projection = ctx.checkQuery('projection').optional().toSplitArray().value
+        const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
         ctx.validate()
 
         const condition = {}
@@ -41,26 +44,21 @@ module.exports = class ContractController extends Controller {
         if (partyTwo !== undefined) {
             condition.partyTwo = partyTwo
         }
-        if (resourceIds) {
-            condition.resourceId = {$in: resourceIds.split(',')}
+        if (targetIds.length) {
+            condition.targetIds = {$in: targetIds}
         }
         if (isDefault !== undefined) {
             condition.isDefault = isDefault
         }
-        if (!Object.keys(condition).length) {
-            ctx.error({msg: '最少需要一个查询条件'})
+        if (lodash.isEmpty(condition)) {
+            ctx.error({msg: ctx.gettext('缺少必要参数')})
         }
 
-        var dataList = [], projectionStr = null
+        var dataList = []
         const totalItem = await this.contractProvider.count(condition)
-        if (projection && projection.length) {
-            projectionStr = projection.join(' ')
-        }
-
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projectionStr, {createDate: 1})
+            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projection.join(' '), {createDate: -1})
         }
-
         ctx.success({page, pageSize, totalItem, dataList})
     }
 
@@ -71,16 +69,12 @@ module.exports = class ContractController extends Controller {
      */
     async list(ctx) {
 
-        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId('contractIds格式错误').toSplitArray().len(1, 1000).value
-        const projection = ctx.checkQuery('projection').optional().toSplitArray().value
+        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId().toSplitArray().len(1, 1000).value
+        const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
         ctx.validate()
 
-        var projectionStr = null
         const condition = {_id: {$in: contractIds}}
-        if (projection && projection.length) {
-            projectionStr = projection.join(' ')
-        }
-        await this.contractProvider.find(condition, projectionStr).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.find(condition, projection.join(' ')).then(ctx.success)
     }
 
     /**
@@ -93,7 +87,7 @@ module.exports = class ContractController extends Controller {
         const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         ctx.validate()
 
-        await this.contractProvider.findById(contractId).then(ctx.success).catch(ctx.error)
+        await this.contractProvider.findById(contractId).then(ctx.success)
     }
 
     /**
@@ -120,7 +114,7 @@ module.exports = class ContractController extends Controller {
      */
     async initial(ctx) {
 
-        const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId('合同ID格式错误').toSplitArray().len(1, 100).value
+        const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId(ctx.gettext('参数%s格式校验失败', 'contractIds')).toSplitArray().len(1, 100).value
         ctx.validate()
 
         const {app} = ctx
@@ -129,7 +123,7 @@ module.exports = class ContractController extends Controller {
             partyTwoUserId: ctx.request.userId, status: 1
         })
 
-        contractInfos.forEach(contractInfo => app.contractService.initialContractFsm(contractInfo))
+        contractInfos.forEach(contractInfo => app.contractService.initialContractFsm(ctx, contractInfo))
 
         ctx.success(contractInfos.map(x => new Object({contractId: x.contractId})))
     }
@@ -169,7 +163,7 @@ module.exports = class ContractController extends Controller {
 
         const contractInfo = await this.contractProvider.findById(contractId)
         if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId) {
-            ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
+            ctx.error({msg: ctx.gettext('合同信息校验失败'), data: {contractInfo}})
         }
 
         await contractInfo.updateOne({remark}).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
@@ -203,7 +197,7 @@ module.exports = class ContractController extends Controller {
 
         const contractInfo = await this.contractProvider.findById(contractId)
         if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUser) {
-            ctx.error({msg: '合同信息错误或者没有操作权限', data: {contractInfo}})
+            ctx.error({msg: ctx.gettext('合同信息校验失败'), data: {contractInfo}})
         }
 
         await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then((ret) => {
@@ -242,10 +236,10 @@ module.exports = class ContractController extends Controller {
         ctx.validate()
 
         if (resourceIds && partyTwo === undefined) {
-            ctx.error({msg: '参数resourceIds必须与partyTwo组合使用'})
+            ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'resourceIds', 'partyTwo')})
         }
         if (targetIds && partyTwo === undefined) {
-            ctx.error({msg: '参数targetIds必须与partyTwo组合使用'})
+            ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'targetIds', 'partyTwo')})
         }
 
         const condition = {}
@@ -265,7 +259,7 @@ module.exports = class ContractController extends Controller {
             condition.targetId = {$in: targetIds}
         }
         if (!Object.keys(condition).length) {
-            ctx.error({msg: '最少需要一个可选查询条件'})
+            ctx.error({msg: ctx.gettext('缺少必要参数')})
         }
 
         //const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
@@ -286,7 +280,7 @@ module.exports = class ContractController extends Controller {
 
         const contractInfo = await this.contractProvider.findById(contractId)
         if (!contractInfo) {
-            ctx.error({msg: '未找到合同'})
+            ctx.error({msg: ctx.gettext('合同信息校验失败')})
         }
 
         const result = ctx.app.contractService.isCanExecEvent(contractInfo, eventId)
@@ -310,7 +304,7 @@ module.exports = class ContractController extends Controller {
         if (contractType === ctx.app.contractType.ResourceToNode) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwo}`)
             if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
-                ctx.error({msg: '参数partyTwo校验失败', data: nodeInfo})
+                ctx.error({msg: ctx.gettext('参数%s校验失败', 'partyTwo'), data: nodeInfo})
             }
         }
 
@@ -335,7 +329,7 @@ module.exports = class ContractController extends Controller {
 
         const tradeRecord = await ctx.dal.contractTradeRecordProvider.findOne({tradeRecordId, contractId})
         if (!tradeRecord || tradeRecord.status !== 1) {
-            ctx.error({msg: '未找到合同交易记录或者交易已经处理完毕', data: {tradeRecord}})
+            ctx.error({msg: ctx.gettext('未找到合同交易记录或者交易已经处理完毕'), data: {tradeRecord}})
         }
 
         const isAuthorization = tradeRecord.amount === amount && tradeRecord.fromAccountId === accountId && operationUserId === tradeRecord.userId

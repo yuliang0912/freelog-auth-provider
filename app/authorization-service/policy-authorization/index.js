@@ -25,19 +25,19 @@ class PolicyAuthorization {
      * @param partyTwoInfo
      * @param partyTwoUserInfo
      */
-    async main({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async main(ctx, {policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const policyAuthHandler = this.certificationRules.find({contractType})
         if (!policyAuthHandler) {
             throw new ApplicationError('policy-authentication Error: 不被支持的合同')
         }
 
-        const policyAuthResult = policyAuthHandler({policySegment, contractType})
+        const policyAuthResult = policyAuthHandler(ctx, {policySegment, contractType})
         if (!policyAuthResult.isAuth) {
             return policyAuthResult
         }
 
-        const identityAuthResult = await policyIdentityAuthentication.main({
+        const identityAuthResult = await policyIdentityAuthentication.main(ctx, {
             policySegment,
             contractType,
             partyOneUserId,

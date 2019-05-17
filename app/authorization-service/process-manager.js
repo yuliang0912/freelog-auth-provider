@@ -20,10 +20,10 @@ const AuthProcessManager = class AuthProcessManager {
      * @param nodeInfo
      * @returns {Promise<void>}
      */
-    async presentableAuthTreeAuthorization(presentableAuthTree) {
+    async presentableAuthTreeAuthorization(ctx, presentableAuthTree) {
 
         if (!Reflect.has(presentableAuthTree, 'nodeInfo')) {
-            throw new ApplicationError('presentableAuthTreeAuthorization Error:参数信息不完整')
+            throw new ApplicationError(ctx.gettext('缺少必要参数'))
         }
         const {authTree, nodeInfo} = presentableAuthTree
         const authResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
@@ -33,7 +33,7 @@ const AuthProcessManager = class AuthProcessManager {
         authTree.forEach(current => {
 
             let {contractInfo} = current
-            let contractIsActivated = ContractAuthorization.isActivated(contractInfo)
+            let contractIsActivated = ContractAuthorization.isActivated(ctx, contractInfo)
 
             if (contractInfo.contractType === freelogContractType.ResourceToNode) {
                 nodeContracts.push(contractInfo)
@@ -66,7 +66,7 @@ const AuthProcessManager = class AuthProcessManager {
                 partyTwoInfo: nodeInfo,
                 partyTwoUserInfo: contract.partyTwoUserInfo
             }
-            return IdentityAuthentication.main(params)
+            return IdentityAuthentication.main(ctx, params)
         })
         const nodeContractIdentityAuthResults = await Promise.all(nodeContractIdentityAuthTasks)
         const identityAuthFailedNodeContract = nodeContractIdentityAuthResults.filter(x => !x.isAuth)
@@ -85,7 +85,7 @@ const AuthProcessManager = class AuthProcessManager {
                 partyTwoInfo: null,
                 partyTwoUserInfo: contract.partyTwoUserInfo
             }
-            return IdentityAuthentication.main(params)
+            return IdentityAuthentication.main(ctx, params)
         })
         const resourceContractIdentityAuthResults = await Promise.all(resourceContractIdentityAuthTasks)
         const identityAuthFailedResourceContract = resourceContractIdentityAuthResults.filter(x => !x.isAuth)
@@ -105,7 +105,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async contractAuthorization({contract, partyTwoInfo, partyTwoUserInfo}) {
+    async contractAuthorization(ctx, {contract, partyTwoInfo, partyTwoUserInfo}) {
         return ContractAuthorization.main(...arguments)
     }
 
@@ -118,7 +118,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyAuthorization({policySegments, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async policyAuthorization(ctx, {policySegments, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const result = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
         const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
@@ -128,7 +128,7 @@ const AuthProcessManager = class AuthProcessManager {
             if (policySegment.status !== 1) {
                 continue
             }
-            const policyAuthResult = await PolicyAuthorization.main(Object.assign({}, params, {policySegment}))
+            const policyAuthResult = await PolicyAuthorization.main(ctx, Object.assign({}, params, {policySegment}))
             if (!policyAuthResult.isAuth) {
                 continue
             }
@@ -139,7 +139,7 @@ const AuthProcessManager = class AuthProcessManager {
         if (!result.data.policySegment) {
             result.authCode = contractType === freelogContractType.ResourceToResource ? authCodeEnum.NotFoundResourceContract
                 : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserPresentableContract
-            result.addError('未能通过资源策略授权')
+            result.addError(ctx.gettext('未能通过资源策略授权'))
         }
         return result
     }
@@ -153,7 +153,7 @@ const AuthProcessManager = class AuthProcessManager {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyIdentityAuthentication({policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async policyIdentityAuthentication(ctx, {policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
         return IdentityAuthentication.main(...arguments)
     }
 
@@ -162,8 +162,8 @@ const AuthProcessManager = class AuthProcessManager {
      * @param contract
      * @returns {module.CommonAuthResult|*|commonAuthResult}
      */
-    async resourceReContractableSignAuth(contract) {
-        return ContractAuthorization.resourceReContractableSignAuth(contract)
+    async resourceReContractableSignAuth(ctx, contract) {
+        return ContractAuthorization.resourceReContractableSignAuth(...arguments)
     }
 
     /**
@@ -171,8 +171,8 @@ const AuthProcessManager = class AuthProcessManager {
      * @param contract
      * @returns {module.CommonAuthResult|*|commonAuthResult}
      */
-    async resourcePresentableSignAuth(contract) {
-        return ContractAuthorization.resourcePresentableSignAuth(contract)
+    async resourcePresentableSignAuth(ctx, contract) {
+        return ContractAuthorization.resourcePresentableSignAuth(...arguments)
     }
 
 }

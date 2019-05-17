@@ -14,7 +14,7 @@ module.exports = class SignLicenseHandler {
     /**
      * 签约license事件处理
      */
-    async handler({contractInfo, eventInfo, userInfo, licenseIds, nodeId}) {
+    async handler(ctx, {contractInfo, eventInfo, userInfo, licenseIds, nodeId}) {
 
         const {licenseResourceId} = eventInfo.params
 

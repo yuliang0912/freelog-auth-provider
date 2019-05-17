@@ -33,15 +33,20 @@ class PresentableAuthService extends Service {
         })
 
         const {presentableInfo, presentableAuthTree, authTokenCache} = await Promise.all([presentableInfoTask, presentableAuthTreeTask, authTokenCacheTask])
-            .then(([presentableInfo, presentableAuthTree, authTokenCache]) => new Object({
+            .then(([presentableInfo, presentableAuthTree, authTokenCache]) => Object({
                 authTokenCache,
                 presentableInfo,
-                presentableAuthTree,
+                presentableAuthTree
             }))
 
-        if (!presentableInfo || presentableInfo.nodeId !== nodeId) {
+        if (!presentableInfo) {
             return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: '参数presentableId错误或者presentableId与nodeId不匹配', presentableInfo
+                msg: ctx.gettext('节点资源校验失败'), presentableInfo
+            })
+        }
+        if (presentableInfo.nodeId !== nodeId) {
+            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
+                msg: ctx.gettext('节点资源与节点不匹配'), presentableInfo
             })
         }
         if (!presentableInfo.isOnline) {
@@ -49,7 +54,7 @@ class PresentableAuthService extends Service {
         }
         if (!presentableAuthTree) {
             return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: 'presentable授权树数据缺失'
+                msg: ctx.gettext('节点资源授权树数据缺失')
             })
         }
         if (authTokenCache) {
@@ -61,7 +66,7 @@ class PresentableAuthService extends Service {
         const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         if (!nodeInfo || nodeInfo.status !== 0) {
             return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: '参数nodeId错误,未找到有效节点'
+                msg: ctx.gettext('节点资源校验失败')
             })
         }
 
@@ -98,7 +103,7 @@ class PresentableAuthService extends Service {
             item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
         })
 
-        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(presentableAuthTree)
+        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(ctx, presentableAuthTree)
         if (!presentableTreeAuthResult.isAuth) {
             return this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentableTreeAuthResult})
         }
@@ -148,13 +153,13 @@ class PresentableAuthService extends Service {
 
         if ((presentableInfo.status & 1) !== 1) {
             let authResult = new commonAuthResult(authCodeEnum.NotFoundNodeContract)
-            authResult.addError('节点资源合同不完备,请检查是否全部签约')
+            authResult.addError(ctx.gettext('节点资源合同不完备,请检查是否全部签约'))
             return authResult
         }
         const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableInfo.presentableId}/authTree`)
         if (!presentableAuthTree) {
             return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: 'presentable授权树数据缺失'
+                msg: ctx.gettext('节点资源授权树数据缺失')
             })
         }
 
@@ -178,7 +183,7 @@ class PresentableAuthService extends Service {
             item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
         })
 
-        return authService.presentableAuthTreeAuthorization(presentableAuthTree)
+        return authService.presentableAuthTreeAuthorization(ctx, presentableAuthTree)
     }
 
     /**
@@ -200,14 +205,14 @@ class PresentableAuthService extends Service {
      */
     async _unLoginUserPresentableAuth(presentableInfo) {
 
-        const {app} = this
+        const {ctx, app} = this
         const params = {
             policySegments: presentableInfo.policy,
             contractType: app.contractType.PresentableToUser,
             partyOneUserId: presentableInfo.userId
         }
 
-        const policyAuthorizationResult = await authService.policyAuthorization(params)
+        const policyAuthorizationResult = await authService.policyAuthorization(ctx, params)
 
         if (!policyAuthorizationResult.isAuth) {
             policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
@@ -228,7 +233,7 @@ class PresentableAuthService extends Service {
      */
     async _tryUserContractAuth({presentableInfo, userInfo}) {
 
-        const {app} = this
+        const {ctx, app} = this
         const allContracts = await this.contractProvider.find({
             targetId: presentableInfo.presentableId, partyTwo: userInfo.userId,
             contractType: app.contractType.PresentableToUser
@@ -239,7 +244,7 @@ class PresentableAuthService extends Service {
             return this._tryCreateDefaultUserContract({presentableInfo, userInfo})
         }
 
-        const defaultContractAuthResult = await authService.contractAuthorization({
+        const defaultContractAuthResult = await authService.contractAuthorization(ctx, {
             contract: defaultContract, partyTwoUserInfo: userInfo
         })
 
@@ -257,7 +262,7 @@ class PresentableAuthService extends Service {
      */
     async _tryCreateDefaultUserContract({presentableInfo, userInfo}) {
 
-        const {app} = this
+        const {ctx, app} = this
         const params = {
             policySegments: presentableInfo.policy,
             contractType: app.contractType.PresentableToUser,
@@ -266,7 +271,7 @@ class PresentableAuthService extends Service {
         }
 
         const result = new commonAuthResult(authCodeEnum.BasedOnUserContract)
-        const presentablePolicyAuthResult = await authService.policyAuthorization(params)
+        const presentablePolicyAuthResult = await authService.policyAuthorization(ctx, params)
 
         this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentablePolicyAuthResult})
         //非免费资源,则直接返回授权错误,免费资源则创建合同

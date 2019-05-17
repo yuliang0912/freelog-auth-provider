@@ -16,7 +16,7 @@ module.exports = class EscrowRefundedHandler {
     /**
      * 保证金赎回
      */
-    async handler({contractInfo, eventInfo, userInfo, toAccountId}) {
+    async handler(ctx, {contractInfo, eventInfo, userInfo, toAccountId}) {
 
         this.authorization(contractInfo, userInfo)
 
