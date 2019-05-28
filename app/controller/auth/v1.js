@@ -229,6 +229,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async getPresentableSignAuth(ctx) {
 
+
+        throw new ApplicationError('接口已过时,签约授权功能目前已取消')
+
         const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().value
         ctx.validate()
 

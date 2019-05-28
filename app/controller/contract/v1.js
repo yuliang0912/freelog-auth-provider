@@ -24,9 +24,9 @@ module.exports = class ContractController extends Controller {
      */
     async index(ctx) {
 
-        const page = ctx.checkQuery("page").default(1).toInt().gt(0).value
-        const pageSize = ctx.checkQuery("pageSize").default(10).gt(0).lt(101).toInt().value
-        const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
+        const page = ctx.checkQuery("page").optional().default(1).toInt().gt(0).value
+        const pageSize = ctx.checkQuery("pageSize").optional().default(10).gt(0).lt(101).toInt().value
+        const contractType = ctx.checkQuery('contractType').optional().default(0).in([0, 1, 2, 3]).value
         const partyOne = ctx.checkQuery('partyOne').optional().value
         const partyTwo = ctx.checkQuery('partyTwo').optional().value
         const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().default([]).value
@@ -51,7 +51,7 @@ module.exports = class ContractController extends Controller {
             condition.isDefault = isDefault
         }
         if (lodash.isEmpty(condition)) {
-            ctx.error({msg: ctx.gettext('缺少必要参数')})
+            throw new ArgumentError(ctx.gettext('params-required-validate-failed'))
         }
 
         var dataList = []
@@ -84,7 +84,7 @@ module.exports = class ContractController extends Controller {
      */
     async show(ctx) {
 
-        const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
+        const contractId = ctx.checkParams("id").notEmpty().isContractId().value
         ctx.validate()
 
         await this.contractProvider.findById(contractId).then(ctx.success)

@@ -21,6 +21,17 @@ class SignAuthService extends Service {
      */
     async releasePolicyIdentityAuthentication(releasePolicies, contractType, nodeInfo, partyTwo, isFilterSignedPolicy) {
 
+        // const signedContractRecords = isFilterSignedPolicy ? await this.contractProvider.find({
+        //     partyTwo, contractType, targetId: {$in: releasePolicies.map(x => x.releaseId)}
+        // }) : []
+        //
+        // const releaseInfoMap1 = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${releasePolicies.map(x => x.releaseId).toString()}`)
+        //     .then(list => new Map(list.map(x => [x.releaseId, x])))
+        //
+        // for (let i = 0, j = releasePolicies.length; i < j; i++) {
+        //     if()
+        // }
+        
         if (isFilterSignedPolicy) {
             const signedContractRecords = await this.contractProvider.find({
                 partyTwo, contractType, targetId: {$in: releasePolicies.map(x => x.releaseId)}
