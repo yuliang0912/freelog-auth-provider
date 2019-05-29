@@ -303,7 +303,7 @@ class PresentableAuthService extends Service {
 
         const createUserContractData = {
             presentableId: presentableInfo.presentableId,
-            segmentId: policySegment.segmentId
+            policyId: policySegment.policyId
         }
 
         return ctx.service.contractService.createUserContract(createUserContractData)

@@ -84,7 +84,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const resourceId = ctx.checkParams("resourceId").isResourceId().value
         const nodeId = ctx.checkQuery('nodeId').optional().toInt().gt(0).value
         const extName = ctx.checkParams('extName').optional().in(['data', 'info']).value
-
         ctx.validate(false)
 
         const authResult = await ctx.service.resourceAuthService.resourceAuth({resourceId, nodeId})
@@ -133,7 +132,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             if (policySegment.status === 0) {
                 return
             }
-            allPolicySegments.set(`${authSchemeInfo.userId}_${policySegment.segmentId}`, {
+            allPolicySegments.set(`${authSchemeInfo.userId}_${policySegment.policyId}`, {
                 partyOneUserId: authSchemeInfo.userId,
                 partyTwoInfo: nodeInfo,
                 partyTwoUserInfo: userInfo,
@@ -149,11 +148,11 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const returnResult = authSchemeInfos.map(authSchemeInfo => new Object({
             authSchemeId: authSchemeInfo.authSchemeId,
             policy: authSchemeInfo.policy.map(policySegment => new Object({
-                segmentId: policySegment.segmentId,
+                policyId: policySegment.policyId,
                 status: policySegment.status,
                 purpose: ctx.service.contractService.getPurposeFromPolicy(policySegment),
-                authResult: allPolicySegments.has(`${authSchemeInfo.userId}_${policySegment.segmentId}`)
-                    ? allPolicySegments.get(`${authSchemeInfo.userId}_${policySegment.segmentId}`).authResult
+                authResult: allPolicySegments.has(`${authSchemeInfo.userId}_${policySegment.policyId}`)
+                    ? allPolicySegments.get(`${authSchemeInfo.userId}_${policySegment.policyId}`).authResult
                     : null
             }))
         }))
@@ -196,7 +195,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         await Promise.all(policyIdentityAuthTasks)
 
         const returnResult = presentableInfo.policy.map(policySegment => new Object({
-            segmentId: policySegment.segmentId,
+            policyId: policySegment.policyId,
             status: policySegment.status,
             authResult: policySegment.authResult || null
         }))

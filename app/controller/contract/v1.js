@@ -6,9 +6,9 @@
 
 const lodash = require('lodash')
 const Controller = require('egg').Controller
-const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
+const {ArgumentError} = require('egg-freelog-base/error')
+const {mongoObjectId} = require('egg-freelog-base/app/extend/helper/common_regex')
 const SignReleaseValidator = require('../../extend/json-schema/batch-sign-release-validator')
-
 
 module.exports = class ContractController extends Controller {
 
@@ -18,7 +18,7 @@ module.exports = class ContractController extends Controller {
     }
 
     /**
-     * 当前登录用户的合约列表(作为甲方和作为乙方)
+     * 当前登录用户的合约列表
      * @param ctx
      * @returns {Promise.<void>}
      */
@@ -26,11 +26,13 @@ module.exports = class ContractController extends Controller {
 
         const page = ctx.checkQuery("page").optional().default(1).toInt().gt(0).value
         const pageSize = ctx.checkQuery("pageSize").optional().default(10).gt(0).lt(101).toInt().value
-        const contractType = ctx.checkQuery('contractType').optional().default(0).in([0, 1, 2, 3]).value
-        const partyOne = ctx.checkQuery('partyOne').optional().value
-        const partyTwo = ctx.checkQuery('partyTwo').optional().value
+        const contractType = ctx.checkQuery('contractType').optional().in([0, 1, 2, 3]).value
+        const identityType = ctx.checkQuery('identityType').exist().toInt().in([1, 2]).value //甲or乙
+        const partyOne = ctx.checkQuery('partyOne').optional().notEmpty().value
+        const partyTwo = ctx.checkQuery('partyTwo').optional().notEmpty().value
         const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().default([]).value
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
+        const keywords = ctx.checkQuery("keywords").optional().decodeURIComponent().value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
         ctx.validate()
 
@@ -38,10 +40,16 @@ module.exports = class ContractController extends Controller {
         if (contractType) {
             condition.contractType = contractType
         }
-        if (partyOne !== undefined) {
+        if (identityType === 1) {
+            condition.partyOneUserId = ctx.request.userId
+        }
+        if (identityType === 2) {
+            condition.partyTwoUserId = ctx.request.userId
+        }
+        if (lodash.isString(partyOne)) {
             condition.partyOne = partyOne
         }
-        if (partyTwo !== undefined) {
+        if (lodash.isString(partyTwo)) {
             condition.partyTwo = partyTwo
         }
         if (targetIds.length) {
@@ -50,8 +58,13 @@ module.exports = class ContractController extends Controller {
         if (isDefault !== undefined) {
             condition.isDefault = isDefault
         }
-        if (lodash.isEmpty(condition)) {
-            throw new ArgumentError(ctx.gettext('params-required-validate-failed'))
+        if (lodash.isString(keywords)) {
+            let searchRegExp = new RegExp(keywords, "i")
+            if (mongoObjectId.test(keywords.toLowerCase())) {
+                condition.targetId = keywords.toLowerCase()
+            } else {
+                condition.contractName = searchRegExp
+            }
         }
 
         var dataList = []
@@ -69,11 +82,38 @@ module.exports = class ContractController extends Controller {
      */
     async list(ctx) {
 
-        const contractIds = ctx.checkQuery('contractIds').isSplitMongoObjectId().toSplitArray().len(1, 1000).value
+        const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().len(1, 200).value
+        const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().len(1, 200).value
+        const partyOne = ctx.checkQuery('partyOne').optional().notEmpty().value
+        const partyTwo = ctx.checkQuery('partyTwo').optional().notEmpty().value
+        const contractType = ctx.checkQuery('contractType').optional().toInt().in([0, 1, 2, 3]).value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
         ctx.validate()
 
-        const condition = {_id: {$in: contractIds}}
+        const condition = {}
+        if ([contractIds, targetIds, partyOne, partyTwo].every(x => x === undefined)) {
+            throw new ArgumentError(ctx.gettext('params-required-validate-failed'))
+        }
+        //contractIds和targetIds最少需要一个
+        if (!contractIds && !targetIds) {
+            throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'contractIds,targetIds'))
+        }
+        if (contractIds) {
+            condition._id = {$in: contractIds}
+        }
+        if (targetIds) {
+            condition.targetId = {$in: targetIds}
+        }
+        if (lodash.isString(partyOne)) {
+            condition.partyOne = partyOne
+        }
+        if (lodash.isString(partyTwo)) {
+            condition.partyTwo = partyTwo
+        }
+        if (contractType) {
+            condition.contractType = contractType
+        }
+
         await this.contractProvider.find(condition, projection.join(' ')).then(ctx.success)
     }
 
@@ -94,61 +134,75 @@ module.exports = class ContractController extends Controller {
      * 查询历史合同
      * @returns {Promise<void>}
      */
-    async terminateContracts(ctx) {
+    async terminatedContracts(ctx) {
 
         const targetId = ctx.checkQuery('targetId').exist().notEmpty().value
         const partyTwo = ctx.checkQuery('partyTwo').exist().notEmpty().value
-        const segmentId = ctx.checkQuery('segmentId').optional().exist().isMd5().value
-
-        const condition = {isTerminate: 1, targetId, partyTwo}
-        if (segmentId) {
-            condition.segmentId = segmentId
-        }
-
-        await this.contractProvider.find(condition).then(ctx.success).catch(ctx.error)
-    }
-
-    /**
-     * 初始化合同
-     * @returns {Promise<void>}
-     */
-    async initial(ctx) {
-
-        const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId(ctx.gettext('参数%s格式校验失败', 'contractIds')).toSplitArray().len(1, 100).value
+        const identityType = ctx.checkQuery('identityType').exist().toInt().in([1, 2]).value //甲or乙
+        const policyId = ctx.checkQuery('policyId').optional().exist().isMd5().value
         ctx.validate()
 
-        const {app} = ctx
-        const contractInfos = await this.contractProvider.find({
-            _id: {$in: contractIds},
-            partyTwoUserId: ctx.request.userId, status: 1
-        })
+        const condition = {isTerminate: 1, targetId, partyTwo}
+        if (policyId) {
+            condition.policyId = policyId
+        }
+        if (identityType === 1) {
+            condition.partyOneUserId = ctx.request.userId
+        }
+        if (identityType === 2) {
+            condition.partyTwoUserId = ctx.request.userId
+        }
 
-        contractInfos.forEach(contractInfo => app.contractService.initialContractFsm(ctx, contractInfo))
-
-        ctx.success(contractInfos.map(x => new Object({contractId: x.contractId})))
+        await this.contractProvider.find(condition).then(ctx.success)
     }
 
     /**
-     * 创建资源合约
+     * 创建资源合约(仅支持用户与presentable签约,节点与资源 资源与资源通过批量结果实现)
      * @param ctx
      * @returns {Promise.<void>}
      */
     async create(ctx) {
 
-        //仅支持用户与presentable签约,(节点与资源 资源与资源通过批量结果实现)
-        const contractType = ctx.checkBody('contractType').toInt().in([3]).value
-        const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
+        const policyId = ctx.checkBody('policyId').exist().isMd5().value
         const targetId = ctx.checkBody('targetId').exist().notEmpty().value
         const isDefault = ctx.checkBody('isDefault').default(0).optional().toInt().in([0, 1]).value
         ctx.validate()
 
         await ctx.service.contractService.createUserContract({
-            presentableId: targetId,
-            segmentId,
-            isDefault
+            presentableId: targetId, policyId, isDefault
         }).then(ctx.success)
     }
 
+    /**
+     * 批量创建发行合同(节点或资源商签约使用)
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async batchCreateReleaseContracts(ctx) {
+
+        const partyTwoId = ctx.checkBody("partyTwoId").exist().notEmpty().value
+        const targetId = ctx.checkBody("targetId").exist().isMongoObjectId().value
+        const signReleases = ctx.checkBody("signReleases").exist().isArray().len(1, 200).value
+        const contractType = ctx.checkBody("contractType").exist().toInt().in([1, 2]).value
+        ctx.validate()
+
+        const validateResult = new SignReleaseValidator().signReleaseValidate(signReleases)
+        if (validateResult.errors.length) {
+            throw new ArgumentError(ctx.gettext('params-format-validate-failed', 'signReleases'), {
+                errors: validateResult.errors
+            })
+        }
+        if (contractType === ctx.app.contractType.ResourceToNode) {
+            await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwoId}`).then(nodeInfo => ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo, {
+                msg: ctx.gettext('params-validate-failed', 'partyTwoId'),
+                property: 'ownerUserId'
+            }))
+        }
+
+        await ctx.service.contractService.batchCreateReleaseContracts({
+            signReleases, contractType, partyTwoId, targetId
+        }).then(ctx.success)
+    }
 
     /**
      * 更新合同信息
@@ -158,51 +212,15 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         const remark = ctx.checkBody('remark').exist().type('string').len(0, 500).value
-
+        const isDefault = ctx.checkBody('isDefault').optional().toInt().in([1]).value
         ctx.validate()
 
-        const contractInfo = await this.contractProvider.findById(contractId)
-        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId) {
-            ctx.error({msg: ctx.gettext('合同信息校验失败'), data: {contractInfo}})
-        }
+        const contractInfo = await this.contractProvider.findById(contractId).tap(model => ctx.entityNullValueAndUserAuthorizationCheck(model, {
+            msg: ctx.gettext('params-validate-failed', 'contractId'),
+            property: 'partyTwoUserId'
+        }))
 
-        await contractInfo.updateOne({remark}).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
-    }
-
-    /**
-     * 创建C端用户合同
-     * @param ctx
-     * @returns {Promise<void>}
-     */
-    async createUserPresentableContract(ctx) {
-
-        const segmentId = ctx.checkBody('segmentId').exist().isMd5().value
-        const presentableId = ctx.checkBody('presentableId').exist().isMongoObjectId().value
-        const isDefault = ctx.checkBody('isDefault').default(0).optional().toInt().in([0, 1]).value
-        ctx.validate()
-
-        await ctx.service.contractService.createUserContract({presentableId, segmentId, isDefault})
-            .then(ctx.success).catch(ctx.error)
-    }
-
-    /**
-     * 设置合同未默认执行合同
-     * @param ctx
-     * @returns {Promise<void>}
-     */
-    async setDefault(ctx) {
-
-        const contractId = ctx.checkQuery('contractId').exist().notEmpty().isMongoObjectId().value
-        ctx.validate()
-
-        const contractInfo = await this.contractProvider.findById(contractId)
-        if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUser) {
-            ctx.error({msg: ctx.gettext('合同信息校验失败'), data: {contractInfo}})
-        }
-
-        await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then((ret) => {
-            return contractInfo.updateOne({isDefault: 1})
-        }).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
+        await ctx.service.contractService.updateContractInfo(contractInfo, remark, isDefault).then(ctx.success)
     }
 
     /**
@@ -215,56 +233,9 @@ module.exports = class ContractController extends Controller {
         const contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
         const eventId = ctx.checkBody('eventId').exist().notEmpty().value
 
-        ctx.allowContentType({type: 'json'}).validate()
-
-        await ctx.app.contractService.execContractFsmEvent(contractId, eventId).then(ctx.success).catch(ctx.error)
-    }
-
-    /**
-     * 合同记录
-     * @param ctx
-     * @returns {Promise.<void>}
-     */
-    async contractRecords(ctx) {
-
-        const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
-        const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
-        const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().value
-        const partyTwo = ctx.checkQuery('partyTwo').optional().value
-        const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
-
         ctx.validate()
 
-        if (resourceIds && partyTwo === undefined) {
-            ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'resourceIds', 'partyTwo')})
-        }
-        if (targetIds && partyTwo === undefined) {
-            ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'targetIds', 'partyTwo')})
-        }
-
-        const condition = {}
-        if (resourceIds) {
-            condition.resourceId = {$in: resourceIds}
-        }
-        if (contractIds) {
-            condition._id = {$in: contractIds}
-        }
-        if (partyTwo !== undefined) {
-            condition.partyTwo = partyTwo
-        }
-        if (contractType) {
-            condition.contractType = contractType
-        }
-        if (targetIds) {
-            condition.targetId = {$in: targetIds}
-        }
-        if (!Object.keys(condition).length) {
-            ctx.error({msg: ctx.gettext('缺少必要参数')})
-        }
-
-        //const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
-
-        await this.contractProvider.find(condition).then(ctx.success)
+        await ctx.app.contractService.execContractFsmEvent(contractId, eventId).then(ctx.success)
     }
 
     /**
@@ -275,84 +246,169 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkQuery('contractId').exist().isContractId().value
         const eventId = ctx.checkQuery('eventId').exist().value
-
         ctx.validate()
 
-        const contractInfo = await this.contractProvider.findById(contractId)
-        if (!contractInfo) {
-            ctx.error({msg: ctx.gettext('合同信息校验失败')})
-        }
-
+        const contractInfo = await this.contractProvider.findById(contractId).then(model => ctx.entityNullObjectCheck(model))
         const result = ctx.app.contractService.isCanExecEvent(contractInfo, eventId)
 
         ctx.success({contractInfo, eventId, isCanExec: result})
     }
 
-    /**
-     * 批量创建授权方案的合同
-     * @param ctx
-     * @returns {Promise<void>}
-     */
-    async batchCreateAuthSchemeContracts(ctx) {
+    // /**
+    //  * 设置合同未默认执行合同(已经合并到update接口中)
+    //  * @param ctx
+    //  * @returns {Promise<void>}
+    //  */
+    // async setDefault(ctx) {
+    //
+    //     const contractId = ctx.checkQuery('contractId').exist().notEmpty().isMongoObjectId().value
+    //     ctx.validate()
+    //
+    //     const contractInfo = await this.contractProvider.findById(contractId)
+    //     if (!contractInfo || contractInfo.partyTwoUserId !== ctx.request.userId || contractInfo.contractType !== ctx.app.contractType.PresentableToUser) {
+    //         ctx.error({msg: ctx.gettext('合同信息校验失败'), data: {contractInfo}})
+    //     }
+    //
+    //     await this.contractProvider.updateMany(lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType']), {isDefault: 0}).then((ret) => {
+    //         return contractInfo.updateOne({isDefault: 1})
+    //     }).then(x => ctx.success(x.nModified > 0)).catch(ctx.error)
+    // }
+    //
+    // /**
+    //  * 批量创建授权方案的合同
+    //  * @param ctx
+    //  * @returns {Promise<void>}
+    //  */
+    // async batchCreateAuthSchemeContracts(ctx) {
+    //
+    //     const partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
+    //     const signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
+    //     const contractType = ctx.checkBody("contractType").toInt().in([1, 2]).value
+    //     ctx.allowContentType({type: 'json'}).validate()
+    //
+    //     var nodeInfo = null;
+    //     if (contractType === ctx.app.contractType.ResourceToNode) {
+    //         nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwo}`)
+    //         if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
+    //             ctx.error({msg: ctx.gettext('参数%s校验失败', 'partyTwo'), data: nodeInfo})
+    //         }
+    //     }
+    //
+    //     await ctx.service.contractService.batchCreateContracts({
+    //         policies: signObjects, contractType, nodeInfo, partyTwo
+    //     }).then(ctx.success)
+    // }
+    //
+    // /**
+    //  * 合同交易账户授权 (已弃用,修改为签名认证)
+    //  * @param ctx
+    //  * @returns {Promise<void>}
+    //  */
+    // async contractAccountAuthorization(ctx) {
+    //
+    //     const amount = ctx.checkBody('amount').exist().isInt().gt(0).value
+    //     const accountId = ctx.checkBody('accountId').exist().isTransferAccountId().value
+    //     const contractId = ctx.checkBody('contractId').exist().isContractId().value
+    //     const operationUserId = ctx.checkBody('operationUserId').exist().toInt().value
+    //     const tradeRecordId = ctx.checkBody('outsideTradeNo').exist().isMd5().value
+    //     ctx.allowContentType({type: 'json'}).validate(false)
+    //
+    //     const tradeRecord = await ctx.dal.contractTradeRecordProvider.findOne({tradeRecordId, contractId})
+    //     if (!tradeRecord || tradeRecord.status !== 1) {
+    //         ctx.error({msg: ctx.gettext('未找到合同交易记录或者交易已经处理完毕'), data: {tradeRecord}})
+    //     }
+    //
+    //     const isAuthorization = tradeRecord.amount === amount && tradeRecord.fromAccountId === accountId && operationUserId === tradeRecord.userId
+    //
+    //     ctx.success(isAuthorization)
+    // }
+    //
+    //
+    // async fixContactData(ctx) {
+    //
+    //     const contracts = await this.contractProvider.find({}, 'contractClause')
+    //
+    //     contracts.forEach(contract => {
+    //         const fsmStates = contract.contractClause.fsmStates
+    //         Object.keys(fsmStates).forEach(key => {
+    //             if (!fsmStates[key].authorization.some(x => x.toLowerCase() === 'recontractable')) {
+    //                 fsmStates[key].authorization.push('recontractable')
+    //                 contract.updateOne({contractClause: contract.contractClause}).exec()
+    //             }
+    //         })
+    //     })
+    //
+    //     ctx.success(contracts)
+    // }
+    //
+    //
+    // /**
+    //  * 初始化合同
+    //  * @returns {Promise<void>}
+    //  */
+    // async initial(ctx) {
+    //
+    //     const contractIds = ctx.checkQuery("contractIds").isSplitMongoObjectId(ctx.gettext('参数%s格式校验失败', 'contractIds')).toSplitArray().len(1, 100).value
+    //     ctx.validate()
+    //
+    //     const {app} = ctx
+    //     const contractInfos = await this.contractProvider.find({
+    //         _id: {$in: contractIds},
+    //         partyTwoUserId: ctx.request.userId, status: 1
+    //     })
+    //
+    //     contractInfos.forEach(contractInfo => app.contractService.initialContractFsm(ctx, contractInfo))
+    //
+    //     ctx.success(contractInfos.map(x => new Object({contractId: x.contractId})))
+    // }
 
-        const partyTwo = ctx.checkBody("partyTwo").exist().notEmpty().value
-        const signObjects = ctx.checkBody("signObjects").isArray().len(1, 200).value
-        const contractType = ctx.checkBody("contractType").toInt().in([1, 2]).value
-        ctx.allowContentType({type: 'json'}).validate()
 
-        var nodeInfo = null;
-        if (contractType === ctx.app.contractType.ResourceToNode) {
-            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwo}`)
-            if (!nodeInfo || nodeInfo.ownerUserId != ctx.request.userId) {
-                ctx.error({msg: ctx.gettext('参数%s校验失败', 'partyTwo'), data: nodeInfo})
-            }
-        }
+    // /**
+    //  * 合同记录
+    //  * @param ctx
+    //  * @returns {Promise.<void>}
+    //  */
+    // async contractRecords(ctx) {
+    //
+    //     const resourceIds = ctx.checkQuery('resourceIds').optional().isSplitResourceId().toSplitArray().value
+    //     const contractIds = ctx.checkQuery('contractIds').optional().isSplitMongoObjectId().toSplitArray().value
+    //     const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().value
+    //     const partyTwo = ctx.checkQuery('partyTwo').optional().value
+    //     const contractType = ctx.checkQuery('contractType').default(0).in([0, 1, 2, 3]).value
+    //
+    //     ctx.validate()
+    //
+    //     if (resourceIds && partyTwo === undefined) {
+    //         ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'resourceIds', 'partyTwo')})
+    //     }
+    //     if (targetIds && partyTwo === undefined) {
+    //         ctx.error({msg: ctx.gettext('参数%s必须与%s组合使用', 'targetIds', 'partyTwo')})
+    //     }
+    //
+    //     const condition = {}
+    //     if (resourceIds) {
+    //         condition.resourceId = {$in: resourceIds}
+    //     }
+    //     if (contractIds) {
+    //         condition._id = {$in: contractIds}
+    //     }
+    //     if (partyTwo !== undefined) {
+    //         condition.partyTwo = partyTwo
+    //     }
+    //     if (contractType) {
+    //         condition.contractType = contractType
+    //     }
+    //     if (targetIds) {
+    //         condition.targetId = {$in: targetIds}
+    //     }
+    //     if (!Object.keys(condition).length) {
+    //         ctx.error({msg: ctx.gettext('缺少必要参数')})
+    //     }
+    //
+    //     //const projection = "_id segmentId contractType targetId resourceId partyOne partyOneUserId partyTwo partyTwoUserId status createDate"
+    //
+    //     await this.contractProvider.find(condition).then(ctx.success)
+    // }
 
-        await ctx.service.contractService.batchCreateContracts({
-            policies: signObjects, contractType, nodeInfo, partyTwo
-        }).then(ctx.success)
-    }
-
-    /**
-     * 合同交易账户授权 (已弃用,修改为签名认证)
-     * @param ctx
-     * @returns {Promise<void>}
-     */
-    async contractAccountAuthorization(ctx) {
-
-        const amount = ctx.checkBody('amount').exist().isInt().gt(0).value
-        const accountId = ctx.checkBody('accountId').exist().isTransferAccountId().value
-        const contractId = ctx.checkBody('contractId').exist().isContractId().value
-        const operationUserId = ctx.checkBody('operationUserId').exist().toInt().value
-        const tradeRecordId = ctx.checkBody('outsideTradeNo').exist().isMd5().value
-        ctx.allowContentType({type: 'json'}).validate(false)
-
-        const tradeRecord = await ctx.dal.contractTradeRecordProvider.findOne({tradeRecordId, contractId})
-        if (!tradeRecord || tradeRecord.status !== 1) {
-            ctx.error({msg: ctx.gettext('未找到合同交易记录或者交易已经处理完毕'), data: {tradeRecord}})
-        }
-
-        const isAuthorization = tradeRecord.amount === amount && tradeRecord.fromAccountId === accountId && operationUserId === tradeRecord.userId
-
-        ctx.success(isAuthorization)
-    }
-
-
-    async fixContactData(ctx) {
-
-        const contracts = await this.contractProvider.find({}, 'contractClause')
-
-        contracts.forEach(contract => {
-            const fsmStates = contract.contractClause.fsmStates
-            Object.keys(fsmStates).forEach(key => {
-                if (!fsmStates[key].authorization.some(x => x.toLowerCase() === 'recontractable')) {
-                    fsmStates[key].authorization.push('recontractable')
-                    contract.updateOne({contractClause: contract.contractClause}).exec()
-                }
-            })
-        })
-
-        ctx.success(contracts)
-    }
 }
 

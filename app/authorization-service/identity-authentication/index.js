@@ -44,12 +44,12 @@ class FreelogPolicyIdentityAuthentication {
             const authResult = await authRule(ctx, params)
 
             if (authResult.isAuth) {
-                authResult.data.segmentId = policySegment.segmentId
+                authResult.data.policyId = policySegment.policyId
                 return authResult
             }
             if (authResult.authCode !== authCodeEnum.Default) {
                 authResult.data.partyOneUserId = partyOneUserId
-                authResult.data.segmentId = policySegment.segmentId
+                authResult.data.policyId = policySegment.policyId
                 authResults.push(authResult)
             }
         }

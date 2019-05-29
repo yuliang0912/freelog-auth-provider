@@ -87,7 +87,7 @@ class ContractService extends Service {
      * @param partyTwo
      * @returns {Promise<void>}
      */
-    async createUserContract({presentableId, segmentId, isDefault}) {
+    async createUserContract({presentableId, policyId, isDefault}) {
 
         const {ctx, app} = this
         const userInfo = ctx.request.identityInfo.userInfo
@@ -96,7 +96,7 @@ class ContractService extends Service {
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUser,
-            isTerminate: 0, segmentId
+            isTerminate: 0, policyId
         })
         if (oldContract) {
             throw new ApplicationError(ctx.gettext('已经存在一份同样的合约,不能重复签订'), oldContract)
@@ -107,9 +107,9 @@ class ContractService extends Service {
             throw new ArgumentError(ctx.gettext('节点信息校验失败'), {presentable})
         }
 
-        const policySegment = presentable.policy.find(t => t.segmentId === segmentId)
+        const policySegment = presentable.policies.find(t => t.policyId === policyId)
         if (!policySegment || policySegment.status !== 1) {
-            throw new ArgumentError(ctx.gettext('参数%s校验失败', 'segmentId'), {segmentId, policySegment})
+            throw new ArgumentError(ctx.gettext('参数%s校验失败', 'policyId'), {policyId, policySegment})
         }
 
         const authResult = await authService.policyIdentityAuthentication(ctx, {
@@ -136,7 +136,7 @@ class ContractService extends Service {
         }
 
         const contractModel = {
-            segmentId, policySegment, isDefault,
+            policyId, policySegment, isDefault,
             targetId: presentableId,
             partyOne: presentable.nodeId,
             partyTwo: userInfo.userId,
@@ -151,58 +151,52 @@ class ContractService extends Service {
     }
 
     /**
-     * 检查是否存在重复的合同
-     * @private
+     * 更新合同
+     * @param contractInfo
+     * @param remark
+     * @param isDefault
+     * @returns {Promise<void>}
      */
-    async _checkDuplicateContract(partyTwo, signObjects = []) {
+    async updateContractInfo(contractInfo, remark, isDefault) {
 
-        if (!signObjects.length) {
-            return []
+        const model = {}
+        if (lodash.isString(remark)) {
+            model.remark = remark
+        }
+        if (isDefault === 1) {
+            model.isDefault = isDefault
         }
 
-        const signObjectKeyMap = new Map()
-        const statistics = {targetIds: [], segmentIds: []}
-        signObjects.forEach(current => {
-            statistics.targetIds.push(current.targetId)
-            statistics.segmentIds.push(current.segmentId)
-            signObjectKeyMap.set(`${current.targetId}_${current.segmentId}`, current)
-        })
-
-        const contractList = await this.contractProvider.find({
-            partyTwo,
-            targetId: {$in: statistics.targetIds},
-            segmentId: {$in: statistics.segmentIds}
-        })
-
-        const existContracts = contractList.filter(x => {
-            let isExist = signObjectKeyMap.has(`${x.targetId}_${x.segmentId}`)
-            isExist && signObjectKeyMap.delete(`${x.targetId}_${x.segmentId}`)
-            return isExist
-        })
-
-        return {existContracts, signObjects: Array.from(signObjectKeyMap.values())}
+        return this.contractProvider.updateOne({_id: contractInfo.id}, model).tap(() => {
+            if (!isDefault) {
+                return
+            }
+            const condition = lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType'])
+            condition._id = {$ne: condition.id}
+            this.contractProvider.updateOne(condition, {isDefault: 0})
+        }).then(data => Boolean(data.nModified > 0))
     }
 
     /**
      * 检查重签授权
      * @private
      */
-    async _checkReContractableAuth(authSchemeIds) {
-
-        const {ctx} = this
-
-        const resourceReContractableSignAuthFailed = []
-
-        for (let i = 0, j = authSchemeIds.length; i < j; i++) {
-            const contracts = await ctx.service.signAuthService.resourceSignAuth(authSchemeIds[i])
-            contracts.forEach(contractInfo => {
-                if (!contractInfo.signAuthResult.isAuth) {
-                    resourceReContractableSignAuthFailed.push({authSchemeId: authSchemeIds[i], contract: contractInfo})
-                }
-            })
-        }
-        return resourceReContractableSignAuthFailed
-    }
+    // async _checkReContractableAuth(authSchemeIds) {
+    //
+    //     const {ctx} = this
+    //
+    //     const resourceReContractableSignAuthFailed = []
+    //
+    //     for (let i = 0, j = authSchemeIds.length; i < j; i++) {
+    //         const contracts = await ctx.service.signAuthService.resourceSignAuth(authSchemeIds[i])
+    //         contracts.forEach(contractInfo => {
+    //             if (!contractInfo.signAuthResult.isAuth) {
+    //                 resourceReContractableSignAuthFailed.push({authSchemeId: authSchemeIds[i], contract: contractInfo})
+    //             }
+    //         })
+    //     }
+    //     return resourceReContractableSignAuthFailed
+    // }
 }
 
 module.exports = ContractService;
