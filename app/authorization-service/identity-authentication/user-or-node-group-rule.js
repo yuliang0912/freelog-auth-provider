@@ -7,75 +7,64 @@
 const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 const commonRegex = require('egg-freelog-base/app/extend/helper/common_regex')
-const {ApplicationError} = require('egg-freelog-base/error')
+const {ArgumentError} = require('egg-freelog-base/error')
 
-module.exports = async (ctx, {authUserObject, contractType, partyTwoInfo, partyTwoUserInfo}) => {
+const isExistMember = async (ctx, groups, memberId) => {
+    if (!groups.length) {
+        return false
+    }
+    const existGroups = await ctx.curlIntranetApi(`${ctx.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`)
+    return Array.isArray(existGroups) && existGroups.length
+}
 
-    const app = ctx.app
+module.exports = async (ctx, {authUserObject, partyTwoInfo, partyTwoUserInfo}) => {
+
     const authResult = new AuthResult(authCodeEnum.Default, {
-        authUserObject, contractType, partyTwoInfo, partyTwoUserInfo
+        authUserObject, partyTwoInfo, partyTwoUserInfo
     })
 
-    //如果没有分组认证的策略,则默认返回
     if (!authUserObject || authUserObject.userType.toUpperCase() !== 'GROUP') {
         return authResult
     }
 
     const {users} = authUserObject
-    //如果存在所有访问者分组,则通过
     if (users.some(x => /^PUBLIC$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
 
-    if (contractType === app.contractType.ResourceToNode && (!partyTwoInfo || !Reflect.has(partyTwoInfo, 'nodeId'))) {
-        throw new ApplicationError('user-or-node-group-rule Error:乙方节点信息缺失')
+    if (partyTwoInfo && !Reflect.has(partyTwoInfo, 'nodeId')) {
+        throw new ArgumentError(ctx.gettext('params-validate-failed', 'partyTwoInfo'), {partyTwoInfo})
+    }
+    if (partyTwoUserInfo && !Reflect.has(partyTwoInfo, 'userId')) {
+        throw new ArgumentError(ctx.gettext('params-validate-failed', 'partyTwoUserInfo'))
     }
 
-    if (!partyTwoUserInfo) {
-        throw new ApplicationError('user-or-node-group-rule Error:乙方用户身份信息缺失')
-    }
-
-    //如果分组策略中允许所有节点签约,并且存在节点信息
-    if (contractType === app.contractType.ResourceToNode && users.some(x => /^NODES$/i.test(x))) {
+    if (partyTwoInfo && users.some(x => /^NODES$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
     }
-
-    //所有登录用户都可以访问,则通过
-    if (contractType === app.contractType.PresentableToUser && users.some(x => /^REGISTERED_USERS$/i.test(x))) {
+    if (partyTwoUserInfo && users.some(x => /^REGISTERED_USERS$/i.test(x))) {
         authResult.authCode = authCodeEnum.BasedOnGroup
         return authResult
-    }
-
-    /**
-     * TODO  A.检查节点是否在用户的自定义节点组中
-     * TODO  B.检查节点所属人是否在用户的自定义用户分组中.
-     * TODO  满足A或者B任意条件则通过认证
-     * @type {T[]}
-     */
-    const isExistMember = async (groups, memberId) => {
-        if (!groups.length) {
-            return false
-        }
-        const existGroups = await ctx.curlIntranetApi(`${app.webApi.groupInfo}/isExistMember?memberId=${memberId}&groupIds=${groups.toString()}`)
-        return Array.isArray(existGroups) && existGroups.length
     }
 
     //校验乙方是否在自定义的节点分组中
-    if (contractType === app.contractType.ResourceToNode) {
+    if (partyTwoInfo) {
         const customNodeGroups = users.filter(item => commonRegex.nodeGroupId.test(item))
-        if (await isExistMember(customNodeGroups, partyTwoInfo.nodeId)) {
+        if (await isExistMember(ctx, customNodeGroups, partyTwoInfo.nodeId)) {
             authResult.authCode = authCodeEnum.BasedOnGroup
             return authResult
         }
     }
 
     //校验乙方的用户主体是否在自定义的用户分组中
-    const customUserGroups = users.filter(item => commonRegex.userGroupId.test(item))
-    if (await isExistMember(customUserGroups, partyTwoUserInfo.userId)) {
-        authResult.authCode = authCodeEnum.BasedOnGroup
-        return authResult
+    if (partyTwoUserInfo) {
+        const customUserGroups = users.filter(item => commonRegex.userGroupId.test(item))
+        if (await isExistMember(customUserGroups, partyTwoUserInfo.userId)) {
+            authResult.authCode = authCodeEnum.BasedOnGroup
+            return authResult
+        }
     }
 
     //其他分组默认不通过

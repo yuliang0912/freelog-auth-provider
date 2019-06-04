@@ -11,7 +11,6 @@ module.exports = app => {
 
     const mongoose = app.mongoose
     const toObjectOptions = {
-        //{virtuals: true},
         transform(doc, ret, options) {
             return Object.assign({contractId: doc.id}, lodash.omit(ret, ['_id', 'isTerminate']))
         }
@@ -37,10 +36,8 @@ module.exports = app => {
         },
         isDefault: {type: Number, default: 1, enum: [0, 1], required: true}, //是否是默认执行合同
         isTerminate: {type: Number, default: 0, enum: [0, 1], required: true},
-        isConsumptive: {type: Number, default: 0, enum: [0, 1], required: true}, //是否消费过
         status: {type: Number, required: true, default: 1}, //默认未开始执行
     }, {
-        //_id: false,
         versionKey: false,
         timestamps: {createdAt: 'createDate', updatedAt: 'updateDate'},
         toJSON: toObjectOptions,
@@ -63,7 +60,6 @@ module.exports = app => {
     ContractSchema.virtual("isLocked").get(function () {
         return this.status === contractStatusEnum.locked
     })
-
 
     /**
      * 获取合同状态机中的所有事件

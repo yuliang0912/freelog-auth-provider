@@ -2,16 +2,19 @@
 
 const Patrun = require('patrun')
 const {ApplicationError} = require('egg-freelog-base/error')
+const contractFsmEvents = require('../enum/contract-fsm-event')
 const outsideSystemEvent = require('../enum/outside-system-event')
 const ContractEventTriggerHandler = require('./contract-event-trigger-handler')
 const RegisteredEventTriggerHandler = require('./outside-events-handler/registered-event-trigger-handler')
 const InquirePaymentEventHandler = require('./outside-events-handler/inquire-payment-event-handler')
 const InquireTransferEventHandler = require('./outside-events-handler/inquire-transfer-event-handler')
+const ContractSetDefaultEventHandler = require('./internal-event-handler/contract-set-default-event-handler')
 const TradeStatusChangedEventHandler = require('./outside-events-handler/trade-status-changed-event-handler')
 const EventRegisterCompletedEventHandler = require('./outside-events-handler/event-register-completed-event-handler')
 const ContractFsmStateTransitioningEventHandler = require('./internal-event-handler/fsm-state-transitioning-handler')
 const ContractFsmTransitionCompletedHandler = require('./internal-event-handler/fsm-state-transition-completed-handler')
-const {ContractFsmStateChangedEvent, ContractFsmEventTriggerEvent, ContractFsmStateTransitionCompletedEvent} = require('../enum/contract-fsm-event')
+
+
 
 module.exports = class AppEventsListener {
 
@@ -33,10 +36,10 @@ module.exports = class AppEventsListener {
         this.registerEventAndHandler(InquireTransferEvent)
         this.registerEventAndHandler(RegisterCompletedEvent)
         this.registerEventAndHandler(RegisteredEventTriggerEvent)
-        this.registerEventAndHandler(ContractFsmStateChangedEvent)
-        this.registerEventAndHandler(ContractFsmEventTriggerEvent)
+        this.registerEventAndHandler(contractFsmEvents.ContractFsmStateChangedEvent)
+        this.registerEventAndHandler(contractFsmEvents.ContractFsmEventTriggerEvent)
         this.registerEventAndHandler(PaymentOrderStatusChangedEvent)
-        this.registerEventAndHandler(ContractFsmStateTransitionCompletedEvent)
+        this.registerEventAndHandler(contractFsmEvents.ContractFsmStateTransitionCompletedEvent)
         this.registerEventAndHandler(TransferRecordTradeStatusChangedEvent)
     }
 
@@ -65,12 +68,13 @@ module.exports = class AppEventsListener {
 
         patrun.add({event: InquirePaymentEvent.toString()}, new InquirePaymentEventHandler(app))
         patrun.add({event: InquireTransferEvent.toString()}, new InquireTransferEventHandler(app))
-        patrun.add({event: ContractFsmEventTriggerEvent.toString()}, new ContractEventTriggerHandler(app))
+        patrun.add({event: contractFsmEvents.ContractFsmEventTriggerEvent.toString()}, new ContractEventTriggerHandler(app))
         patrun.add({event: RegisterCompletedEvent.toString()}, new EventRegisterCompletedEventHandler(app))
         patrun.add({event: RegisteredEventTriggerEvent.toString()}, new RegisteredEventTriggerHandler(app))
         patrun.add({event: PaymentOrderStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
         patrun.add({event: TransferRecordTradeStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
-        patrun.add({event: ContractFsmStateChangedEvent.toString()}, new ContractFsmStateTransitioningEventHandler(app))
-        patrun.add({event: ContractFsmStateTransitionCompletedEvent.toString()}, new ContractFsmTransitionCompletedHandler(app))
+        patrun.add({event: contractFsmEvents.ContractFsmStateChangedEvent.toString()}, new ContractFsmStateTransitioningEventHandler(app))
+        patrun.add({event: contractFsmEvents.ContractFsmStateTransitionCompletedEvent.toString()}, new ContractFsmTransitionCompletedHandler(app))
+        patrun.add({event: contractFsmEvents.ContractSetDefaultEvent.toString()}, new ContractSetDefaultEventHandler(app))
     }
 }

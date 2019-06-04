@@ -2,101 +2,11 @@
 
 const authCodeEnum = require('../enum/auth-code')
 const commonAuthResult = require('./common-auth-result')
-const {ApplicationError} = require('egg-freelog-base/error')
-const freelogContractType = require('egg-freelog-base/app/enum/contract_type')
-//身份认证
 const IdentityAuthentication = require('./identity-authentication/index')
-//合同授权(包含了身份认证)
 const ContractAuthorization = require('./contract-authorization/index')
-//策略授权(包含了身份认证)
 const PolicyAuthorization = require('./policy-authorization/index')
 
-const AuthProcessManager = class AuthProcessManager {
-
-    /**
-     * presentable授权树授权状态检查(先循环遍历去异步授权)
-     * 后续优化可以分批次加入队列中执行.
-     * @param presentableAuthTree 需要在构建的数据中完善合同信息,主要是partyTwoUserInfo,contractInfo,nodeInfo
-     * @param nodeInfo
-     * @returns {Promise<void>}
-     */
-    async presentableAuthTreeAuthorization(ctx, presentableAuthTree) {
-
-        if (!Reflect.has(presentableAuthTree, 'nodeInfo')) {
-            throw new ApplicationError(ctx.gettext('缺少必要参数'))
-        }
-        const {authTree, nodeInfo} = presentableAuthTree
-        const authResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
-        const unActivatedNodeContracts = [], unActivatedResourceContracts = [], resourceContracts = [],
-            nodeContracts = []
-
-        authTree.forEach(current => {
-
-            let {contractInfo} = current
-            let contractIsActivated = ContractAuthorization.isActivated(ctx, contractInfo)
-
-            if (contractInfo.contractType === freelogContractType.ResourceToNode) {
-                nodeContracts.push(contractInfo)
-                !contractIsActivated && unActivatedNodeContracts.push(contractInfo)
-            }
-            if (contractInfo.contractType === freelogContractType.ResourceToResource) {
-                resourceContracts.push(contractInfo)
-                !contractIsActivated && unActivatedResourceContracts.push(contractInfo)
-            }
-        })
-
-        authResult.data.presentableAuthTree = presentableAuthTree
-        if (unActivatedNodeContracts.length) {
-            authResult.authCode = authCodeEnum.NodeContractNotActive
-            authResult.data.unActivatedNodeContracts = unActivatedNodeContracts
-            return authResult
-        }
-        if (unActivatedResourceContracts.length) {
-            authResult.authCode = authCodeEnum.ResourceContractNotActive
-            authResult.data.unActivatedResourceContracts = unActivatedResourceContracts
-            return authResult
-        }
-
-        //节点身份认证异步任务集
-        const nodeContractIdentityAuthTasks = nodeContracts.map(contract => {
-            let params = {
-                policySegment: contract.contractClause,
-                contractType: contract.contractType,
-                partyOneUserId: contract.partyOneUserId,
-                partyTwoInfo: nodeInfo,
-                partyTwoUserInfo: contract.partyTwoUserInfo
-            }
-            return IdentityAuthentication.main(ctx, params)
-        })
-        const nodeContractIdentityAuthResults = await Promise.all(nodeContractIdentityAuthTasks)
-        const identityAuthFailedNodeContract = nodeContractIdentityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFailedNodeContract.length) {
-            authResult.authCode = authCodeEnum.NodeContractIdentityAuthenticationFailed
-            authResult.data.identityAuthFaildNodeContracts = identityAuthFailedNodeContract
-            return authResult
-        }
-
-        //节点作者身份认证异步任务集
-        const resourceContractIdentityAuthTasks = resourceContracts.map(contract => {
-            let params = {
-                policySegment: contract.contractClause,
-                contractType: contract.contractType,
-                partyOneUserId: contract.partyOneUserId,
-                partyTwoInfo: null,
-                partyTwoUserInfo: contract.partyTwoUserInfo
-            }
-            return IdentityAuthentication.main(ctx, params)
-        })
-        const resourceContractIdentityAuthResults = await Promise.all(resourceContractIdentityAuthTasks)
-        const identityAuthFailedResourceContract = resourceContractIdentityAuthResults.filter(x => !x.isAuth)
-        if (identityAuthFailedResourceContract.length) {
-            authResult.authCode = authCodeEnum.ResourceContractIdentityAuthenticationFailed
-            authResult.data.identityAuthFailedResourceContracts = identityAuthFailedResourceContract
-            return authResult
-        }
-
-        return authResult
-    }
+module.exports = {
 
     /**
      * 获取合同授权结果
@@ -107,74 +17,53 @@ const AuthProcessManager = class AuthProcessManager {
      */
     async contractAuthorization(ctx, {contract, partyTwoInfo, partyTwoUserInfo}) {
         return ContractAuthorization.main(...arguments)
-    }
+    },
 
     /***
      * 针对策略段尝试获取授权(用户对象满足,策略满足initial-terminate模式)
      * @param policySegment
-     * @param contractType 此处为虚拟的授权甲乙方关系.参考合同类型的设定
+     * @param policyType 策略类型 1:发行策略 2:presentable策略
      * @param partyOneUserId 甲方用户ID
      * @param partyTwoInfo 只有乙方是节点时,此处才需要传入nodeInfo
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyAuthorization(ctx, {policySegments, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async policyAuthorization(ctx, {policySegments, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
-        const result = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
-        const params = {contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
+        const authResult = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
+        const params = {policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
 
         for (let i = 0, j = policySegments.length; i < j; i++) {
-            const policySegment = policySegments[i]
+            let policySegment = policySegments[i]
             if (policySegment.status !== 1) {
                 continue
             }
-            const policyAuthResult = await PolicyAuthorization.main(ctx, Object.assign({}, params, {policySegment}))
+            let policyAuthResult = await PolicyAuthorization.main(ctx, Object.assign({}, params, {policySegment}))
             if (!policyAuthResult.isAuth) {
                 continue
             }
-            result.data.policySegment = policySegment
+            authResult.data.policySegment = policySegment
+            authResult.data.policyId = policySegment.policyId
             break
         }
 
-        if (!result.data.policySegment) {
-            result.authCode = contractType === freelogContractType.ResourceToResource ? authCodeEnum.NotFoundResourceContract
-                : contractType === freelogContractType.ResourceToNode ? authCodeEnum.NotFoundNodeContract : authCodeEnum.NotFoundUserPresentableContract
-            result.addError(ctx.gettext('未能通过资源策略授权'))
+        if (!authResult.data.policySegment) {
+            authResult.authCode = authCodeEnum.PolicyAuthFailed
+            authResult.addError(ctx.gettext('未能通过资源策略授权'))
         }
-        return result
-    }
+
+        return authResult
+    },
 
     /**
      * 针对策略尝试对目标对象做认证
      * @param policySegment
-     * @param contractType 此处为虚拟的授权甲乙方关系.参考合同类型的设定
      * @param partyOneUserId 甲方用户ID
      * @param partyTwoInfo 只有乙方是节点时,此处才需要传入noedeInfo
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyIdentityAuthentication(ctx, {policySegment, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async policyIdentityAuthentication(ctx, {policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
         return IdentityAuthentication.main(...arguments)
     }
-
-    /**
-     * 资源转签授权
-     * @param contract
-     * @returns {module.CommonAuthResult|*|commonAuthResult}
-     */
-    async resourceReContractableSignAuth(ctx, contract) {
-        return ContractAuthorization.resourceReContractableSignAuth(...arguments)
-    }
-
-    /**
-     * 资源presentable签约授权
-     * @param contract
-     * @returns {module.CommonAuthResult|*|commonAuthResult}
-     */
-    async resourcePresentableSignAuth(ctx, contract) {
-        return ContractAuthorization.resourcePresentableSignAuth(...arguments)
-    }
-
 }
-
-module.exports = new AuthProcessManager()

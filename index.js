@@ -11,8 +11,6 @@ require('egg').startCluster({
 const lodash = require('lodash')
 
 
-
-
 //console.log(lodash.sortedUniqBy(lodash.flatMapDeep(arr, 'tree.contractId'), 'contractId'))
 
 // var Kardia = require('kardia');

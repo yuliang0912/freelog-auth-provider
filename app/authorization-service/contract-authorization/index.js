@@ -1,21 +1,17 @@
-/**
- * 检测合同授权
- * 合同授权包含两个部分(A:合同本身处在激活态  B:乙方依然满足合同策略中规定的用户对象范围)
- * @type {module.contractAuthorization}
- */
-
 'use strict'
 
 const Patrun = require('patrun')
 const nodeContractAuth = require('./node-contract-auth')
 const userContractAuth = require('./user-contract-auth')
 const resourceContractAuth = require('./resource-contract-auth')
-const resourcePresentableSignAuth = require('./resource-presentable-sign-auth')
-const resourceReContractableSignAuth = require('./resource-recontractable-sign-auth')
+const {ApplicationError} = require('egg-freelog-base/error')
 const policyIdentityAuthentication = require('../identity-authentication/index')
 const contractType = require('egg-freelog-base/app/enum/contract_type')
-const {ApplicationError} = require('egg-freelog-base/error')
 
+
+/**
+ * 合同授权包含两个部分(A:合同本身处在激活态  B:乙方依然满足合同策略中规定的用户对象范围)
+ */
 class ContractAuthorization {
 
     constructor() {
@@ -50,23 +46,6 @@ class ContractAuthorization {
         return identityAuthResult.isAuth ? contractAuthResult : identityAuthResult
     }
 
-    /**
-     * 资源转签授权
-     * @param contract
-     * @returns {module.CommonAuthResult|*|commonAuthResult}
-     */
-    resourceReContractableSignAuth(ctx, contract) {
-        return resourceReContractableSignAuth(ctx, {contract})
-    }
-
-    /**
-     * 资源presentable签约授权
-     * @param contract
-     * @returns {module.CommonAuthResult|*|commonAuthResult}
-     */
-    resourcePresentableSignAuth(ctx, contract) {
-        return resourcePresentableSignAuth(ctx, {contract})
-    }
 
     /**
      * 合同激活状态检查

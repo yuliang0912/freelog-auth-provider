@@ -1,12 +1,13 @@
 'use strict'
 
 const lodash = require('lodash')
-const Service = require('egg').Service;
+const Service = require('egg').Service
+const {ContractSetDefaultEvent} = require('../enum/contract-fsm-event')
 const authService = require('../authorization-service/process-manager')
-const {LogicError, ArgumentError, ApplicationError} = require('egg-freelog-base/error')
+const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
 const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
 
-class ContractService extends Service {
+module.exports = class ContractService extends Service {
 
     constructor({app}) {
         super(...arguments)
@@ -24,12 +25,12 @@ class ContractService extends Service {
     async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, targetId}) {
 
         const {ctx} = this
-        const releases = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${signReleases.map(x => x.releaseId).toString()}`)
+        const signReleaseMap = new Map(signReleases.map(x => [x.releaseId, new Set(x.policyIds)]))
+
+        const releases = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${[...signReleaseMap.keys()].toString()}`)
         if (signReleases.length !== releases.length) {
             throw new ArgumentError(ctx.gettext('params-validate-failed', 'signReleases'), {signReleases})
         }
-
-        const signReleaseMap = new Map(signReleases.map(x => [x.releaseId, new Set(x.policyIds)]))
 
         const toBeSignedReleases = []
         releases.forEach(releaseInfo => releaseInfo.policies.forEach(policy => {
@@ -80,43 +81,33 @@ class ContractService extends Service {
     }
 
     /**
-     * 创建presentable合同
-     * @param targetId
-     * @param contractType
-     * @param segmentId
-     * @param partyTwo
-     * @returns {Promise<void>}
+     * C端用户创建presentable合同
+     * @param presentableInfo
+     * @param policyId
+     * @param isDefault
+     * @returns {Promise<*>}
      */
-    async createUserContract({presentableId, policyId, isDefault}) {
+    async createUserContract({presentableInfo, policyId, isDefault}) {
 
         const {ctx, app} = this
-        const userInfo = ctx.request.identityInfo.userInfo
+        const {userInfo} = ctx.request.identityInfo
+        const {presentableId, nodeId, policies} = presentableInfo
 
-        const oldContract = await this.contractProvider.findOne({
+        const isSignContract = await this.contractProvider.findOne({
             targetId: presentableId,
             partyTwoUserId: userInfo.userId,
             contractType: app.contractType.PresentableToUser,
             isTerminate: 0, policyId
         })
-        if (oldContract) {
-            throw new ApplicationError(ctx.gettext('已经存在一份同样的合约,不能重复签订'), oldContract)
+        if (isSignContract) {
+            throw new ApplicationError(ctx.gettext('已经存在一份同样的合约,不能重复签订'))
         }
 
-        const presentable = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
-        if (!presentable || !presentable.isOnline) {
-            throw new ArgumentError(ctx.gettext('节点信息校验失败'), {presentable})
-        }
-
-        const policySegment = presentable.policies.find(t => t.policyId === policyId)
-        if (!policySegment || policySegment.status !== 1) {
-            throw new ArgumentError(ctx.gettext('参数%s校验失败', 'policyId'), {policyId, policySegment})
-        }
+        const policySegment = policies.find(t => t.policyId === policyId)
 
         const authResult = await authService.policyIdentityAuthentication(ctx, {
-            policySegment,
-            contractType: app.contractType.PresentableToUser,
-            partyOneUserId: presentable.userId,
-            partyTwoUserInfo: userInfo
+            policySegment, partyTwoUserInfo: userInfo,
+            partyOneUserId: presentableInfo.userId,
         })
         if (!authResult.isAuth) {
             throw new ApplicationError(ctx.gettext('节点资源策略段身份认证失败,不能签约'), {
@@ -124,25 +115,13 @@ class ContractService extends Service {
             })
         }
 
-        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${presentable.nodeId}`)
-        if (!nodeInfo || nodeInfo.status !== 0) {
-            throw new LogicError(ctx.gettext('节点信息校验失败'), {presentable, nodeInfo})
-        }
-
-        const contracts = await ctx.service.signAuthService.presentableSignAuth(presentableId)
-        const signAuthFailedContracts = contracts.filter(x => !x.signAuthResult.isAuth)
-        if (signAuthFailedContracts.length) {
-            throw new ApplicationError(ctx.gettext('节点资源的合约链中存在未获得再签约授权的合约'), {signAuthFailedContracts})
-        }
-
         const contractModel = {
-            policyId, policySegment, isDefault,
+            policyId, nodeId, policySegment, isDefault,
             targetId: presentableId,
-            partyOne: presentable.nodeId,
+            partyOne: nodeId,
             partyTwo: userInfo.userId,
-            partyOneUserId: presentable.userId,
+            partyOneUserId: presentableInfo.userId,
             partyTwoUserId: userInfo.userId,
-            resourceId: presentable.resourceId,
             contractName: policySegment.policyName,
             contractType: app.contractType.PresentableToUser
         }
@@ -168,35 +147,9 @@ class ContractService extends Service {
         }
 
         return this.contractProvider.updateOne({_id: contractInfo.id}, model).tap(() => {
-            if (!isDefault) {
-                return
+            if (isDefault) {
+                this.app.emit(ContractSetDefaultEvent, contractInfo)
             }
-            const condition = lodash.pick(contractInfo, ['targetId', 'partyTwo', 'contractType'])
-            condition._id = {$ne: condition.id}
-            this.contractProvider.updateOne(condition, {isDefault: 0})
         }).then(data => Boolean(data.nModified > 0))
     }
-
-    /**
-     * 检查重签授权
-     * @private
-     */
-    // async _checkReContractableAuth(authSchemeIds) {
-    //
-    //     const {ctx} = this
-    //
-    //     const resourceReContractableSignAuthFailed = []
-    //
-    //     for (let i = 0, j = authSchemeIds.length; i < j; i++) {
-    //         const contracts = await ctx.service.signAuthService.resourceSignAuth(authSchemeIds[i])
-    //         contracts.forEach(contractInfo => {
-    //             if (!contractInfo.signAuthResult.isAuth) {
-    //                 resourceReContractableSignAuthFailed.push({authSchemeId: authSchemeIds[i], contract: contractInfo})
-    //             }
-    //         })
-    //     }
-    //     return resourceReContractableSignAuthFailed
-    // }
 }
-
-module.exports = ContractService;

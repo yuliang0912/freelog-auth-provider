@@ -6,24 +6,25 @@
 'use strict'
 
 const authCodeEnum = require('../../enum/auth-code')
+const {ArgumentError} = require('egg-freelog-base/error')
 const commonAuthResult = require('.././common-auth-result')
-const contractType = require('egg-freelog-base/app/enum/contract_type')
 
 module.exports = (ctx, {contract}) => {
 
-    const result = new commonAuthResult(authCodeEnum.Default, {contract})
+    const {contractType} = ctx.app
+    const authResult = new commonAuthResult(authCodeEnum.Default, {contract})
 
     if (!contract || contract.contractType !== contractType.ResourceToNode) {
-        result.authCode = authCodeEnum.NotFoundNodeContract
-        result.addError(ctx.gettext('节点未签约合同'))
-    }
-    else if (contract.isActivated) {
-        result.authCode = authCodeEnum.BasedOnNodeContract
-    }
-    else {
-        result.authCode = authCodeEnum.NodeContractNotActive
-        result.addError(ctx.gettext('节点合同未激活'))
+        throw new ArgumentError(ctx.gettext('params-validate-failed', 'contract'), {contract})
     }
 
-    return result
+    if (contract.isActivated) {
+        authResult.authCode = authCodeEnum.BasedOnNodeContract
+        return authResult
+    }
+
+    authResult.authCode = authCodeEnum.NodeContractNotActive
+    authResult.addError(ctx.gettext('节点合同未激活'))
+    
+    return authResult
 }

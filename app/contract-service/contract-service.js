@@ -7,10 +7,12 @@ const {ApplicationError} = require('egg-freelog-base/error')
 const GenerateContract = require('./lib/generate-contract')
 const contractStatusEnum = require('../enum/contract-status-enum')
 const contractServiceSymbol = Symbol.for('auth#contractServiceSymbol')
+const {ContractSetDefaultEvent} = require('../enum/contract-fsm-event')
 const LicenseSignHandler = require('./singleton-event-handler/sign-license')
 const ContractPaymentHandler = require('./singleton-event-handler/contract-payment')
 const EscrowConfiscatedHandler = require('./singleton-event-handler/escrow-confiscated')
 const EscrowRefundedHandler = require('./singleton-event-handler/escrow-refunded-event')
+
 
 module.exports = class ContractService {
 
@@ -36,13 +38,7 @@ module.exports = class ContractService {
             this.initialContractFsm(ctx, contractInfo)
         }
         if (contractBaseInfo.isDefault) {
-            const condition = {
-                _id: {$ne: contractBaseInfo.contractId},
-                targetId: contractBaseInfo.targetId,
-                partyTwo: contractBaseInfo.partyTwo,
-                contractType: contractBaseInfo.contractType
-            }
-            this.contractProvider.updateMany(condition, {isDefault: 0})
+            this.app.emit(ContractSetDefaultEvent, contractBaseInfo)
         }
         return contractInfo
     }

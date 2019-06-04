@@ -9,7 +9,7 @@ const commonAuthResult = require('../authorization-service/common-auth-result')
 /**
  * presentable授权业务逻辑层
  */
-class PresentableAuthService extends Service {
+module.exports = class PresentableAuthService extends Service {
 
     constructor({app}) {
         super(...arguments)
@@ -17,103 +17,66 @@ class PresentableAuthService extends Service {
     }
 
     /**
-     * 授权流程处理者
+     * presentable全部链路(用户,节点,发行)授权
+     * @param presentableInfo
      * @returns {Promise<void>}
      */
-    async authProcessHandler({nodeId, presentableId}) {
+    async presentableAllChainAuth(presentableInfo) {
 
         const {ctx} = this
-        const userId = ctx.request.userId || 0
-
-        //presentable信息出错可能性很低,正常都会进行下面三次请求,故合并批量异步处理
-        const presentableInfoTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
-        const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
-        const authTokenCacheTask = ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId, partyTwo: userId, partyTwoUserId: userId
-        })
-
-        const {presentableInfo, presentableAuthTree, authTokenCache} = await Promise.all([presentableInfoTask, presentableAuthTreeTask, authTokenCacheTask])
-            .then(([presentableInfo, presentableAuthTree, authTokenCache]) => Object({
-                authTokenCache,
-                presentableInfo,
-                presentableAuthTree
-            }))
-
-        if (!presentableInfo) {
-            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: ctx.gettext('节点资源校验失败'), presentableInfo
-            })
-        }
-        if (presentableInfo.nodeId !== nodeId) {
-            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: ctx.gettext('节点资源与节点不匹配'), presentableInfo
-            })
-        }
-        if (!presentableInfo.isOnline) {
-            return new commonAuthResult(authCodeEnum.PresentableNotOnline)
-        }
-        if (!presentableAuthTree) {
-            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: ctx.gettext('节点资源授权树数据缺失')
-            })
-        }
-        if (authTokenCache) {
-            authTokenCache.authResourceIds = presentableAuthTree.authTree.map(x => x.resourceId)
-            return this._authTokenToAuthResult(authTokenCache)
-        }
-
         const {userInfo} = ctx.request.identityInfo
-        const nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
-        if (!nodeInfo || nodeInfo.status !== 0) {
-            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: ctx.gettext('节点资源校验失败')
-            })
+        const {presentableId, nodeId, userId} = presentableInfo
+
+        const userContractAuthResult = await ctx.service.userContractAuthService.userContractAuth(presentableInfo, userInfo)
+        if (!userContractAuthResult.isAuth) {
+            return userContractAuthResult
         }
 
-        //如果用户未登陆,则尝试获取presentable授权(initial-terminate模式)
-        if (userInfo) {
-            const userContractAuthResult = await this._tryUserContractAuth({presentableInfo, userInfo, nodeInfo})
-            if (!userContractAuthResult.isAuth) {
-                return userContractAuthResult
-            }
-        } else {
-            const unLoginUserPresentableAuthResult = await this._unLoginUserPresentableAuth(presentableInfo)
-            if (!unLoginUserPresentableAuthResult.isAuth) {
-                return unLoginUserPresentableAuthResult
-            }
+        const nodeInfoTask = ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
+        const nodeUserInfoTask = ctx.curlIntranetApi(`${ctx.webApi.userInfo}/${userId}`)
+        const [nodeInfo, presentableAuthTree, nodeUserInfo] = await Promise.all([nodeInfoTask, presentableAuthTreeTask, nodeUserInfoTask])
+
+        return this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
+    }
+
+    /**
+     * 批量获取presentable发行和节点侧授权结果
+     * @param presentableInfos
+     * @param nodeInfo 目前需要多个presentable所属当前用的同一个节点,如果业务有调整,去掉限制即可
+     * @returns {Promise<void>}
+     */
+    async batchPresentableNodeAndReleaseSideAuth(presentableInfos, nodeInfo) {
+
+        const {ctx} = this
+        const {userInfo} = ctx.request.identityInfo
+        const presentableIds = presentableInfos.map(x => x.presentableId).toString()
+        const presentableAuthTrees = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/authTrees?presentableIds=${presentableIds}`)
+            .then(list => new Map(list.map(x => [x.presentableId, x])))
+
+        const authTasks = presentableInfos.map(presentableInfo =>
+            this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTrees.get(presentableInfo.presentableId), nodeInfo, userInfo)
+                .then(authResult => presentableInfo.authResult = authResult))
+
+        return Promise.all(authTasks).then(() => presentableInfos.map(presentableInfo => lodash.pick(presentableInfo, ['presentableId', 'authResult'])))
+    }
+
+    /**
+     * presentable发行和节点侧授权
+     * @param presentableInfo
+     * @param nodeInfo
+     * @returns {Promise<void>}
+     */
+    async presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo) {
+
+        const {ctx} = this
+        const nodeSideAuthResult = await ctx.service.nodeContractAuthService.presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
+
+        if (!nodeSideAuthResult.isAuth) {
+            return nodeSideAuthResult
         }
 
-        const partyTwoUserIds = new Set()
-        const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
-        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
-            const contractMap = new Map()
-            dataList.forEach(currentContract => {
-                partyTwoUserIds.add(currentContract.partyTwoUserId)
-                contractMap.set(currentContract.contractId, currentContract)
-            })
-            return contractMap
-        })
-        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
-            return new Map(dataList.map(x => [x.userId, x]))
-        })
-
-        presentableAuthTree.nodeInfo = nodeInfo
-        presentableAuthTree.authTree.forEach(item => {
-            item.contractInfo = contractMap.get(item.contractId)
-            item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
-        })
-
-        const presentableTreeAuthResult = await authService.presentableAuthTreeAuthorization(ctx, presentableAuthTree)
-        if (!presentableTreeAuthResult.isAuth) {
-            return this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentableTreeAuthResult})
-        }
-
-        const authToken = await ctx.service.authTokenService.savePresentableAuthResult({
-            presentableAuthTree, userId, nodeInfo,
-            authResult: presentableTreeAuthResult
-        })
-
-        return this._authTokenToAuthResult(authToken)
+        return ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
     }
 
     /**
@@ -142,51 +105,6 @@ class PresentableAuthService extends Service {
     }
 
     /**
-     * presentable树授权
-     * @param presentableId
-     * @returns {Promise<void>}
-     */
-    async presentableTreeAuthHandler(presentableInfo, nodeInfo) {
-
-        const {ctx} = this
-        const partyTwoUserIds = new Set()
-
-        if ((presentableInfo.status & 1) !== 1) {
-            let authResult = new commonAuthResult(authCodeEnum.NotFoundNodeContract)
-            authResult.addError(ctx.gettext('节点资源合同不完备,请检查是否全部签约'))
-            return authResult
-        }
-        const presentableAuthTree = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableInfo.presentableId}/authTree`)
-        if (!presentableAuthTree) {
-            return new commonAuthResult(authCodeEnum.AuthDataValidateFailedError, {
-                msg: ctx.gettext('节点资源授权树数据缺失')
-            })
-        }
-
-        const contractIds = presentableAuthTree.authTree.map(x => x.contractId)
-        const contractMap = await this.contractProvider.find({_id: {$in: contractIds}}).then(dataList => {
-            const contractMap = new Map()
-            dataList.forEach(currentContract => {
-                partyTwoUserIds.add(currentContract.partyTwoUserId)
-                contractMap.set(currentContract.contractId, currentContract)
-            })
-            return contractMap
-        })
-
-        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${Array.from(partyTwoUserIds).toString()}`).then(dataList => {
-            return new Map(dataList.map(x => [x.userId, x]))
-        })
-
-        presentableAuthTree.nodeInfo = nodeInfo
-        presentableAuthTree.authTree.forEach(item => {
-            item.contractInfo = contractMap.get(item.contractId)
-            item.contractInfo.partyTwoUserInfo = partyTwoUserInfoMap.get(item.contractInfo.partyTwoUserId)
-        })
-
-        return authService.presentableAuthTreeAuthorization(ctx, presentableAuthTree)
-    }
-
-    /**
      * 授权token转换成授权结果
      * @param authToken
      * @returns {Promise<module.CommonAuthResult|*>}
@@ -197,116 +115,6 @@ class PresentableAuthService extends Service {
 
         authResult.data.authToken = authToken
         return authResult
-    }
-
-    /**
-     * 未登陆用户尝试获取presentable授权(满足initial-terminate模式)
-     * @returns {Promise<void>}
-     */
-    async _unLoginUserPresentableAuth(presentableInfo) {
-
-        const {ctx, app} = this
-        const params = {
-            policySegments: presentableInfo.policy,
-            contractType: app.contractType.PresentableToUser,
-            partyOneUserId: presentableInfo.userId
-        }
-
-        const policyAuthorizationResult = await authService.policyAuthorization(ctx, params)
-
-        if (!policyAuthorizationResult.isAuth) {
-            policyAuthorizationResult.authCode = authCodeEnum.NotFoundUserInfo
-        }
-
-        this._fillPresentableAuthDataInfo({presentableInfo, authResult: policyAuthorizationResult})
-
-        return policyAuthorizationResult
-    }
-
-    /**
-     * 尝试使用用户合同授权.没有用户合同,则查看能否默认创建
-     * @param presentable
-     * @param contract
-     * @param userInfo
-     * @returns {Promise<void>}
-     * @private
-     */
-    async _tryUserContractAuth({presentableInfo, userInfo}) {
-
-        const {ctx, app} = this
-        const allContracts = await this.contractProvider.find({
-            targetId: presentableInfo.presentableId, partyTwo: userInfo.userId,
-            contractType: app.contractType.PresentableToUser
-        })
-
-        const defaultContract = allContracts.find(x => x.isDefault)
-        if (!defaultContract) {
-            return this._tryCreateDefaultUserContract({presentableInfo, userInfo})
-        }
-
-        const defaultContractAuthResult = await authService.contractAuthorization(ctx, {
-            contract: defaultContract, partyTwoUserInfo: userInfo
-        })
-
-        this._fillPresentableAuthDataInfo({presentableInfo, authResult: defaultContractAuthResult})
-        defaultContractAuthResult.data.allContracts = allContracts
-
-        return defaultContractAuthResult
-    }
-
-    /***
-     * 如果用户登录,并且满足presentable的免费授权策略(initial-terminate模式),则默认创建一个合同
-     * @param presentable
-     * @param userInfo
-     * @returns {Promise<void>}
-     */
-    async _tryCreateDefaultUserContract({presentableInfo, userInfo}) {
-
-        const {ctx, app} = this
-        const params = {
-            policySegments: presentableInfo.policy,
-            contractType: app.contractType.PresentableToUser,
-            partyOneUserId: presentableInfo.userId,
-            partyTwoUserInfo: userInfo
-        }
-
-        const result = new commonAuthResult(authCodeEnum.BasedOnUserContract)
-        const presentablePolicyAuthResult = await authService.policyAuthorization(ctx, params)
-
-        this._fillPresentableAuthDataInfo({presentableInfo, authResult: presentablePolicyAuthResult})
-        //非免费资源,则直接返回授权错误,免费资源则创建合同
-        if (!presentablePolicyAuthResult.isAuth) {
-            return presentablePolicyAuthResult
-        }
-
-        try {
-            await this._createUserContract({
-                presentableInfo,
-                policySegment: presentablePolicyAuthResult.data.policySegment
-            })
-        } catch (e) {
-            result.authCode = authCodeEnum.NotFoundUserPresentableContract
-            result.addError(e.toString())
-        }
-
-        return result
-    }
-
-    /**
-     * 创建用户合同
-     * @param userContract
-     * @returns {Promise<void>}
-     */
-    async _createUserContract({presentableInfo, policySegment}) {
-
-        const {ctx} = this
-
-        const createUserContractData = {
-            presentableId: presentableInfo.presentableId,
-            policyId: policySegment.policyId
-        }
-
-        return ctx.service.contractService.createUserContract(createUserContractData)
     }
 
     /**
@@ -322,5 +130,3 @@ class PresentableAuthService extends Service {
         return authResult
     }
 }
-
-module.exports = PresentableAuthService

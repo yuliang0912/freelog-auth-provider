@@ -1,0 +1,118 @@
+'use strict'
+
+const Service = require('egg').Service
+const authCodeEnum = require('../enum/auth-code')
+const authService = require('../authorization-service/process-manager')
+const commonAuthResult = require('../authorization-service/common-auth-result')
+const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
+
+module.exports = class UserContractAuthService extends Service {
+
+    constructor({app}) {
+        super(...arguments)
+        this.contractProvider = app.dal.contractProvider
+    }
+
+    /**
+     * 用户合同授权
+     * @param presentableInfo
+     * @returns {Promise<void>}
+     */
+    async userContractAuth(presentableInfo, userInfo) {
+
+        if (userInfo) {
+            return this._loginUserPresentableContractAuth(presentableInfo, userInfo)
+        }
+
+        var unLoginUserAuthResult = await this._unLoginUserPresentablePolicyAuth(presentableInfo)
+        if (!unLoginUserAuthResult.isAuth) {
+            unLoginUserAuthResult.authCode = authCodeEnum.NotFoundUserInfo
+        }
+
+        return unLoginUserAuthResult
+    }
+
+    /**
+     * 登录用户合同授权
+     * @param presentableInfo
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _loginUserPresentableContractAuth(presentableInfo, userInfo) {
+
+        const {ctx, app} = this
+
+        const defaultExecContract = await this.contractProvider.findOne({
+            targetId: presentableInfo.presentableId, partyTwo: userInfo.userId, isDefault: 1,
+            contractType: app.contractType.PresentableToUser,
+        })
+
+        if (defaultExecContract) {
+            return authService.contractAuthorization(ctx, {contract: defaultExecContract, partyTwoUserInfo: userInfo})
+        }
+
+        const freeContractInfo = await this._tryCreateFreeUserContract(presentableInfo, userInfo)
+
+        return new commonAuthResult(freeContractInfo ? authCodeEnum.BasedOnUserContract : authCodeEnum.NotFoundUserPresentableContract)
+    }
+
+    /**
+     * 尝试创建免费合同
+     * @param presentableInfo
+     * @param userInfo
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _tryCreateFreeUserContract(presentableInfo, userInfo) {
+
+        const {ctx, app} = this
+        const {presentableId, policies, nodeId} = presentableInfo
+        const contractType = app.contractType.PresentableToUser
+
+        const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
+
+        const policyAuthResult = await authService.policyAuthorization(ctx, {
+            policySegments, contractType,
+            partyOneUserId: presentableInfo.userId,
+            partyTwoUserInfo: userInfo
+        })
+        if (!policyAuthResult.isAuth) {
+            return null
+        }
+
+        const {policySegment} = policyAuthResult.data
+        const contractModel = {
+            policySegment, nodeId,
+            isDefault: 1,
+            policyId: policySegment.policyId,
+            targetId: presentableId,
+            partyOne: nodeId,
+            partyTwo: userInfo.userId,
+            partyOneUserId: presentableInfo.userId,
+            partyTwoUserId: userInfo.userId,
+            contractName: policySegment.policyName,
+            contractType: app.contractType.PresentableToUser
+        }
+
+        return app.contractService.createContract(ctx, contractModel, true)
+    }
+
+    /**
+     * 未登陆用户尝试获取presentable授权(满足initial-terminate模式)
+     * @returns {Promise<void>}
+     */
+    async _unLoginUserPresentablePolicyAuth(presentableInfo) {
+
+        const {ctx, app} = this
+        const {policies, userId} = presentableInfo
+
+        const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
+
+        return authService.policyAuthorization(ctx, {
+            policySegments,
+            contractType: app.contractType.PresentableToUser,
+            partyOneUserId: userId,
+            partyTwoUserInfo: null
+        })
+    }
+}

@@ -3,6 +3,11 @@
 module.exports = {
 
     /**
+     * 设置合同未默认执行合同事件
+     */
+    ContractSetDefaultEvent: Symbol('contract#contractSetDefaultEvent'),
+
+    /**
      * 合同状态机状态变更事件
      */
     ContractFsmStateChangedEvent: Symbol('contract#fsmStateChangedEvent'),

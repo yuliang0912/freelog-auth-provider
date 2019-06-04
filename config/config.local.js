@@ -33,7 +33,7 @@ module.exports = {
      */
 
     localIdentity: {
-        userId: 10026,
+        userId: 50003,
         userName: "余亮",
         nickname: "烟雨落叶",
         email: "4896819@qq.com",

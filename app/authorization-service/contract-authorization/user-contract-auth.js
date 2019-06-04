@@ -1,29 +1,25 @@
-/**
- * Created by yuliang on 2017/10/30.
- * 针对presentable授权,主要检测普通用户是否有权限使用presentable
- */
-
 'use strict'
 
 const authCodeEnum = require('../../enum/auth-code')
 const commonAuthResult = require('.././common-auth-result')
-const contractType = require('egg-freelog-base/app/enum/contract_type')
+const {ArgumentError} = require('egg-freelog-base/error')
 
 module.exports = (ctx, {contract}) => {
 
-    const result = new commonAuthResult(authCodeEnum.Default, {contract})
+    const {contractType} = ctx.app
+    const authResult = new commonAuthResult(authCodeEnum.Default, {contract})
 
     if (!contract || contract.contractType !== contractType.PresentableToUser) {
-        result.authCode = authCodeEnum.NotFoundUserPresentableContract
-        result.addError(ctx.gettext('用户未签约合同'))
-    }
-    else if (contract.isActivated) {
-        result.authCode = authCodeEnum.BasedOnUserContract
-    }
-    else {
-        result.authCode = authCodeEnum.UserContractNotActive
-        result.addError(ctx.gettext('用户合同未激活'))
+        throw new ArgumentError(ctx.gettext('params-validate-failed', 'contract'), {contract})
     }
 
-    return result
+    if (contract.isActivated) {
+        authResult.authCode = authCodeEnum.BasedOnUserContract
+        return authResult
+    }
+
+    authResult.authCode = authCodeEnum.UserContractNotActive
+    authResult.addError(ctx.gettext('用户合同未激活'))
+    
+    return authResult
 }

@@ -1,6 +1,5 @@
 'use strict'
 
-const lodash = require('lodash')
 const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 
@@ -17,7 +16,7 @@ module.exports = (ctx, {policySegment}) => {
     const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1 && fsmStates.some(m => /^(initial|init)$/i.test(m))
 
     if (!isInitialTerminateMode) {
-        authResult.authCode = authCodeEnum.NotFoundUserPresentableContract
+        authResult.authCode = authCodeEnum.PolicyAuthFailed
         authResult.addError(ctx.gettext('非免费策略,请签约'))
     }
 
