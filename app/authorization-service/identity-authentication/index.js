@@ -24,7 +24,6 @@ class FreelogPolicyIdentityAuthentication {
     async main(ctx, {policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const authResults = []
-
         const params = {partyOneUserId, partyTwoInfo, partyTwoUserInfo}
         for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
             let stepRule = this.authRuleSteps[i]
@@ -48,7 +47,7 @@ class FreelogPolicyIdentityAuthentication {
                 authResults.push(authResult)
             }
         }
-        
+
         if (!authResults.length) {
             throw new ApplicationError('策略中存在系统未知的身份认证方式', {authorizedObjects: policySegment.authorizedObjects})
         }

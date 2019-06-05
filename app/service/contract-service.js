@@ -2,6 +2,7 @@
 
 const lodash = require('lodash')
 const Service = require('egg').Service
+const {BasedOnCustomGroup} = require('../enum/auth-code')
 const {ContractSetDefaultEvent} = require('../enum/contract-fsm-event')
 const authService = require('../authorization-service/process-manager')
 const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
@@ -22,9 +23,10 @@ module.exports = class ContractService extends Service {
      * @param targetId
      * @returns {Promise<Array>}
      */
-    async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, targetId}) {
+    async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, targetId, nodeInfo}) {
 
         const {ctx} = this
+        const {userInfo} = ctx.request.identityInfo
         const signReleaseMap = new Map(signReleases.map(x => [x.releaseId, new Set(x.policyIds)]))
 
         const releases = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${[...signReleaseMap.keys()].toString()}`)
@@ -75,6 +77,22 @@ module.exports = class ContractService extends Service {
         if (signContractModels.some(x => x.policyStatus !== 1)) {
             throw new ArgumentError('invalid policies', {invalidPolicies: signContractModels.filter(x => x.policyStatus !== 1)})
         }
+
+        const identityAuthTasks = signContractModels.map(model => {
+            let {policySegment, partyOneUserId} = model
+            return authService.policyIdentityAuthentication(ctx, {
+                policySegment, partyOneUserId, partyTwoUserInfo: userInfo, partyTwoInfo: nodeInfo
+            }).then(authResult => {
+                model.isAuth = authResult.isAuth
+                model.isDynamicAuthentication = authResult.authCode === BasedOnCustomGroup
+            })
+        })
+
+        await Promise.all(identityAuthTasks)
+        if (signContractModels.some(x => !x.isAuth)) {
+            throw new ApplicationError(ctx.gettext('auth-policy-authorizationObject-failed'))
+        }
+
         const createdContracts = await ctx.app.contractService.batchCreateContract(ctx, signContractModels, true)
 
         return [...createdContracts, ...existContracts]
@@ -123,7 +141,8 @@ module.exports = class ContractService extends Service {
             partyOneUserId: presentableInfo.userId,
             partyTwoUserId: userInfo.userId,
             contractName: policySegment.policyName,
-            contractType: app.contractType.PresentableToUser
+            contractType: app.contractType.PresentableToUser,
+            isDynamicAuthentication: authResult.authCode === BasedOnCustomGroup
         }
 
         return app.contractService.createContract(ctx, contractModel, true)

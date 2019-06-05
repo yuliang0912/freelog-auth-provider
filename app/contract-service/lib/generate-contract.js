@@ -16,7 +16,7 @@ module.exports = class GenerateContract {
      */
     async generateContract(contractInfo) {
 
-        const {contractId, policySegment, partyTwoUserId} = contractInfo
+        const {contractId, policySegment, partyTwoUserId, isDynamicAuthentication} = contractInfo
 
         // const declarationKeys = Object.keys(policySegment.fsmDeclarations || {})
         // for (let i = 0, j = declarationKeys.length; i < j; i++) {
@@ -46,6 +46,7 @@ module.exports = class GenerateContract {
 
         contractInfo.contractClause = {
             authorizedObjects: policySegment.authorizedObjects || [],
+            isDynamicAuthentication: isDynamicAuthentication ? 1 : 0,
             policyText: policySegment.policyText,
             policySegmentId: policySegment.segmentId,
             fsmDeclarations: policySegment.fsmDeclarations,

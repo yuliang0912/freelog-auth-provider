@@ -32,7 +32,7 @@ class ContractAuthorization {
         }
 
         const contractAuthResult = contractAuthHandler(ctx, {contract})
-        if (!contractAuthResult.isAuth) {
+        if (!contractAuthResult.isAuth || !contract.contractClause.isDynamicAuthentication) {
             return contractAuthResult
         }
 

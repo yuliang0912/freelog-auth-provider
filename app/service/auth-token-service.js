@@ -1,9 +1,6 @@
-/**
- * 授权结果缓存服务
- */
-
 'use strict'
 
+const lodash = require('lodash')
 const Service = require('egg').Service
 
 module.exports = class AuthTokenService extends Service {
@@ -16,27 +13,22 @@ module.exports = class AuthTokenService extends Service {
     /**
      * 保存用户的presentable授权结果
      * @param presentableAuthTree
-     * @param userInfo
-     * @param nodeInfo
-     * @returns {Promise<void>}
+     * @param userId
+     * @param authResult
+     * @returns {Promise<*>}
      */
-    async savePresentableAuthResult({presentableAuthTree, userId, nodeInfo, authResult}) {
+    async saveUserPresentableAuthResult({presentableInfo, userId, authResult}) {
 
-        if (!authResult.isAuth) {
-            return
-        }
-
-        const {app} = this
+        const {presentableId, releaseInfo} = presentableInfo
 
         const model = {
-            partyOne: presentableAuthTree.nodeId,
-            targetId: presentableAuthTree.presentableId,
-            partyTwo: userId.toString(),
+            partyTwo: userId,
             partyTwoUserId: userId,
-            contractType: app.contractType.PresentableToUser,
+            targetId: presentableId,
+            targetVersion: releaseInfo.version,
+            identityType: 3,
             authCode: authResult.authCode,
-            masterResourceId: presentableAuthTree.masterResourceId,
-            authResourceIds: presentableAuthTree.authTree.map(x => x.resourceId),
+            authReleaseIds: [releaseInfo.releaseId],
             expire: Math.round(new Date().getTime() / 1000) + 1296000,
             signature: '待完成'
         }
@@ -45,24 +37,49 @@ module.exports = class AuthTokenService extends Service {
     }
 
     /**
-     * 保存资源授权结果
-     * @returns {Promise<void>}
+     * 保存节点的presentable授权方案授权结果
+     * @param presentableInfo
+     * @param presentableAuthTree
+     * @param nodeInfo
+     * @param authResult
+     * @returns {Promise<*>}
      */
-    async saveResourceAuthResult({resourceId, authSchemeId, userId, nodeInfo, authResult}) {
+    async saveNodePresentableAuthResult({presentableInfo, presentableAuthTree, authResult}) {
 
-        if (!authResult.isAuth) {
-            return
-        }
+        const {authTree} = presentableAuthTree
+        const {presentableId, nodeId, userId, releaseInfo} = presentableInfo
 
         const model = {
-            partyOne: authSchemeId,
-            targetId: resourceId,
-            partyTwo: nodeInfo ? nodeInfo.nodeId : userId,
+            partyTwo: nodeId,
             partyTwoUserId: userId,
-            contractType: 0, //资源不通过合同,直接授权使用.
+            targetId: presentableId,
+            targetVersion: releaseInfo.version,
+            identityType: 2,
             authCode: authResult.authCode,
-            masterResourceId: resourceId,
-            authResourceIds: [resourceId],
+            authReleaseIds: lodash.chain(authTree).filter(x => x.deep === 1).map(x => x.releaseId).uniq().value(),
+            expire: Math.round(new Date().getTime() / 1000) + 172800,  //基于资源的授权token缓存2天
+            signature: '待完成'
+        }
+
+        return this.authTokenProvider.createAuthToken(model)
+    }
+
+    /**
+     * 保存发行方案授权结果
+     * @returns {Promise<void>}
+     */
+    async saveReleaseAuthResult({releaseScheme, userInfo, authResult}) {
+
+        const {releaseId, version, resolveReleases} = releaseScheme
+
+        const model = {
+            partyTwo: userInfo.userId,
+            partyTwoUserId: userInfo.userId,
+            targetId: releaseId,
+            targetVersion: version,
+            identityType: 1,
+            authCode: authResult.authCode,
+            authReleaseIds: lodash.chain(resolveReleases).map(x => x.releaseId).uniq().value(),
             expire: Math.round(new Date().getTime() / 1000) + 172800,  //基于资源的授权token缓存2天
             signature: '待完成'
         }
@@ -72,14 +89,16 @@ module.exports = class AuthTokenService extends Service {
 
     /**
      * 获取有效的授权Token
-     * @returns {Promise<void>}
+     * @param targetId
+     * @param targetVersion
+     * @param identityType
+     * @param partyTwo
+     * @param partyTwoUserId
+     * @returns {Promise<*>}
      */
-    async getAuthToken({targetId, partyTwo, partyTwoUserId}) {
-
+    async getAuthToken({targetId, targetVersion, identityType, partyTwo, partyTwoUserId}) {
         return this.authTokenProvider.getEffectiveAuthToken({
-            targetId,
-            partyTwoUserId,
-            partyTwo: partyTwo.toString()
+            targetId, targetVersion, partyTwoUserId, identityType, partyTwo: partyTwo.toString()
         })
     }
 
@@ -91,7 +110,6 @@ module.exports = class AuthTokenService extends Service {
      * @returns {Promise<void>}
      */
     async getAuthTokenById({token, partyTwo, partyTwoUserId}) {
-
         return this.authTokenProvider.getEffectiveAuthToken({
             _id: token,
             partyTwoUserId,

@@ -21,7 +21,9 @@ module.exports = class UserContractAuthService extends Service {
     async userContractAuth(presentableInfo, userInfo) {
 
         if (userInfo) {
-            return this._loginUserPresentableContractAuth(presentableInfo, userInfo)
+            const authResult = await this._loginUserPresentableContractAuth(presentableInfo, userInfo)
+            this._saveUserContractAuthResult(presentableInfo, userInfo.userId, authResult)
+            return authResult
         }
 
         var unLoginUserAuthResult = await this._unLoginUserPresentablePolicyAuth(presentableInfo)
@@ -41,10 +43,22 @@ module.exports = class UserContractAuthService extends Service {
     async _loginUserPresentableContractAuth(presentableInfo, userInfo) {
 
         const {ctx, app} = this
+        const {presentableId, releaseInfo} = presentableInfo
+
+        const authToken = await ctx.service.authTokenService.getAuthToken({
+            targetId: presentableId,
+            targetVersion: releaseInfo.version,
+            identityType: 3,
+            partyTwo: userInfo.userId,
+            partyTwoUserId: userInfo.userId
+        })
+        if (authToken) {
+            return new commonAuthResult(authToken.authCode, {authToken})
+        }
 
         const defaultExecContract = await this.contractProvider.findOne({
             targetId: presentableInfo.presentableId, partyTwo: userInfo.userId, isDefault: 1,
-            contractType: app.contractType.PresentableToUser,
+            contractType: app.contractType.PresentableToUser
         })
 
         if (defaultExecContract) {
@@ -113,6 +127,26 @@ module.exports = class UserContractAuthService extends Service {
             contractType: app.contractType.PresentableToUser,
             partyOneUserId: userId,
             partyTwoUserInfo: null
+        })
+    }
+
+    /**
+     * 保存用户合同授权结果
+     * @param presentableInfo
+     * @param userId
+     * @param authResult
+     * @private
+     */
+    _saveUserContractAuthResult(presentableInfo, userId, authResult) {
+
+        if (!authResult.isAuth || authResult.data.authToken) {
+            return
+        }
+
+        return this.ctx.service.authTokenService.saveUserPresentableAuthResult({
+            presentableInfo, userId, authResult
+        }).catch(error => {
+            console.error('saveUserPresentableAuthResult-error', error)
         })
     }
 }

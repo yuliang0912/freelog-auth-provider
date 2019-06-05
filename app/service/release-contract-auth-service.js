@@ -50,7 +50,7 @@ module.exports = class ReleaseContractAuthService extends Service {
         return this.releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
     }
 
-    
+
     async releaseSchemeSideAuth() {
 
     }

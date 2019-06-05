@@ -139,7 +139,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         await ctx.service.presentableAuthService.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, userInfo).then(ctx.success)
     }
 
-
     /**
      * 获取presentable节点和发行侧授权
      * @returns {Promise<void>}
@@ -229,10 +228,11 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceId}/signedResourceInfo`)
         const {aliasName, meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
 
-        delete systemMeta.dependencies
         ctx.set('freelog-resource-type', resourceType)
         ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(meta)))
-        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(systemMeta)))
+        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(lodash.omit(systemMeta, 'dependencies'))))
+        ctx.set('freelog-sub-resourceIds', systemMeta.dependencies.map(x => x.releaseId).toString())
+        //ctx.set('freelog-sub-resource-auth-token', authToken.token)
 
         await ctx.curl(resourceFileUrl, {streaming: true}).then(({status, headers, res}) => {
             if (status < 200 || status > 299) {

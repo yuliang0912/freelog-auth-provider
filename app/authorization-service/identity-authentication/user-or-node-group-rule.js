@@ -53,7 +53,7 @@ module.exports = async (ctx, {authUserObject, partyTwoInfo, partyTwoUserInfo}) =
     if (partyTwoInfo) {
         const customNodeGroups = users.filter(item => commonRegex.nodeGroupId.test(item))
         if (await isExistMember(ctx, customNodeGroups, partyTwoInfo.nodeId)) {
-            authResult.authCode = authCodeEnum.BasedOnGroup
+            authResult.authCode = authCodeEnum.BasedOnCustomGroup
             return authResult
         }
     }
@@ -62,7 +62,7 @@ module.exports = async (ctx, {authUserObject, partyTwoInfo, partyTwoUserInfo}) =
     if (partyTwoUserInfo) {
         const customUserGroups = users.filter(item => commonRegex.userGroupId.test(item))
         if (await isExistMember(customUserGroups, partyTwoUserInfo.userId)) {
-            authResult.authCode = authCodeEnum.BasedOnGroup
+            authResult.authCode = authCodeEnum.BasedOnCustomGroup
             return authResult
         }
     }

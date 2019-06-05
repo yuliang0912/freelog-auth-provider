@@ -2,7 +2,7 @@
 
 const lodash = require('lodash')
 const Controller = require('egg').Controller
-const {ArgumentError} = require('egg-freelog-base/error')
+const {ArgumentError, AuthorizationError} = require('egg-freelog-base/error')
 const {mongoObjectId} = require('egg-freelog-base/app/extend/helper/common_regex')
 const SignReleaseValidator = require('../../extend/json-schema/batch-sign-release-validator')
 
@@ -196,15 +196,20 @@ module.exports = class ContractController extends Controller {
                 errors: validateResult.errors
             })
         }
+
+        let nodeInfo = null
         if (contractType === ctx.app.contractType.ResourceToNode) {
-            await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwoId}`).then(nodeInfo => ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo, {
-                msg: ctx.gettext('params-validate-failed', 'partyTwoId'),
-                property: 'ownerUserId'
-            }))
+            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwoId}`)
+            if (!nodeInfo || nodeInfo.status !== 1) {
+                throw new ArgumentError(ctx.gettext('params-validate-failed', 'partyTwoId'))
+            }
+            if (nodeInfo.ownerUserId !== ctx.request.userId) {
+                throw new AuthorizationError(ctx.gettext('user-authorization-failed'))
+            }
         }
 
         await ctx.service.contractService.batchCreateReleaseContracts({
-            signReleases, contractType, partyTwoId, targetId
+            signReleases, contractType, partyTwoId, targetId, nodeInfo
         }).then(ctx.success)
     }
 

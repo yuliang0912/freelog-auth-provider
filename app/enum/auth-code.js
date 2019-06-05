@@ -46,19 +46,24 @@ module.exports = Object.freeze({
     BasedOnGroup: 262,
 
     /**
+     * 基于用户自定义分组
+     */
+    BasedOnCustomGroup: 263,
+
+    /**
      * 基于节点域名
      */
-    BasedOnDomain: 263,
+    BasedOnDomain: 264,
 
     /**
      * 给予重签授权
      */
-    BasedOnReContractableSign: 264,
+    BasedOnReContractableSign: 265,
 
     /**
      * 给予presentable重签授权
      */
-    BasedOnPresentableSign: 265,
+    BasedOnPresentableSign: 266,
 
     /**
      * 基于最后一次授权结果的缓存授权

@@ -29,6 +29,7 @@ module.exports = app => {
         remark: {type: String, default: ''}, //合同备注
         contractClause: { //合同条款
             authorizedObjects: {type: Array, required: true}, //授权对象
+            isDynamicAuthentication: {type: Number, required: true}, //是否需要动态认证,例如是分组认证
             policyText: {type: String, required: true}, //策略原文
             fsmDeclarations: {}, //声明数据
             fsmStates: {},  //合同状态描述

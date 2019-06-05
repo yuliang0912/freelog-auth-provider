@@ -24,15 +24,32 @@ module.exports = class NodeContractAuthService extends Service {
      */
     async presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo) {
 
-        const {authTree} = presentableAuthTree
-        const {resolveReleases} = presentableInfo
+        const {ctx} = this
+        const {authTree, version} = presentableAuthTree
+        const {presentableId, nodeId, userId, resolveReleases} = presentableInfo
+
+        const authToken = await ctx.service.authTokenService.getAuthToken({
+            targetId: presentableId,
+            targetVersion: version,
+            identityType: 2,
+            partyTwo: nodeId,
+            partyTwoUserId: userId
+        })
+        if (authToken) {
+            return new commonAuthResult(authToken.authCode, {authToken})
+        }
+
         const masterReleaseDependReleaseSet = new Set(authTree.filter(x => x.deep === 1).map(x => x.releaseId))
         const practicalResolveReleases = resolveReleases.filter(x => masterReleaseDependReleaseSet.has(x.releaseId))
 
         const allNodeContractIds = lodash.chain(practicalResolveReleases).map(x => x.contracts).flattenDeep().map(x => x.contractId).value()
         const contractMap = await this.contractProvider.find({_id: {$in: allNodeContractIds}}).then(list => new Map(list.map(x => [x.contractId, x])))
 
-        return this.nodeResolveReleasesAuth(nodeInfo, practicalResolveReleases, contractMap, nodeUserInfo)
+        const nodeResolveReleasesAuthResult = await this.nodeResolveReleasesAuth(nodeInfo, practicalResolveReleases, contractMap, nodeUserInfo)
+
+        this._saveNodeContractAuthResult(presentableInfo, presentableAuthTree, nodeResolveReleasesAuthResult)
+
+        return nodeResolveReleasesAuthResult
     }
 
     /**
@@ -67,5 +84,25 @@ module.exports = class NodeContractAuthService extends Service {
         }
 
         return returnAuthResult
+    }
+
+    /**
+     * 保存节点合同授权结果
+     * @param presentableInfo
+     * @param presentableAuthTree
+     * @param authResult
+     * @private
+     */
+    _saveNodeContractAuthResult(presentableInfo, presentableAuthTree, authResult) {
+
+        if (!authResult.isAuth) {
+            return
+        }
+
+        return this.ctx.service.authTokenService.saveNodePresentableAuthResult({
+            presentableInfo, presentableAuthTree, authResult
+        }).catch(error => {
+            console.error('saveNodePresentableAuthResult-error', error)
+        })
     }
 }
