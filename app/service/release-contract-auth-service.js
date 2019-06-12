@@ -18,16 +18,26 @@ module.exports = class ReleaseContractAuthService extends Service {
      * presentable发行侧授权
      * @param presentableInfo
      * @param presentableAuthTree
+     * @param appointedReleaseSchemeId 指定的发行方案ID
      * @returns {Promise<void>}
      */
-    async presentableReleaseSideAuth(presentableInfo, presentableAuthTree) {
+    async presentableReleaseSideAuth(presentableInfo, presentableAuthTree, appointedReleaseSchemeId = null) {
 
         const {ctx} = this
         const {authTree} = presentableAuthTree
         const releaseSchemeIds = lodash.chain(authTree).map(x => x.releaseSchemeId).uniq().value()
-        const releaseSchemes = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/versions/list?projection=resolveReleases&schemeIds=${releaseSchemeIds.toString()}`)
+        if (appointedReleaseSchemeId && !releaseSchemeIds.some(x => x === appointedReleaseSchemeId)) {
+            throw new ArgumentError(ctx.gettext('params-validate-failed', 'appointedReleaseSchemeId'))
+        }
 
         const allSchemeContractIds = []
+        const allReleaseSchemes = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/versions/list?projection=releaseId,version,resolveReleases&schemeIds=${releaseSchemeIds.toString()}`)
+        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes)
+
+        if (!releaseSchemes.length) {
+            return new commonAuthResult(authCodeEnum.BasedOnResourceContract)
+        }
+
         for (let i = 0, j = releaseSchemes.length; i < j; i++) {
             let {schemeId, resolveReleases} = releaseSchemes[i]
             let dependencies = authTree.filter(x => x.parentReleaseSchemeId === schemeId)
@@ -47,16 +57,17 @@ module.exports = class ReleaseContractAuthService extends Service {
             .then(list => new Map(list.map(x => [x.userId, x])))
         const contractMap = new Map(contracts.map(x => [x.contractId, x]))
 
-        return this.releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
-    }
+        const releaseSchemesAuthResult = await this.releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
 
+        //针对授权通过的发行方案进行结果缓存
+        const authorisedReleaseSchemes = lodash.differenceBy(releaseSchemes, releaseSchemesAuthResult.data.authFailedReleaseSchemes || [], x => x.releaseId)
+        this._batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes, releaseSchemesAuthResult)
 
-    async releaseSchemeSideAuth() {
-
+        return releaseSchemesAuthResult
     }
 
     /**
-     * 针对方形的方案进行授权
+     * 批量针对发行的方案进行授权
      * @param releaseSchemes 调用方自动去除实际未依赖的发行
      * @param contractMap
      * @param userInfoMap
@@ -108,10 +119,45 @@ module.exports = class ReleaseContractAuthService extends Service {
 
         const authFailedReleaseSchemes = releaseSchemes.filter(({schemeId, resolveReleases}) => resolveReleases.some(m => !authorizedReleaseSet.has(schemeId + m.releaseId)))
         if (authFailedReleaseSchemes.length) {
-            returnAuthResult.data = authFailedReleaseSchemes
             returnAuthResult.authCode = authCodeEnum.ResourceContractNotActive
+            returnAuthResult.data.authFailedReleaseSchemes = authFailedReleaseSchemes
         }
 
         return returnAuthResult
+    }
+
+    /**
+     * 批量保存授权通过的发行方案
+     * @param authorisedReleaseSchemes
+     * @param authResult
+     */
+    _batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes, authResult) {
+
+        const {ctx} = this
+        const tasks = authorisedReleaseSchemes.map(item => ctx.service.authTokenService.saveReleaseSchemeAuthResult(item, authResult))
+
+        return Promise.all(tasks)
+    }
+
+    /**
+     * 过滤掉已经缓存通过授权的方案
+     * @param releaseSchemes
+     * @private
+     */
+    async _filterAuthorisedSchemes(releaseSchemes) {
+
+        if (lodash.isEmpty(releaseSchemes)) {
+            return releaseSchemes
+        }
+
+        const condition = {
+            $or: releaseSchemes.map(x => Object({
+                targetId: x.schemeId, partyTwo: x.releaseId, identityType: 1
+            }))
+        }
+
+        const authTokens = await this.ctx.service.authTokenService.getAuthTokens(condition)
+
+        return lodash.differenceWith(releaseSchemes, authTokens, (x, y) => x.schemeId === y.targetId && x.releaseId === y.partyTwo)
     }
 }

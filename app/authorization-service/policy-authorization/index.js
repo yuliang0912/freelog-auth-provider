@@ -4,7 +4,7 @@ const resourcePolicyAuth = require('./resource-policy-auth')
 const presentablePolicyAuth = require('./presentable-policy-auth')
 const policyIdentityAuthentication = require('../identity-authentication/index')
 
-class PolicyAuthorization {
+module.exports = {
 
     /**
      * 合同授权检查(step1:检查合同本身的状态  step2:检查用户对象是否依然符合策略)
@@ -31,5 +31,3 @@ class PolicyAuthorization {
         return identityAuthResult.isAuth ? policyAuthResult : identityAuthResult
     }
 }
-
-module.exports = new PolicyAuthorization()

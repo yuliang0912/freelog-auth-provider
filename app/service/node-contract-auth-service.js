@@ -26,14 +26,10 @@ module.exports = class NodeContractAuthService extends Service {
 
         const {ctx} = this
         const {authTree, version} = presentableAuthTree
-        const {presentableId, nodeId, userId, resolveReleases} = presentableInfo
+        const {presentableId, nodeId, resolveReleases} = presentableInfo
 
         const authToken = await ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId,
-            targetVersion: version,
-            identityType: 2,
-            partyTwo: nodeId,
-            partyTwoUserId: userId
+            targetId: presentableId, targetVersion: version, identityType: 2, partyTwo: nodeId
         })
         if (authToken) {
             return new commonAuthResult(authToken.authCode, {authToken})

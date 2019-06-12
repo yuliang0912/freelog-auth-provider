@@ -20,10 +20,10 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
      */
     createAuthToken(model) {
 
-        const condition = lodash.pick(model, ['targetId', 'partyTwo', 'partyTwoUserId'])
+        const condition = lodash.pick(model, ['targetId', 'identityType', 'partyTwo'])
 
         return super.findOneAndUpdate(condition, model, {new: true}).then(authToken => {
-            return authToken ? authToken : super.create(model)
+            return authToken || super.create(model)
         })
     }
 
@@ -35,8 +35,21 @@ module.exports = class AuthTokenProvider extends MongoBaseOperation {
     async getEffectiveAuthToken(condition) {
 
         //授权有效期最少还有5秒的token
-        condition.expire = {$gt: Math.round(new Date().getTime() / 1000) + 5}
+        condition.expire = {$gt: Date()}
 
-        return super.model.findOne(condition).exec()
+        return super.findOne(condition)
+    }
+
+    /**
+     * 获取有效的tokens
+     * @param presentable
+     * @param userId
+     */
+    async getEffectiveAuthTokens(condition) {
+
+        //授权有效期最少还有5秒的token
+        condition.expire = {$gt: Date()}
+
+        return super.find(condition)
     }
 }

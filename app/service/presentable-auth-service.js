@@ -2,12 +2,8 @@
 
 const lodash = require('lodash')
 const Service = require('egg').Service
-const authCodeEnum = require('../enum/auth-code')
-const commonAuthResult = require('../authorization-service/common-auth-result')
+const {ApplicationError} = require('egg-freelog-base/error')
 
-/**
- * presentable授权业务逻辑层
- */
 module.exports = class PresentableAuthService extends Service {
 
     constructor({app}) {
@@ -18,13 +14,15 @@ module.exports = class PresentableAuthService extends Service {
     /**
      * presentable全部链路(用户,节点,发行)授权
      * @param presentableInfo
-     * @returns {Promise<void>}
+     * @param subReleaseInfo 子依赖(如果对子依赖授权,才需要传递该参数)
+     * @param subReleaseVersion 子依赖版本号
+     * @returns {Promise<*>}
      */
-    async presentableAllChainAuth(presentableInfo) {
+    async presentableAllChainAuth(presentableInfo, subReleaseInfo, subReleaseVersion) {
 
         const {ctx} = this
         const {userInfo} = ctx.request.identityInfo
-        const {presentableId, nodeId, userId} = presentableInfo
+        const {presentableId, releaseInfo, nodeId, userId} = presentableInfo
 
         const userContractAuthResult = await ctx.service.userContractAuthService.userContractAuth(presentableInfo, userInfo)
         if (!userContractAuthResult.isAuth) {
@@ -35,8 +33,25 @@ module.exports = class PresentableAuthService extends Service {
         const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         const nodeUserInfoTask = ctx.curlIntranetApi(`${ctx.webApi.userInfo}/${userId}`)
         const [nodeInfo, presentableAuthTree, nodeUserInfo] = await Promise.all([nodeInfoTask, presentableAuthTreeTask, nodeUserInfoTask])
+        const {authTree} = presentableAuthTree
 
-        return this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
+        let subAuthTreeNode = null
+        if (subReleaseInfo && subReleaseVersion) {
+            subAuthTreeNode = authTree.find(x => x.releaseId === subReleaseInfo.releaseId && x.version === subReleaseVersion)
+            if (!subAuthTreeNode) {
+                throw ApplicationError(ctx.gettext('params-validate-failed', 'subReleaseId,subReleaseVersion'))
+            }
+        }
+
+        const nodeAndReleaseSideAuthResult = await this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
+
+        if (nodeAndReleaseSideAuthResult.isAuth && subAuthTreeNode) {
+            nodeAndReleaseSideAuthResult.data.subReleases = lodash.chain(authTree).filter(x => x.parentReleaseSchemeId === subAuthTreeNode.releaseSchemeId).map(x => lodash.pick(x, ['releaseId', 'version'])).value()
+        } else if (nodeAndReleaseSideAuthResult.isAuth) {
+            nodeAndReleaseSideAuthResult.data.subReleases = authTree.filter(x => x.deep === 1 && x.releaseId !== releaseInfo.releaseId).map(x => lodash.pick(x, ['releaseId', 'version']))
+        }
+
+        return nodeAndReleaseSideAuthResult
     }
 
     /**
@@ -69,63 +84,12 @@ module.exports = class PresentableAuthService extends Service {
     async presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo) {
 
         const {ctx} = this
-        const nodeSideAuthResult = await ctx.service.nodeContractAuthService.presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
 
-        if (!nodeSideAuthResult.isAuth) {
-            return nodeSideAuthResult
-        }
+        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
+        const nodeSideAuthTask = ctx.service.nodeContractAuthService.presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
 
-        return ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
-    }
+        const [nodeSideAuthResult, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
 
-    /**
-     * 基于token获取授权
-     * @param token
-     * @param resourceId
-     * @returns {Promise<void>}
-     */
-    async tokenAuthHandler({token, resourceId}) {
-
-        const {ctx, app} = this
-        const userId = ctx.request.userId || 0
-        const authTokenCache = await ctx.service.authTokenService.getAuthTokenById({
-            token,
-            partyTwo: userId,
-            partyTwoUserId: userId
-        })
-        if (!authTokenCache || authTokenCache.contractType !== app.contractType.PresentableToUser || !authTokenCache.authResourceIds.some(x => x === resourceId)) {
-            return new commonAuthResult(authCodeEnum.ResourceAuthTokenInvalid, {
-                authTokenCache, resourceId,
-                value: app.contractType.PresentableToUser
-            })
-        }
-
-        return this._authTokenToAuthResult(authTokenCache)
-    }
-
-    /**
-     * 授权token转换成授权结果
-     * @param authToken
-     * @returns {Promise<module.CommonAuthResult|*>}
-     * @private
-     */
-    async _authTokenToAuthResult(authToken) {
-        const authResult = new commonAuthResult(authToken.authCode)
-
-        authResult.data.authToken = authToken
-        return authResult
-    }
-
-    /**
-     * 填充授权信息数据
-     * @private
-     */
-    _fillPresentableAuthDataInfo({presentableInfo, authResult}) {
-
-        const exposePresentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "presentableIntro", "nodeId", "policy", "resourceId", "resourceInfo"])
-
-        authResult.data = Object.assign(authResult.data || {}, {presentableInfo: exposePresentableInfo})
-
-        return authResult
+        return nodeSideAuthResult.isAuth ? releaseSideAuthResult : nodeSideAuthResult
     }
 }

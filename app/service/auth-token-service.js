@@ -23,14 +23,12 @@ module.exports = class AuthTokenService extends Service {
 
         const model = {
             partyTwo: userId,
-            partyTwoUserId: userId,
             targetId: presentableId,
             targetVersion: releaseInfo.version,
             identityType: 3,
             authCode: authResult.authCode,
             authReleaseIds: [releaseInfo.releaseId],
-            expire: Math.round(new Date().getTime() / 1000) + 1296000,
-            signature: '待完成'
+            expire: this.getTokenExpireDate(3)
         }
 
         return this.authTokenProvider.createAuthToken(model)
@@ -47,18 +45,16 @@ module.exports = class AuthTokenService extends Service {
     async saveNodePresentableAuthResult({presentableInfo, presentableAuthTree, authResult}) {
 
         const {authTree} = presentableAuthTree
-        const {presentableId, nodeId, userId, releaseInfo} = presentableInfo
+        const {presentableId, nodeId, releaseInfo} = presentableInfo
 
         const model = {
             partyTwo: nodeId,
-            partyTwoUserId: userId,
             targetId: presentableId,
             targetVersion: releaseInfo.version,
             identityType: 2,
             authCode: authResult.authCode,
             authReleaseIds: lodash.chain(authTree).filter(x => x.deep === 1).map(x => x.releaseId).uniq().value(),
-            expire: Math.round(new Date().getTime() / 1000) + 172800,  //基于资源的授权token缓存2天
-            signature: '待完成'
+            expire: this.getTokenExpireDate(2)
         }
 
         return this.authTokenProvider.createAuthToken(model)
@@ -66,22 +62,22 @@ module.exports = class AuthTokenService extends Service {
 
     /**
      * 保存发行方案授权结果
-     * @returns {Promise<void>}
+     * @param releaseScheme
+     * @param authResult
+     * @returns {Promise<*>}
      */
-    async saveReleaseAuthResult({releaseScheme, userInfo, authResult}) {
+    async saveReleaseSchemeAuthResult(releaseScheme, authResult) {
 
-        const {releaseId, version, resolveReleases} = releaseScheme
+        const {releaseId, schemeId, version, resolveReleases} = releaseScheme
 
         const model = {
-            partyTwo: userInfo.userId,
-            partyTwoUserId: userInfo.userId,
-            targetId: releaseId,
+            partyTwo: releaseId,
+            targetId: schemeId,
             targetVersion: version,
             identityType: 1,
             authCode: authResult.authCode,
-            authReleaseIds: lodash.chain(resolveReleases).map(x => x.releaseId).uniq().value(),
-            expire: Math.round(new Date().getTime() / 1000) + 172800,  //基于资源的授权token缓存2天
-            signature: '待完成'
+            authReleaseIds: resolveReleases.map(x => x.releaseId),
+            expire: this.getTokenExpireDate(1)
         }
 
         return this.authTokenProvider.createAuthToken(model)
@@ -93,27 +89,47 @@ module.exports = class AuthTokenService extends Service {
      * @param targetVersion
      * @param identityType
      * @param partyTwo
-     * @param partyTwoUserId
      * @returns {Promise<*>}
      */
-    async getAuthToken({targetId, targetVersion, identityType, partyTwo, partyTwoUserId}) {
-        return this.authTokenProvider.getEffectiveAuthToken({
-            targetId, targetVersion, partyTwoUserId, identityType, partyTwo: partyTwo.toString()
-        })
+    async getAuthToken({targetId, targetVersion, identityType, partyTwo}) {
+
+        const condition = lodash.omitBy({
+            targetId, targetVersion, identityType, partyTwo
+        }, x => x === undefined || x === null)
+
+        return this.authTokenProvider.getEffectiveAuthToken(condition)
     }
 
     /**
-     * 根据ID获取有效的授权token
-     * @param token
-     * @param partyTwo
-     * @param partyTwoUserId
-     * @returns {Promise<void>}
+     * 批量获取授权token
+     * @param condition
+     * @returns {Promise<*>}
      */
-    async getAuthTokenById({token, partyTwo, partyTwoUserId}) {
-        return this.authTokenProvider.getEffectiveAuthToken({
-            _id: token,
-            partyTwoUserId,
-            partyTwo: partyTwo.toString()
-        })
+    async getAuthTokens(condition) {
+        return this.authTokenProvider.getEffectiveAuthTokens(condition)
+    }
+
+    /**
+     * 获取token有效期
+     * @param identityType
+     * @returns {Date}
+     */
+    getTokenExpireDate(identityType) {
+
+        const expireDate = new Date()
+        const currHour = expireDate.getHours()
+        switch (identityType) {
+            case 1:
+                expireDate.setHours(currHour + 6)
+                break
+            case 2:
+                expireDate.setHours(currHour + 12)
+                break
+            case 3:
+                expireDate.setHours(currHour + 24)
+                break
+        }
+
+        return expireDate
     }
 }

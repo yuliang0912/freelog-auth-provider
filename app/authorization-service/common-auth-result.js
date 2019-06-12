@@ -6,9 +6,9 @@
 
 module.exports = class CommonAuthResult {
 
-    constructor(authCode = 0, data) {
+    constructor(authCode = 0, data = {}) {
         this.authCode = authCode
-        this.data = data || {}
+        this.data = data
         this.errors = []
     }
 
@@ -29,23 +29,15 @@ module.exports = class CommonAuthResult {
     }
 
     /**
-     * 转换object对象
+     * JSON序列化
      * @returns {{isAuth: boolean, authCode: *, data: {}, errors: Array}}
      */
-    toObject() {
+    toJSON() {
         return {
             isAuth: this.isAuth,
             authCode: this.authCode,
             data: this.data,
             errors: this.errors
         }
-    }
-
-    /**
-     * JSON序列化
-     * @returns {{isAuth: boolean, authCode: *, data: {}, errors: Array}}
-     */
-    toJSON() {
-        return this.toObject()
     }
 }

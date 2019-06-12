@@ -43,14 +43,10 @@ module.exports = class UserContractAuthService extends Service {
     async _loginUserPresentableContractAuth(presentableInfo, userInfo) {
 
         const {ctx, app} = this
-        const {presentableId, releaseInfo} = presentableInfo
+        const {presentableId} = presentableInfo
 
         const authToken = await ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId,
-            targetVersion: releaseInfo.version,
-            identityType: 3,
-            partyTwo: userInfo.userId,
-            partyTwoUserId: userInfo.userId
+            targetId: presentableId, identityType: 3, partyTwo: userInfo.userId,
         })
         if (authToken) {
             return new commonAuthResult(authToken.authCode, {authToken})

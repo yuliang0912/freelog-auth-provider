@@ -34,12 +34,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             return ctx.success(authResult)
         }
         if (!authResult.isAuth) {
-            authResult.data = Object.assign(authResult.data || {}, {
-                presentableInfo: lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
-            })
+            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "policies"])
             throw new AuthorizationError(ctx.gettext('presentable-authorization-failed'), {
                 authCode: authResult.authCode, authResult
             })
+        }
+        if (authResult.data.subReleases) {
+            ctx.set('freelog-sub-releases', authResult.data.subReleases.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
         }
         if (extName === 'info') {
             return ctx.success(presentableInfo)
@@ -55,12 +56,51 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     }
 
     /**
-     * presentable的依赖授权
+     * presentable的依赖子发行授权
      * @param ctx
      * @returns {Promise<void>}
      */
     async presentableSubReleaseAuth(ctx) {
 
+        const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
+        const subReleaseId = ctx.checkParams('releaseId').exist().isReleaseId().value
+        const version = ctx.checkQuery('version').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
+        const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
+        ctx.validate(false)
+
+        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        ctx.entityNullObjectCheck(presentableInfo)
+        if (presentableInfo.isOnline !== 1) {
+            throw new ArgumentError(ctx.gettext('presentable-online-check-failed'))
+        }
+
+        const subReleaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${subReleaseId}`)
+        ctx.entityNullObjectCheck(subReleaseInfo)
+
+        const resourceVersion = subReleaseInfo.resourceVersions.find(x => x.version === version)
+        if (!resourceVersion) {
+            throw new ArgumentError(ctx.gettext('params-validate-failed', 'version'))
+        }
+
+        const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo, subReleaseInfo, version)
+        if (extName === 'auth') {
+            return ctx.success(authResult)
+        }
+        if (!authResult.isAuth) {
+            authResult.data = Object.assign(authResult.data || {}, {
+                presentableInfo: lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
+            })
+            throw new AuthorizationError(ctx.gettext('presentable-authorization-failed'), {
+                authCode: authResult.authCode, authResult
+            })
+        }
+        if (authResult.data.subReleases) {
+            ctx.set('freelog-sub-releases', authResult.data.subReleases.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
+        }
+        if (extName === 'info') {
+            return ctx.success(subReleaseInfo)
+        }
+        await this._responseResourceFile(resourceVersion.resourceId)
     }
 
     /**
@@ -231,8 +271,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.set('freelog-resource-type', resourceType)
         ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(meta)))
         ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(lodash.omit(systemMeta, 'dependencies'))))
-        ctx.set('freelog-sub-resourceIds', systemMeta.dependencies.map(x => x.releaseId).toString())
-        //ctx.set('freelog-sub-resource-auth-token', authToken.token)
 
         await ctx.curl(resourceFileUrl, {streaming: true}).then(({status, headers, res}) => {
             if (status < 200 || status > 299) {
