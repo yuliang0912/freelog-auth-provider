@@ -201,24 +201,21 @@ module.exports = class ReleaseContractAuthService extends Service {
      */
     async _filterAuthorisedSchemes(releaseSchemes, isFilterEmptyResolveReleases = true, isFilterCacheToken = true) {
 
-        if (lodash.isEmpty(releaseSchemes)) {
-            return releaseSchemes
+        let lodashChain = lodash.chain(releaseSchemes)
+        if (isFilterEmptyResolveReleases) {
+            lodashChain = lodashChain.filter(x => x.resolveReleases.length)
         }
-
-        let authTokens = []
-        if (isFilterCacheToken) {
-            authTokens = await this.ctx.service.authTokenService.getAuthTokens({
+        if (isFilterCacheToken && releaseSchemes.length) {
+            const authTokens = await this.ctx.service.authTokenService.getAuthTokens({
                 $or: releaseSchemes.map(({schemeId, releaseId}) => Object({
                     targetId: schemeId, partyTwo: releaseId, identityType: 1
                 }))
             })
+            lodashChain = lodashChain.differenceWith(authTokens, (schemeInfo, tokenInfo) => {
+                let {schemeId, releaseId} = schemeInfo
+                return schemeId === tokenInfo.targetId && releaseId === tokenInfo.partyTwo
+            })
         }
-
-        //1.如果方案内不包含依赖,则天生已具备授权 2:如果cache中缓存了授权结果,则匹配
-        return lodash.differenceWith(releaseSchemes, authTokens, (schemeInfo, tokenInfo) => {
-            let {schemeId, releaseId, resolveReleases} = schemeInfo
-            return (isFilterEmptyResolveReleases && !resolveReleases.length)
-                || (schemeId === tokenInfo.targetId && releaseId === tokenInfo.partyTwo)
-        })
+        return lodashChain.value()
     }
 }
