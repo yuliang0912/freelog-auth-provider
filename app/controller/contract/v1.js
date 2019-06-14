@@ -245,7 +245,6 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
         const eventId = ctx.checkBody('eventId').exist().notEmpty().value
-
         ctx.validate()
 
         await ctx.app.contractService.execContractFsmEvent(contractId, eventId).then(ctx.success)

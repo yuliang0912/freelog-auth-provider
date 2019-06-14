@@ -3,7 +3,7 @@
 const lodash = require('lodash')
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
-const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
+const {ArgumentError} = require('egg-freelog-base/error')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 
@@ -18,38 +18,25 @@ module.exports = class ReleaseContractAuthService extends Service {
      * presentable发行侧授权
      * @param presentableInfo
      * @param presentableAuthTree
-     * @param appointedReleaseSchemeId 指定的发行方案ID
      * @returns {Promise<void>}
      */
-    async presentableReleaseSideAuth(presentableInfo, presentableAuthTree, appointedReleaseSchemeId = null) {
+    async presentableReleaseSideAuth(presentableInfo, presentableAuthTree) {
 
         const {ctx} = this
         const {authTree} = presentableAuthTree
-        const releaseSchemeIds = lodash.chain(authTree).map(x => x.releaseSchemeId).uniq().value()
-        if (appointedReleaseSchemeId && !releaseSchemeIds.some(x => x === appointedReleaseSchemeId)) {
-            throw new ArgumentError(ctx.gettext('params-validate-failed', 'appointedReleaseSchemeId'))
-        }
-
-        const allSchemeContractIds = []
+        const releaseSchemeIds = lodash.chain(authTree).map(({releaseSchemeId}) => releaseSchemeId).uniq().value()
         const allReleaseSchemes = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/versions/list?projection=releaseId,version,resolveReleases&schemeIds=${releaseSchemeIds.toString()}`)
-        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes)
 
+        //过滤掉已经获得授权的方案(没有依赖的OR缓存中通过授权的)
+        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes)
         if (!releaseSchemes.length) {
             return new commonAuthResult(authCodeEnum.BasedOnResourceContract)
         }
 
-        for (let i = 0, j = releaseSchemes.length; i < j; i++) {
-            let {schemeId, resolveReleases} = releaseSchemes[i]
-            let dependencies = authTree.filter(x => x.parentReleaseSchemeId === schemeId)
-            let practicalAuthReleases = resolveReleases.filter(x => dependencies.some(m => m.releaseId === x.releaseId))
-            releaseSchemes[i].resolveReleases = practicalAuthReleases
-            practicalAuthReleases.forEach(({releaseId, contracts}) => contracts.forEach(({contractId}) => {
-                if (!contractId) {
-                    throw new ApplicationError(ctx.gettext('scheme-contract-lose-error'), {schemeId, releaseId})
-                }
-                allSchemeContractIds.push(contractId)
-            }))
-        }
+        this._getSchemePracticalUsedReleases(releaseSchemes, presentableAuthTree)
+
+        //如果没有合同需要做授权,则代表是单一资源,没有依赖的发行需要做授权,天生通过
+        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
 
         const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
         const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
@@ -57,13 +44,60 @@ module.exports = class ReleaseContractAuthService extends Service {
             .then(list => new Map(list.map(x => [x.userId, x])))
         const contractMap = new Map(contracts.map(x => [x.contractId, x]))
 
-        const releaseSchemesAuthResult = await this.releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
+        const releaseSchemesAuthResult = await this._releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
 
         //针对授权通过的发行方案进行结果缓存
         const authorisedReleaseSchemes = lodash.differenceBy(releaseSchemes, releaseSchemesAuthResult.data.authFailedReleaseSchemes || [], x => x.releaseId)
-        this._batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes, releaseSchemesAuthResult)
+        this._batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes)
 
         return releaseSchemesAuthResult
+    }
+
+    /**
+     * 发行方案授权(仅包含方案内部的合约)
+     * @param releaseSchemeInfo
+     * @returns {Promise<void>}
+     */
+    async releaseSchemeInteriorContractsAuth(releaseSchemeInfo, userInfo) {
+
+        const {ctx} = this
+        const {resolveReleases} = releaseSchemeInfo
+        const allSchemeContractIds = lodash.chain(resolveReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
+
+        const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
+        const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
+        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${userIds.toString()}`)
+            .then(list => new Map(list.map(x => [x.userId, x])))
+
+        const contractMap = new Map(contracts.map(x => [x.contractId, x]))
+
+        await this._releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap)
+
+        return resolveReleases.map(({releaseId, releaseName, contracts}) => Object({
+            releaseId, releaseName,
+            isAuth: contracts.some(x => contractMap.get(x.contractId).isAuth)
+        }))
+    }
+
+    /**
+     * 发行的方案内部合同授权
+     * @param userInfo
+     * @param contracts
+     * @param partyTwoUserInfoMap
+     * @returns {Promise<any>}
+     * @private
+     */
+    async _releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap) {
+
+        const {ctx} = this
+        const releaseContractAuthTasks = contracts.map(contract => {
+            let partyTwoUserInfo = partyTwoUserInfoMap.get(contract.partyTwoUserId)
+            return authService.contractAuthorization(ctx, {
+                contract, partyTwoUserInfo
+            }).then(authResult => contract.isAuth = authResult.isAuth)
+        })
+
+        return Promise.all(releaseContractAuthTasks).then(() => contracts)
     }
 
     /**
@@ -73,7 +107,7 @@ module.exports = class ReleaseContractAuthService extends Service {
      * @param userInfoMap
      * @returns {Promise<module.CommonAuthResult|*>}
      */
-    async releaseSchemesAuth(releaseSchemes, contractMap, userInfoMap) {
+    async _releaseSchemesAuth(releaseSchemes, contractMap, userInfoMap) {
 
         let {ctx} = this, index = 0
         const authorizedReleaseSet = new Set() //授权通过的方案-发行
@@ -127,13 +161,34 @@ module.exports = class ReleaseContractAuthService extends Service {
     }
 
     /**
+     * 获取presentable对应的发行的方案中实际使用的发行
+     * @param releaseSchemes
+     * @param presentableAuthTree
+     * @returns {*}
+     * @private
+     */
+    _getSchemePracticalUsedReleases(releaseSchemes, presentableAuthTree) {
+
+        const {authTree} = presentableAuthTree
+
+        releaseSchemes.forEach(releaseScheme => {
+            let {schemeId, resolveReleases} = releaseScheme
+            let dependencies = authTree.filter(({parentReleaseSchemeId}) => parentReleaseSchemeId === schemeId)
+            releaseScheme.resolveReleases = lodash.intersectionBy(resolveReleases, dependencies, x => x.releaseId)
+        })
+
+        return releaseSchemes
+    }
+
+    /**
      * 批量保存授权通过的发行方案
      * @param authorisedReleaseSchemes
      * @param authResult
      */
-    _batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes, authResult) {
+    _batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes) {
 
         const {ctx} = this
+        const authResult = new commonAuthResult(authCodeEnum.BasedOnResourceContract)
         const tasks = authorisedReleaseSchemes.map(item => ctx.service.authTokenService.saveReleaseSchemeAuthResult(item, authResult))
 
         return Promise.all(tasks)
@@ -144,20 +199,26 @@ module.exports = class ReleaseContractAuthService extends Service {
      * @param releaseSchemes
      * @private
      */
-    async _filterAuthorisedSchemes(releaseSchemes) {
+    async _filterAuthorisedSchemes(releaseSchemes, isFilterEmptyResolveReleases = true, isFilterCacheToken = true) {
 
         if (lodash.isEmpty(releaseSchemes)) {
             return releaseSchemes
         }
 
-        const condition = {
-            $or: releaseSchemes.map(x => Object({
-                targetId: x.schemeId, partyTwo: x.releaseId, identityType: 1
-            }))
+        let authTokens = []
+        if (isFilterCacheToken) {
+            authTokens = await this.ctx.service.authTokenService.getAuthTokens({
+                $or: releaseSchemes.map(({schemeId, releaseId}) => Object({
+                    targetId: schemeId, partyTwo: releaseId, identityType: 1
+                }))
+            })
         }
 
-        const authTokens = await this.ctx.service.authTokenService.getAuthTokens(condition)
-
-        return lodash.differenceWith(releaseSchemes, authTokens, (x, y) => x.schemeId === y.targetId && x.releaseId === y.partyTwo)
+        //1.如果方案内不包含依赖,则天生已具备授权 2:如果cache中缓存了授权结果,则匹配
+        return lodash.differenceWith(releaseSchemes, authTokens, (schemeInfo, tokenInfo) => {
+            let {schemeId, releaseId, resolveReleases} = schemeInfo
+            return (isFilterEmptyResolveReleases && !resolveReleases.length)
+                || (schemeId === tokenInfo.targetId && releaseId === tokenInfo.partyTwo)
+        })
     }
 }

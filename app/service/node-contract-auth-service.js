@@ -3,7 +3,6 @@
 const lodash = require('lodash')
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
-const {ArgumentError} = require('egg-freelog-base/error')
 const authService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 
@@ -25,61 +24,89 @@ module.exports = class NodeContractAuthService extends Service {
     async presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo) {
 
         const {ctx} = this
-        const {authTree, version} = presentableAuthTree
-        const {presentableId, nodeId, resolveReleases} = presentableInfo
+        const {presentableId, nodeId} = presentableInfo
 
         const authToken = await ctx.service.authTokenService.getAuthToken({
-            targetId: presentableId, targetVersion: version, identityType: 2, partyTwo: nodeId
+            targetId: presentableId, targetVersion: presentableAuthTree.version, identityType: 2, partyTwo: nodeId
         })
         if (authToken) {
             return new commonAuthResult(authToken.authCode, {authToken})
         }
 
-        const masterReleaseDependReleaseSet = new Set(authTree.filter(x => x.deep === 1).map(x => x.releaseId))
-        const practicalResolveReleases = resolveReleases.filter(x => masterReleaseDependReleaseSet.has(x.releaseId))
-
-        const allNodeContractIds = lodash.chain(practicalResolveReleases).map(x => x.contracts).flattenDeep().map(x => x.contractId).value()
+        const practicalUsedReleases = this._getPresentablePracticalUsedReleases(presentableInfo, presentableAuthTree)
+        const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).value()
         const contractMap = await this.contractProvider.find({_id: {$in: allNodeContractIds}}).then(list => new Map(list.map(x => [x.contractId, x])))
 
-        const nodeResolveReleasesAuthResult = await this.nodeResolveReleasesAuth(nodeInfo, practicalResolveReleases, contractMap, nodeUserInfo)
+        await this._nodeResolveReleaseContractAuth(nodeInfo, nodeUserInfo, Array.from(contractMap.values()))
 
-        this._saveNodeContractAuthResult(presentableInfo, presentableAuthTree, nodeResolveReleasesAuthResult)
+        const nodeResolveReleasesAuthResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
+        const authFailedNodeReleases = lodash.chain(practicalUsedReleases).filter(({contracts}) => !contracts.some(m => contractMap.get(m.contractId).isAuth)).value()
+        if (authFailedNodeReleases.length) {
+            nodeResolveReleasesAuthResult.data = authFailedNodeReleases
+            nodeResolveReleasesAuthResult.authCode = authCodeEnum.NodeContractNotActive
+        } else {
+            this._saveNodeContractAuthResult(presentableInfo, presentableAuthTree, nodeResolveReleasesAuthResult)
+        }
 
         return nodeResolveReleasesAuthResult
     }
 
     /**
-     * 对节点解决的发行进行授权
+     * presentable节点侧授权概况信息(此处不使用缓存信息)
+     * @param presentableInfo
+     * @param presentableAuthTree
      * @param nodeInfo
-     * @param resolveReleases 此参数需要调用方自动决定是否过滤掉未实际使用的发行
-     * @param contractMap
      * @param nodeUserInfo
-     * @returns {Promise<module.CommonAuthResult|*>}
+     * @returns {Promise<void>}
      */
-    async nodeResolveReleasesAuth(nodeInfo, resolveReleases, contractMap, nodeUserInfo) {
+    async nodeResolveReleaseContractSketch(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo) {
+
+        const practicalUsedReleases = this._getPresentablePracticalUsedReleases(presentableInfo, presentableAuthTree)
+
+        const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).value()
+        const contractMap = await this.contractProvider.find({_id: {$in: allNodeContractIds}}).then(list => new Map(list.map(x => [x.contractId, x])))
+
+        await this._nodeResolveReleaseContractAuth(nodeInfo, nodeUserInfo, Array.from(contractMap.values()))
+
+        practicalUsedReleases.forEach(({contracts}) => contracts.forEach(contract => {
+            contract.isAuth = contractMap.get(contract.contractId).isAuth
+        }))
+
+        return practicalUsedReleases
+    }
+
+    /**
+     * 批量针对合同进行授权
+     * @param nodeInfo
+     * @param nodeUserInfo
+     * @param contracts
+     * @returns {Promise<any>}
+     * @private
+     */
+    async _nodeResolveReleaseContractAuth(nodeInfo, nodeUserInfo, contracts) {
 
         const {ctx} = this
-        const allNodeContracts = lodash.chain(resolveReleases).map(x => x.contracts).flattenDeep().map(x => contractMap.get(x.contractId)).value()
-        if (allNodeContracts.some(x => x === undefined)) {
-            throw new ArgumentError(ctx.gettext('params-validate-failed', 'contractMap'))
-        }
-
-        const returnAuthResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
-        const nodeContractAuthTasks = allNodeContracts.map(contract => {
-            return !Reflect.has(contract, 'isAuth') ? authService.contractAuthorization(ctx, {
-                contract, partyTwoInfo: nodeInfo, partyTwoUserInfo: nodeUserInfo
-            }).then(authResult => contract.isAuth = authResult.isAuth) : undefined
+        const nodeContractAuthTasks = contracts.map(contract => {
+            let params = {contract, partyTwoInfo: nodeInfo, partyTwoUserInfo: nodeUserInfo}
+            return authService.contractAuthorization(ctx, params).then(authResult => contract.isAuth = authResult.isAuth)
         })
 
-        await Promise.all(nodeContractAuthTasks)
+        return Promise.all(nodeContractAuthTasks).then(() => contracts)
+    }
 
-        const authFailedNodeReleases = lodash.chain(resolveReleases).filter(x => !x.contracts.some(m => contractMap.get(m.contractId).isAuth)).value()
-        if (authFailedNodeReleases.length) {
-            returnAuthResult.data = authFailedNodeReleases
-            returnAuthResult.authCode = authCodeEnum.NodeContractNotActive
-        }
+    /**
+     * 获取presentable实际使用的发行
+     * @param presentableInfo
+     * @param presentableAuthTree
+     * @returns {*}
+     * @private
+     */
+    _getPresentablePracticalUsedReleases(presentableInfo, presentableAuthTree) {
 
-        return returnAuthResult
+        const {authTree} = presentableAuthTree
+        const masterReleaseDependReleaseSet = new Set(authTree.filter(x => x.deep === 1).map(x => x.releaseId))
+
+        return presentableInfo.resolveReleases.filter(x => masterReleaseDependReleaseSet.has(x.releaseId))
     }
 
     /**

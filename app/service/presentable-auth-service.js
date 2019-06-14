@@ -92,4 +92,50 @@ module.exports = class PresentableAuthService extends Service {
 
         return nodeSideAuthResult.isAuth ? releaseSideAuthResult : nodeSideAuthResult
     }
+
+    /**
+     * presentable节点和发行侧授权概况信息
+     * @param presentableInfo
+     * @returns {Promise<void>}
+     */
+    async presentableNodeAndReleaseSideAuthSketch(presentableInfo) {
+
+        const {ctx} = this
+        //目前业务逻辑是presentable与登录用户一致
+        const {userInfo} = ctx.request.identityInfo
+        const {presentableId, nodeId} = presentableInfo
+
+        const nodeInfoTask = ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+        const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
+        const [nodeInfo, presentableAuthTree] = await Promise.all([nodeInfoTask, presentableAuthTreeTask])
+
+        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
+        const nodeSideAuthTask = ctx.service.nodeContractAuthService.nodeResolveReleaseContractSketch(presentableInfo, presentableAuthTree, nodeInfo, userInfo)
+
+        //节点侧直接返回每个合同的授权结果,发行的方案侧直接返回方案的授权结果(不具体到每个合约)
+        const {authTree} = presentableAuthTree
+        const [nodeResolveReleasesSketch, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
+
+        const recursion = (parentSchemeId = '', deep = 1) => {
+            return lodash.chain(authTree).filter(x => x.parentReleaseSchemeId === parentSchemeId && x.deep === deep)
+                .groupBy(x => x.releaseId).values().map(getReleaseVersionAuthInfo).value()
+        }
+
+        const getReleaseVersionAuthInfo = (releaseVersions) => {
+            let releaseInfo = lodash.chain(releaseVersions).first().pick(['releaseId', 'releaseName']).value()
+            let authFailedReleaseSchemes = releaseSideAuthResult.data.authFailedReleaseSchemes || []
+            releaseInfo.versions = releaseVersions.map(releaseVersion => {
+                let {releaseId, version, releaseSchemeId, deep} = releaseVersion
+                return {
+                    version, isAuth: deep === 1 ?
+                        nodeResolveReleasesSketch.find(x => x.releaseId === releaseId).contracts.some(x => x.isAuth)
+                        : !authFailedReleaseSchemes.some(x => x.schemeId === releaseSchemeId),
+                    children: recursion(releaseSchemeId, deep + 1),
+                }
+            })
+            return releaseInfo
+        }
+
+        return recursion()
+    }
 }

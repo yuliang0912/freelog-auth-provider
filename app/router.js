@@ -22,6 +22,7 @@ module.exports = app => {
     router.get('presentable-policy-identity-authorization', '/v1/auths/presentables/batchPolicyIdentityAuthentication', auth.v1.batchPresentablePolicyIdentityAuthentication)
     router.get('presentable-node-and-release-side-auth', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuth', auth.v1.presentableNodeAndReleaseSideAuth)
     router.get('presentable-batch-node-and-release-side-auth', '/v1/auths/presentables/batchNodeAndReleaseSideAuth', auth.v1.batchPresentableNodeAndReleaseSideAuth)
+    router.get('presentable-node-and-release-side-auth-sketch', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuthSketch', auth.v1.presentableNodeAndReleaseSideAuthSketch)
     router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', auth.v1.releaseAuth)
     router.get('release-auth', '/v1/auths/releases/:releaseId', auth.v1.releaseAuth)
     router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:releaseId.:extName', auth.v1.presentableSubReleaseAuth)

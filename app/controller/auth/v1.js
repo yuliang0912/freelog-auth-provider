@@ -117,17 +117,19 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validate(false)
 
+        if (identityType === 2 && !nodeId) {
+            throw new ArgumentError(ctx.gettext('params-comb-validate-failed', 'identityType,nodeId'), {versionRange})
+        }
+
         const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${releaseId}`)
         ctx.entityNullObjectCheck(releaseInfo)
 
-        var nodeInfo = null
         const version = semver.maxSatisfying(releaseInfo.resourceVersions.map(x => x.version), versionRange)
         if (!version) {
             throw new ArgumentError(ctx.gettext('params-validate-failed', 'versionRange'), {versionRange})
         }
-        if (identityType === 2 && !nodeId) {
-            throw new ArgumentError(ctx.gettext('params-comb-validate-failed', 'identityType,nodeId'), {versionRange})
-        }
+
+        var nodeInfo = null
         if (identityType === 2) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
             ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo)
@@ -138,7 +140,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             policyType: 1,
             partyOneUserId: releaseInfo.userId,
             partyTwoInfo: nodeInfo,
-            partyTwoUserInfo: ctx.request.identityInfo.userinfo,
+            partyTwoUserInfo: ctx.request.identityInfo.userInfo,
         })
 
         if (extName === 'auth') {
@@ -156,6 +158,45 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === version)
 
         await this._responseResourceFile(resourceVersion.resourceId, releaseId)
+    }
+
+    /**
+     * presentable授权树授权概况(树状图)
+     * @returns {Promise<void>}
+     */
+    async presentableNodeAndReleaseSideAuthSketch(ctx) {
+
+        const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
+        ctx.validate()
+
+        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        ctx.entityNullValueAndUserAuthorizationCheck(presentableInfo, {
+            msg: ctx.gettext('params-validate-failed', 'presentableId')
+        })
+
+        await ctx.service.presentableAuthService.presentableNodeAndReleaseSideAuthSketch(presentableInfo).then(ctx.success)
+    }
+
+    /**
+     * 发行具体版本(方案)的授权概况(树状图)
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async releaseSchemeAuthSketch(ctx) {
+
+        const releaseId = ctx.checkParams("releaseId").exist().isReleaseId().value
+        const version = ctx.checkParams("version").exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
+        ctx.validate()
+
+        const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${releaseId}`)
+        ctx.entityNullValueAndUserAuthorizationCheck(releaseInfo, {
+            msg: ctx.gettext('params-validate-failed', 'releaseId')
+        })
+
+        if (!releaseInfo.resourceVersions.some(x => x.version === version)) {
+            throw new ArgumentError(ctx.gettext('params-validate-failed', 'version'))
+        }
+
     }
 
     /**
@@ -220,10 +261,11 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         var nodeInfo = null
         if (nodeId) {
-            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`).then(model => ctx.entityNullValueAndUserAuthorizationCheck(model, {
+            nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
+            ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo, {
                 msg: ctx.gettext('params-validate-failed', 'nodeId'),
                 property: 'ownerUserId'
-            }))
+            })
         }
 
         if (policyIds.length && policyIds.length !== releaseIds.length) {
