@@ -62,13 +62,16 @@ module.exports = class ReleaseContractAuthService extends Service {
 
         const {ctx} = this
         const {resolveReleases} = releaseSchemeInfo
+        if (!resolveReleases.length) {
+            return resolveReleases
+        }
+
         const allSchemeContractIds = lodash.chain(resolveReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
 
         const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
         const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
         const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${userIds.toString()}`)
             .then(list => new Map(list.map(x => [x.userId, x])))
-
         const contractMap = new Map(contracts.map(x => [x.contractId, x]))
 
         await this._releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap)

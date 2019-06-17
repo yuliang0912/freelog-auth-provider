@@ -36,10 +36,10 @@ module.exports = class ContractService extends Service {
 
         const toBeSignedReleases = []
         releases.forEach(releaseInfo => releaseInfo.policies.forEach(policy => {
-            const {policyId, policyText, status} = policy
+            const {policyId, policyName, policyText, status} = policy
             const toBeSignedRelease = signReleaseMap.get(releaseInfo.releaseId)
             if (toBeSignedRelease.has(policyId)) {
-                const policyInfo = releasePolicyCompiler.compile(policyText)
+                const policyInfo = releasePolicyCompiler.compile(policyText, policyName)
                 policyInfo.status = status
                 policyInfo.policyId = policyId
                 toBeSignedReleases.push({releaseInfo, policyInfo})
@@ -55,7 +55,7 @@ module.exports = class ContractService extends Service {
                 partyOne: releaseId,
                 partyTwo: partyTwoId,
                 policySegment: policyInfo,
-                contractName: releaseName,
+                contractName: `${releaseName}-${policyInfo.policyName}`,
                 policyId: policyInfo.policyId,
                 policyStatus: policyInfo.status
             }

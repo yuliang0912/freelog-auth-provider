@@ -200,12 +200,10 @@ module.exports = class ContractController extends Controller {
         let nodeInfo = null
         if (contractType === ctx.app.contractType.ResourceToNode) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${partyTwoId}`)
-            if (!nodeInfo || nodeInfo.status !== 1) {
-                throw new ArgumentError(ctx.gettext('params-validate-failed', 'partyTwoId'))
-            }
-            if (nodeInfo.ownerUserId !== ctx.request.userId) {
-                throw new AuthorizationError(ctx.gettext('user-authorization-failed'))
-            }
+            ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo, {
+                msg: ctx.gettext('params-validate-failed', 'partyTwoId'),
+                property: 'ownerUserId'
+            })
         }
 
         await ctx.service.contractService.batchCreateReleaseContracts({
