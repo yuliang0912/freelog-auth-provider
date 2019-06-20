@@ -45,12 +45,6 @@ module.exports = class PresentableAuthService extends Service {
 
         const nodeAndReleaseSideAuthResult = await this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
 
-        if (nodeAndReleaseSideAuthResult.isAuth && subAuthTreeNode) {
-            nodeAndReleaseSideAuthResult.data.subReleases = lodash.chain(authTree).filter(x => x.parentReleaseSchemeId === subAuthTreeNode.releaseSchemeId).map(x => lodash.pick(x, ['releaseId', 'version'])).value()
-        } else if (nodeAndReleaseSideAuthResult.isAuth) {
-            nodeAndReleaseSideAuthResult.data.subReleases = authTree.filter(x => x.deep === 1 && x.releaseId !== releaseInfo.releaseId).map(x => lodash.pick(x, ['releaseId', 'version']))
-        }
-
         return nodeAndReleaseSideAuthResult
     }
 
@@ -138,4 +132,7 @@ module.exports = class PresentableAuthService extends Service {
 
         return recursion()
     }
+
+
+
 }

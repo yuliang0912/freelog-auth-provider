@@ -2,8 +2,6 @@
 
 const uuid = require('uuid')
 const lodash = require('lodash')
-const cryptoHelper = require('egg-freelog-base/app/extend/helper/crypto_helper')
-const {ApiInvokingError} = require('egg-freelog-base/error')
 
 module.exports = class contractPaymentService {
 

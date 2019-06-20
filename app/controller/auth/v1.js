@@ -39,9 +39,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 authCode: authResult.authCode, authResult
             })
         }
-        if (authResult.data.subReleases) {
-            ctx.set('freelog-sub-releases', authResult.data.subReleases.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
-        }
+
         if (extName === 'info') {
             return ctx.success(presentableInfo)
         }
@@ -52,7 +50,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === presentableInfo.releaseInfo.version)
 
-        await this._responseResourceFile(resourceVersion.resourceId, presentableId)
+        const subDependTask = this._responseSubDependToHeader(presentableId)
+        const responseResourceTask = this._responseResourceFile(resourceVersion.resourceId, presentableId)
+
+        await Promise.all([subDependTask, responseResourceTask])
     }
 
     /**
@@ -94,13 +95,14 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
                 authCode: authResult.authCode, authResult
             })
         }
-        if (authResult.data.subReleases) {
-            ctx.set('freelog-sub-releases', authResult.data.subReleases.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
-        }
         if (extName === 'info') {
             return ctx.success(subReleaseInfo)
         }
-        await this._responseResourceFile(resourceVersion.resourceId)
+
+        const subDependTask = this._responseSubDependToHeader(presentableId)
+        const responseResourceTask = this._responseResourceFile(resourceVersion.resourceId)
+
+        await Promise.all([subDependTask, responseResourceTask])
     }
 
     /**
@@ -307,6 +309,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async _responseResourceFile(resourceId, filename) {
 
         const {ctx} = this
+
         const signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceId}/signedResourceInfo`)
         const {aliasName, meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
 
@@ -324,5 +327,25 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.set('content-type', headers['content-type'])
             ctx.set('content-length', headers['content-length'])
         })
+    }
+
+    /**
+     * 响应依赖发行到http-header
+     * @param presentableId
+     * @param subReleaseId
+     * @param subReleaseVersion
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _responseSubDependToHeader(presentableId, subReleaseId, subReleaseVersion) {
+
+        const {ctx} = this
+        let url = `${ctx.webApi.presentableInfo}/${presentableId}/subDependencies`
+        if (subReleaseId) {
+            url += `?subReleaseId=${subReleaseId}&subReleaseVersion=${subReleaseVersion}`
+        }
+        const subDependencies = await ctx.curlIntranetApi(url)
+
+        ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
     }
 }
