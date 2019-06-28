@@ -7,7 +7,7 @@ module.exports = app => {
 
     //合同相关
     router.get('contract-list', '/v1/contracts/list', contract.v1.list)
-    router.get('terminated-contracts', '/v1/contracts/terminateContracts', contract.v1.terminatedContracts)
+    router.get('terminated-contracts', '/v1/contracts/terminatedContracts', contract.v1.terminatedContracts)
     router.post('batch-sign-release-contracts', '/v1/contracts/batchCreateReleaseContracts', contract.v1.batchCreateReleaseContracts)
     router.get('test-is-can-exec-event', '/v1/contracts/isCanExecEvent', contract.v1.isCanExecEvent)
     router.post('development-test-api', '/v1/contracts/test', contract.v1.testContractFsm)

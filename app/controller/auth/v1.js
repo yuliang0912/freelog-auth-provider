@@ -341,9 +341,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const {ctx} = this
         let url = `${ctx.webApi.presentableInfo}/${presentableId}/subDependencies`
-        if (subReleaseId) {
+        if (subReleaseId && subReleaseVersion) {
             url += `?subReleaseId=${subReleaseId}&subReleaseVersion=${subReleaseVersion}`
         }
+
         const subDependencies = await ctx.curlIntranetApi(url)
 
         ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
