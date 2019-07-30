@@ -1,7 +1,6 @@
 'use strict'
 
 const Patrun = require('patrun')
-const lodash = require('lodash')
 const ContractFsm = require('./lib/contract-fsm')
 const {ApplicationError} = require('egg-freelog-base/error')
 const GenerateContract = require('./lib/generate-contract')
@@ -12,7 +11,6 @@ const LicenseSignHandler = require('./singleton-event-handler/sign-license')
 const ContractPaymentHandler = require('./singleton-event-handler/contract-payment')
 const EscrowConfiscatedHandler = require('./singleton-event-handler/escrow-confiscated')
 const EscrowRefundedHandler = require('./singleton-event-handler/escrow-refunded-event')
-
 
 module.exports = class ContractService {
 
@@ -30,17 +28,15 @@ module.exports = class ContractService {
      */
     async createContract(ctx, contractBaseInfo, isInitial = true) {
 
-        contractBaseInfo._id = contractBaseInfo.contractId = this.app.mongoose.getNewObjectId()
-        const contractInfo = await this.generateContractService.generateContract(contractBaseInfo).then(contractInfo => {
-            return this.contractProvider.create(contractInfo)
-        })
+        await this.generateContractService.perfectContractInfo(contractBaseInfo)
+        await this.contractProvider.create(contractBaseInfo)
         if (isInitial) {
-            this.initialContractFsm(ctx, contractInfo)
+            this.initialContractFsm(ctx, contractBaseInfo)
         }
         if (contractBaseInfo.isDefault) {
             this.app.emit(ContractSetDefaultEvent, contractBaseInfo)
         }
-        return contractInfo
+        return contractBaseInfo
     }
 
     /**
@@ -49,13 +45,7 @@ module.exports = class ContractService {
      */
     async batchCreateContract(ctx, contractBaseInfos, isInitial = true) {
 
-        const generateContractTasks = []
-        for (var i = 0, j = contractBaseInfos.length; i < j; i++) {
-            const contractBaseInfo = contractBaseInfos[i]
-            contractBaseInfo._id = contractBaseInfo.contractId = this.app.mongoose.getNewObjectId()
-            generateContractTasks.push(this.generateContractService.generateContract(contractBaseInfo))
-        }
-
+        const generateContractTasks = contractBaseInfos.map(contractBaseInfo => this.generateContractService.perfectContractInfo(contractBaseInfo))
         const generateContracts = await Promise.all(generateContractTasks)
         return this.contractProvider.insertMany(generateContracts).tap(contracts => {
             isInitial && contracts.forEach(contractInfo => this.initialContractFsm(ctx, contractInfo))
@@ -75,6 +65,9 @@ module.exports = class ContractService {
         }
         if (!eventInfo.code.startsWith('S')) {
             throw new ApplicationError(ctx.gettext(`非单例事件,错误的调用`))
+        }
+        if (!this.isCanExecEvent(contractInfo, eventInfo.eventId)) {
+            throw new ApplicationError(ctx.gettext(`合同不能执行指定事件,请检查合同`))
         }
 
         const singletonEventHandler = this.patrun.find({eventCode: eventInfo.code})

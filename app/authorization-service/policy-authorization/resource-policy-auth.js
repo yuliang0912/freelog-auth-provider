@@ -10,7 +10,7 @@ const authCodeEnum = require('../../enum/auth-code')
  */
 module.exports = (ctx, {policySegment}) => {
 
-    const authResult = new AuthResult(authCodeEnum.BasedOnResourcePolicy, {policySegment})
+    const authResult = new AuthResult(authCodeEnum.BasedOnReleasePolicy, {policySegment})
 
     const fsmStates = Object.keys(policySegment.fsmStates)
     const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1 && fsmStates.some(m => /^(initial|init)$/i.test(m))

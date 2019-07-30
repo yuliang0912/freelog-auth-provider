@@ -23,10 +23,12 @@ module.exports = app => {
     router.get('presentable-node-and-release-side-auth', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuth', auth.v1.presentableNodeAndReleaseSideAuth)
     router.get('presentable-batch-node-and-release-side-auth', '/v1/auths/presentables/batchNodeAndReleaseSideAuth', auth.v1.batchPresentableNodeAndReleaseSideAuth)
     router.get('presentable-node-and-release-side-auth-sketch', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuthSketch', auth.v1.presentableNodeAndReleaseSideAuthSketch)
+    //以下六个路由不能随意调换顺序
     router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', auth.v1.releaseAuth)
     router.get('release-auth', '/v1/auths/releases/:releaseId', auth.v1.releaseAuth)
-    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:releaseId.:extName', auth.v1.presentableSubReleaseAuth)
-    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease/:releaseId', auth.v1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId.:extName', auth.v1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId', auth.v1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease', auth.v1.presentableSubReleaseAuth)
     router.get('presentable-auth-ext', '/v1/auths/presentables/:presentableId.:extName', auth.v1.presentableAuth)
     router.get('presentable-auth', '/v1/auths/presentables/:presentableId', auth.v1.presentableAuth)
 

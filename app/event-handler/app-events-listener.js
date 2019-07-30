@@ -14,7 +14,11 @@ const EventRegisterCompletedEventHandler = require('./outside-events-handler/eve
 const ContractFsmStateTransitioningEventHandler = require('./internal-event-handler/fsm-state-transitioning-handler')
 const ContractFsmTransitionCompletedHandler = require('./internal-event-handler/fsm-state-transition-completed-handler')
 
-
+const ReleaseSchemeCreateEventHandler = require('./release-scheme-auth-events-handler/scheme-created-event-handler')
+const ReleaseSchemeBindContractEventHandler = require('./release-scheme-auth-events-handler/scheme-bind-contract-event-handler')
+const ReleaseSchemeAuthChangedEventHandler = require('./release-scheme-auth-events-handler/scheme-auth-changed-event-handler')
+const ReleaseSchemeAuthResultResetEventHandler = require('./release-scheme-auth-events-handler/scheme-auth-result-reset-event-handler')
+const ReleaseContractAuthChangedEventHandler = require('./release-scheme-auth-events-handler/release-contract-auth-changed-event-handler')
 
 module.exports = class AppEventsListener {
 
@@ -30,17 +34,25 @@ module.exports = class AppEventsListener {
      */
     registerEventListener() {
 
-        const {PaymentOrderStatusChangedEvent, TransferRecordTradeStatusChangedEvent, RegisteredEventTriggerEvent, InquirePaymentEvent, InquireTransferEvent, RegisterCompletedEvent} = outsideSystemEvent
+        //外部事件
+        this.registerEventAndHandler(outsideSystemEvent.InquirePaymentEvent)
+        this.registerEventAndHandler(outsideSystemEvent.InquireTransferEvent)
+        this.registerEventAndHandler(outsideSystemEvent.RegisterCompletedEvent)
+        this.registerEventAndHandler(outsideSystemEvent.RegisteredEventTriggerEvent)
+        this.registerEventAndHandler(outsideSystemEvent.PaymentOrderStatusChangedEvent)
+        this.registerEventAndHandler(outsideSystemEvent.TransferRecordTradeStatusChangedEvent)
 
-        this.registerEventAndHandler(InquirePaymentEvent)
-        this.registerEventAndHandler(InquireTransferEvent)
-        this.registerEventAndHandler(RegisterCompletedEvent)
-        this.registerEventAndHandler(RegisteredEventTriggerEvent)
+        //发行授权事件
+        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeCreateEvent)
+        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeBindContractEvent)
+        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeAuthChangedEvent)
+        this.registerEventAndHandler(outsideSystemEvent.ReleaseContractAuthChangedEvent)
+        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeAuthResetEvent)
+
+        //合同状态机事件
         this.registerEventAndHandler(contractFsmEvents.ContractFsmStateChangedEvent)
         this.registerEventAndHandler(contractFsmEvents.ContractFsmEventTriggerEvent)
-        this.registerEventAndHandler(PaymentOrderStatusChangedEvent)
         this.registerEventAndHandler(contractFsmEvents.ContractFsmStateTransitionCompletedEvent)
-        this.registerEventAndHandler(TransferRecordTradeStatusChangedEvent)
     }
 
     /**
@@ -64,15 +76,23 @@ module.exports = class AppEventsListener {
 
         const {app, patrun} = this
 
-        const {PaymentOrderStatusChangedEvent, TransferRecordTradeStatusChangedEvent, RegisteredEventTriggerEvent, InquirePaymentEvent, InquireTransferEvent, RegisterCompletedEvent} = outsideSystemEvent
+        //外部事件
+        patrun.add({event: outsideSystemEvent.InquirePaymentEvent.toString()}, new InquirePaymentEventHandler(app))
+        patrun.add({event: outsideSystemEvent.InquireTransferEvent.toString()}, new InquireTransferEventHandler(app))
+        patrun.add({event: outsideSystemEvent.RegisterCompletedEvent.toString()}, new EventRegisterCompletedEventHandler(app))
+        patrun.add({event: outsideSystemEvent.RegisteredEventTriggerEvent.toString()}, new RegisteredEventTriggerHandler(app))
+        patrun.add({event: outsideSystemEvent.PaymentOrderStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
+        patrun.add({event: outsideSystemEvent.TransferRecordTradeStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
 
-        patrun.add({event: InquirePaymentEvent.toString()}, new InquirePaymentEventHandler(app))
-        patrun.add({event: InquireTransferEvent.toString()}, new InquireTransferEventHandler(app))
+        //发行授权事件
+        patrun.add({event: outsideSystemEvent.ReleaseSchemeCreateEvent.toString()}, new ReleaseSchemeCreateEventHandler(app))
+        patrun.add({event: outsideSystemEvent.ReleaseSchemeBindContractEvent.toString()}, new ReleaseSchemeBindContractEventHandler(app))
+        patrun.add({event: outsideSystemEvent.ReleaseContractAuthChangedEvent.toString()}, new ReleaseContractAuthChangedEventHandler(app))
+        patrun.add({event: outsideSystemEvent.ReleaseSchemeAuthChangedEvent.toString()}, new ReleaseSchemeAuthChangedEventHandler(app))
+        patrun.add({event: outsideSystemEvent.ReleaseSchemeAuthResetEvent.toString()}, new ReleaseSchemeAuthResultResetEventHandler(app))
+
+        //状态机事件
         patrun.add({event: contractFsmEvents.ContractFsmEventTriggerEvent.toString()}, new ContractEventTriggerHandler(app))
-        patrun.add({event: RegisterCompletedEvent.toString()}, new EventRegisterCompletedEventHandler(app))
-        patrun.add({event: RegisteredEventTriggerEvent.toString()}, new RegisteredEventTriggerHandler(app))
-        patrun.add({event: PaymentOrderStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
-        patrun.add({event: TransferRecordTradeStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
         patrun.add({event: contractFsmEvents.ContractFsmStateChangedEvent.toString()}, new ContractFsmStateTransitioningEventHandler(app))
         patrun.add({event: contractFsmEvents.ContractFsmStateTransitionCompletedEvent.toString()}, new ContractFsmTransitionCompletedHandler(app))
         patrun.add({event: contractFsmEvents.ContractSetDefaultEvent.toString()}, new ContractSetDefaultEventHandler(app))

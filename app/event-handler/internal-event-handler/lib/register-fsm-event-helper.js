@@ -1,7 +1,7 @@
 'use strict'
 
 const Patrun = require('patrun')
-const {RegisterEventToEventCenter, UnregisterEventFromEventCenter} = require('../../../enum/rabbit-mq-event')
+const {RegisterEventToEventCenter, UnregisterEventFromEventCenter} = require('../../../enum/rabbit-mq-publish-event')
 
 module.exports = class RegisterFsmEventHelper {
 

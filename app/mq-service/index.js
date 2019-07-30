@@ -1,7 +1,6 @@
 'use strict'
 
 const Patrun = require('patrun')
-const rabbit = require('../extend/helper/rabbit_mq_client')
 const outsideSystemEvent = require('../enum/outside-system-event')
 
 module.exports = class RabbitMessageQueueEventHandler {
@@ -17,11 +16,25 @@ module.exports = class RabbitMessageQueueEventHandler {
      * 订阅rabbitMQ消息
      */
     subscribe() {
-        new rabbit(this.app.config.rabbitMq).connect().then(client => {
-            const handlerFunc = this.handleMessage.bind(this)
-            client.subscribe('auth#contract-event-receive-queue', handlerFunc)
-            client.subscribe('auth#event-register-completed-queue', handlerFunc)
-        }).catch(console.error)
+
+        const rabbitClient = this.app.rabbitClient
+        const handlerFunc = this.handleMessage.bind(this)
+
+        const subscribeQueue = function () {
+            rabbitClient.subscribe('auth#contract-event-receive-queue', handlerFunc)
+            rabbitClient.subscribe('auth#event-register-completed-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-scheme-created-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-scheme-bind-contract-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-scheme-auth-reset-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-scheme-contract-auth-changed-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-scheme-auth-changed-queue', handlerFunc)
+        }
+
+        if (rabbitClient.isReady) {
+            subscribeQueue()
+        } else {
+            rabbitClient.on('ready', subscribeQueue)
+        }
     }
 
     /**
@@ -55,35 +68,64 @@ module.exports = class RabbitMessageQueueEventHandler {
     __registerEventHandler__() {
 
         const {patrun, app} = this
-        const {PaymentOrderStatusChangedEvent, TransferRecordTradeStatusChangedEvent, RegisteredEventTriggerEvent, InquirePaymentEvent, InquireTransferEvent, RegisterCompletedEvent} = outsideSystemEvent
 
         //注册到事件中心的事件触发了
         patrun.add({routingKey: 'event.contract.trigger'}, ({message}) => {
-            app.emit(RegisteredEventTriggerEvent, message)
+            app.emit(outsideSystemEvent.RegisteredEventTriggerEvent, message)
         })
 
         //支付中心支付订单状态变更事件
         patrun.add({routingKey: 'event.payment.order', eventName: 'PaymentOrderTradeStatusChanged'}, ({message}) => {
-            app.emit(PaymentOrderStatusChangedEvent, message)
+            app.emit(outsideSystemEvent.PaymentOrderStatusChangedEvent, message)
         })
 
         patrun.add({routingKey: 'event.payment.order', eventName: 'TransferRecordTradeStatusChanged'}, ({message}) => {
-            app.emit(TransferRecordTradeStatusChangedEvent, message)
+            app.emit(outsideSystemEvent.TransferRecordTradeStatusChangedEvent, message)
         })
 
         //支付中心确认函事件(支付)
         patrun.add({routingKey: 'event.payment.order', eventName: 'inquirePaymentEvent'}, ({message}) => {
-            app.emit(InquirePaymentEvent, message)
+            app.emit(outsideSystemEvent.InquirePaymentEvent, message)
         })
 
         //支付中心确认函事件(转账)
         patrun.add({routingKey: 'event.payment.order', eventName: 'inquireTransferEvent'}, ({message}) => {
-            app.emit(InquireTransferEvent, message)
+            app.emit(outsideSystemEvent.InquireTransferEvent, message)
+        })
+
+        //创建发行方案事件
+        patrun.add({routingKey: 'release.scheme.created', eventName: 'releaseSchemeCreatedEvent'}, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseSchemeCreateEvent, message)
+        })
+
+        //发行方案绑定合同(或切换合同)事件
+        patrun.add({
+            routingKey: 'release.scheme.bindContract', eventName: 'releaseSchemeBindContractEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseSchemeBindContractEvent, message)
+        })
+
+        patrun.add({
+            routingKey: 'auth.releaseScheme.contractStatus.changed', eventName: 'releaseSchemeContractAuthChangedEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseSchemeContractAuthChangedEvent, message)
+        })
+
+        patrun.add({
+            routingKey: 'auth.releaseScheme.authStatus.changed', eventName: 'releaseSchemeAuthChangedEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseSchemeAuthChangedEvent, message)
+        })
+
+        patrun.add({
+            routingKey: 'auth.releaseScheme.authStatus.reset', eventName: 'releaseSchemeAuthResultResetEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseSchemeAuthResetEvent, message)
         })
 
         //事件注册完成事件
         patrun.add({routingKey: 'register.event.completed'}, ({message, header}) => {
-            app.emit(RegisterCompletedEvent, message, header.eventName)
+            app.emit(outsideSystemEvent.RegisterCompletedEvent, message, header.eventName)
         })
     }
 }

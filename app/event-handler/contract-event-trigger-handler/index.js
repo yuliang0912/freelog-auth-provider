@@ -12,8 +12,10 @@ module.exports = class ContractEventTriggerHandler {
      * @param eventId
      */
     async handler(contractId, eventId) {
+
         await this.app.contractService.execContractFsmEvent(contractId, eventId)
             .catch(error => this.errorHandler(error, contractId, eventId))
+        
     }
 
     /**

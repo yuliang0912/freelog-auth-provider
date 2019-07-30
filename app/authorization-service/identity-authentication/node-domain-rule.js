@@ -21,6 +21,11 @@ module.exports = (ctx, {authUserObject, partyTwoInfo}) => {
         throw new ArgumentError(ctx.gettext('params-validate-failed', 'partyTwoInfo'), {partyTwoInfo})
     }
 
+    if (partyTwoInfo.status === 2) {
+        authResult.authCode = authCodeEnum.NodeUnusable
+        return authResult
+    }
+
     const {users} = authUserObject
     const nodeDomainCheckRule = new RegExp(`${partyTwoInfo.nodeDomain}(.freelog.com(\/)?)?$`, "i")
     if (users.some(x => nodeDomainCheckRule.test(x))) {

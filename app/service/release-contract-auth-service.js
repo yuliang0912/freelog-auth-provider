@@ -30,7 +30,7 @@ module.exports = class ReleaseContractAuthService extends Service {
         //过滤掉已经获得授权的方案(没有依赖的OR缓存中通过授权的)
         const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes)
         if (!releaseSchemes.length) {
-            return new commonAuthResult(authCodeEnum.BasedOnResourceContract)
+            return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
         }
 
         this._getSchemePracticalUsedReleases(releaseSchemes, presentableAuthTree)
@@ -114,7 +114,7 @@ module.exports = class ReleaseContractAuthService extends Service {
 
         let {ctx} = this, index = 0
         const authorizedReleaseSet = new Set() //授权通过的方案-发行
-        const returnAuthResult = new commonAuthResult(authCodeEnum.BasedOnResourceContract)
+        const returnAuthResult = new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
 
         while (true) {
             let batchContracts = []
@@ -156,7 +156,7 @@ module.exports = class ReleaseContractAuthService extends Service {
 
         const authFailedReleaseSchemes = releaseSchemes.filter(({schemeId, resolveReleases}) => resolveReleases.some(m => !authorizedReleaseSet.has(schemeId + m.releaseId)))
         if (authFailedReleaseSchemes.length) {
-            returnAuthResult.authCode = authCodeEnum.ResourceContractNotActive
+            returnAuthResult.authCode = authCodeEnum.ReleaseContractNotActive
             returnAuthResult.data.authFailedReleaseSchemes = authFailedReleaseSchemes
         }
 
@@ -191,7 +191,7 @@ module.exports = class ReleaseContractAuthService extends Service {
     _batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes) {
 
         const {ctx} = this
-        const authResult = new commonAuthResult(authCodeEnum.BasedOnResourceContract)
+        const authResult = new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
         const tasks = authorisedReleaseSchemes.map(item => ctx.service.authTokenService.saveReleaseSchemeAuthResult(item, authResult))
 
         return Promise.all(tasks)

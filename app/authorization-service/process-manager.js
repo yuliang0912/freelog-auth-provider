@@ -30,7 +30,7 @@ module.exports = {
      */
     async policyAuthorization(ctx, {policySegments, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
-        const authResult = new commonAuthResult(authCodeEnum.BasedOnResourcePolicy)
+        const authResult = new commonAuthResult(authCodeEnum.BasedOnReleasePolicy)
         const params = {policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
 
         for (let i = 0, j = policySegments.length; i < j; i++) {

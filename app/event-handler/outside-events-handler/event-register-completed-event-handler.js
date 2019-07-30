@@ -1,6 +1,5 @@
 'use strict'
 
-const contractStatusEnum = require('../../enum/contract-status-enum')
 const {ContractFsmStateTransitionCompletedEvent} = require('../../enum/contract-fsm-event')
 
 /**

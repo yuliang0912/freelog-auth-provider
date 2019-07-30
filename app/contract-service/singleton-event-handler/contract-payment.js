@@ -16,6 +16,7 @@ module.exports = class ContractPaymentHandler {
 
     /**
      * 合同支付事件处理
+     * 金额由前端计算一次,提示用户付款金额,后端根据合同再次计算,然后做一致性校验
      */
     async handler(ctx, {contractInfo, eventInfo, userInfo, fromAccountId, amount, password}) {
 

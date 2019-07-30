@@ -1,7 +1,7 @@
 'use strict'
 
 const tradeStatus = require('../../enum/trade-status')
-const {ReplyAndSetInquireTransferResult} = require('../../enum/rabbit-mq-event')
+const {ReplyAndSetInquireTransferResult} = require('../../enum/rabbit-mq-publish-event')
 
 module.exports = class InquireTransferEventHandler {
 

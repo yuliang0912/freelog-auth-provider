@@ -12,9 +12,13 @@ module.exports = class GenerateContract {
     }
 
     /**
-     * 根据策略生成合同
+     * 根据策略生成合同perfect
      */
-    async generateContract(contractInfo) {
+    async perfectContractInfo(contractInfo) {
+
+        if (!contractInfo.contractId) {
+            contractInfo._id = contractInfo.contractId = this.app.mongoose.getNewObjectId()
+        }
 
         const {contractId, policySegment, partyTwoUserId, isDynamicAuthentication} = contractInfo
 

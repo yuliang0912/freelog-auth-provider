@@ -25,9 +25,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullObjectCheck(presentableInfo)
-        if (presentableInfo.isOnline !== 1) {
-            throw new ArgumentError(ctx.gettext('presentable-online-check-failed'))
-        }
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
         if (extName === 'auth') {
@@ -64,18 +61,23 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableSubReleaseAuth(ctx) {
 
         const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
-        const subReleaseId = ctx.checkParams('releaseId').exist().isReleaseId().value
+        const subReleaseId = ctx.checkParams('subReleaseId').optional().isReleaseId().value
+        const subReleaseName = ctx.checkQuery('subReleaseName').optional().isFullReleaseName().value
         const version = ctx.checkQuery('version').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validate(false)
+        
+        if (!subReleaseId && !subReleaseName) {
+            throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'subReleaseName'))
+        }
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullObjectCheck(presentableInfo)
-        if (presentableInfo.isOnline !== 1) {
-            throw new ArgumentError(ctx.gettext('presentable-online-check-failed'))
-        }
 
-        const subReleaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${subReleaseId}`)
+        const subReleaseInfo = subReleaseId ?
+            await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${subReleaseId}`) :
+            await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/detail?releaseName=${subReleaseName}`)
+
         ctx.entityNullObjectCheck(subReleaseInfo)
 
         const resourceVersion = subReleaseInfo.resourceVersions.find(x => x.version === version)

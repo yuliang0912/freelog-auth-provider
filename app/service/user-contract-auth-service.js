@@ -28,7 +28,7 @@ module.exports = class UserContractAuthService extends Service {
 
         var unLoginUserAuthResult = await this._unLoginUserPresentablePolicyAuth(presentableInfo)
         if (!unLoginUserAuthResult.isAuth) {
-            unLoginUserAuthResult.authCode = authCodeEnum.NotFoundUserInfo
+            unLoginUserAuthResult.authCode = authCodeEnum.UnLoginUser
         }
 
         return unLoginUserAuthResult

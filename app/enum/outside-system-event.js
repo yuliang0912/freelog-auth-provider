@@ -31,4 +31,29 @@ module.exports = {
      * 事件注册完成事件
      */
     RegisterCompletedEvent: Symbol('auth#registerCompletedEvent'),
+
+    /**
+     * 发行方案创建事件
+     */
+    ReleaseSchemeCreateEvent: Symbol('auth#releaseSchemeCreateEvent'),
+
+    /**
+     * 发行方案绑定合同事件
+     */
+    ReleaseSchemeBindContractEvent: Symbol('auth#releaseSchemeBindContractEvent'),
+
+    /**
+     * 发行方案授权状态变更事件
+     */
+    ReleaseSchemeAuthChangedEvent: Symbol('auth#releaseSchemeAuthChangedEvent'),
+
+    /**
+     * 发行方案所关联的合同授权发生变更事件
+     */
+    ReleaseContractAuthChangedEvent: Symbol('auth#releaseContractAuthChangedEvent'),
+
+    /**
+     * 发行方案授权重置事件(重新计算授权状态)
+     */
+    ReleaseSchemeAuthResetEvent: Symbol('auth#releaseSchemeAuthResetEvent'),
 }

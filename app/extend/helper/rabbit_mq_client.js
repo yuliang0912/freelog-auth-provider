@@ -157,6 +157,7 @@ module.exports = class rabbitMqClient extends Emitter {
                     }
                 }))
                 this.isReady = true
+                this.emit('ready')
                 resolve(this.instance)
             })
             this.exchange.on('basic-return', (args) => {

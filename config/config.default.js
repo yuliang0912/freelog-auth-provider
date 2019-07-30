@@ -102,6 +102,56 @@ module.exports = appInfo => {
                             routingKey: 'register.event.completed'
                         }
                     ]
+                },
+                {
+                    name: 'auth#release-scheme-bind-contract-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-resource-exchange',
+                            routingKey: 'release.scheme.bindContract'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#release-scheme-created-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-resource-exchange',
+                            routingKey: 'release.scheme.created'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#release-scheme-auth-changed-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'auth.releaseScheme.authStatus.changed'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#release-scheme-contract-auth-changed-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'auth.releaseScheme.contractStatus.changed'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#release-scheme-auth-reset-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'auth.releaseScheme.authStatus.reset'
+                        }
+                    ]
                 }
             ]
         },

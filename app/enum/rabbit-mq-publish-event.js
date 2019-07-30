@@ -47,4 +47,36 @@ module.exports = {
         routingKey: 'presentable.onlineAuth.event',
         eventName: 'presentableOnlineAuthEvent'
     }),
+
+    /**
+     * 创建合同事件
+     */
+    CreateContractEvent: Object.freeze({
+        routingKey: 'contract.create.event',
+        eventName: 'createContractEvent'
+    }),
+
+    /**
+     * 发行方案关联绑定的合约授权状态计算事件
+     */
+    ReleaseSchemeContractAuthChangedEvent: Object.freeze({
+        routingKey: 'auth.releaseScheme.contractStatus.changed',
+        eventName: 'releaseSchemeContractAuthChangedEvent'
+    }),
+
+    /**
+     * 发行方案的授权状态已变更事件
+     */
+    ReleaseSchemeAuthChangedEvent: Object.freeze({
+        routingKey: 'auth.releaseScheme.authStatus.changed',
+        eventName: 'releaseSchemeAuthChangedEvent'
+    }),
+
+    /**
+     * 重新计算发行方案授权结果事件
+     */
+    ReleaseSchemeAuthResultResetEvent: Object.freeze({
+        routingKey: 'auth.releaseScheme.authStatus.reset',
+        eventName: 'releaseSchemeAuthResultResetEvent'
+    }),
 }

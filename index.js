@@ -1,15 +1,16 @@
-/**
- * Created by yuliang on 2017/8/17.
- */
+'use strict'
 
-require('egg').startCluster({
+const egg = require('egg')
+
+egg.startCluster({
     baseDir: __dirname,
     port: process.env.PORT || 7008,
     workers: 1
 });
 
-const lodash = require('lodash')
 
+
+// const lodash = require('lodash')
 //console.log(lodash.sortedUniqBy(lodash.flatMapDeep(arr, 'tree.contractId'), 'contractId'))
 
 // var Kardia = require('kardia');

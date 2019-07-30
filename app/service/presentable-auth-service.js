@@ -2,7 +2,9 @@
 
 const lodash = require('lodash')
 const Service = require('egg').Service
+const authCodeEnum = require('../enum/auth-code')
 const {ApplicationError} = require('egg-freelog-base/error')
+const commonAuthResult = require('../authorization-service/common-auth-result')
 
 module.exports = class PresentableAuthService extends Service {
 
@@ -22,7 +24,11 @@ module.exports = class PresentableAuthService extends Service {
 
         const {ctx} = this
         const {userInfo} = ctx.request.identityInfo
-        const {presentableId, releaseInfo, nodeId, userId} = presentableInfo
+        const {presentableId, isOnline, nodeId, userId} = presentableInfo
+
+        if (!isOnline) {
+            return new commonAuthResult(authCodeEnum.PresentableNotOnline)
+        }
 
         const userContractAuthResult = await ctx.service.userContractAuthService.userContractAuth(presentableInfo, userInfo)
         if (!userContractAuthResult.isAuth) {
@@ -43,9 +49,7 @@ module.exports = class PresentableAuthService extends Service {
             }
         }
 
-        const nodeAndReleaseSideAuthResult = await this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
-
-        return nodeAndReleaseSideAuthResult
+        return this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
     }
 
     /**
@@ -132,7 +136,5 @@ module.exports = class PresentableAuthService extends Service {
 
         return recursion()
     }
-
-
 
 }

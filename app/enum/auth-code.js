@@ -8,12 +8,12 @@ module.exports = Object.freeze({
     /**
      * 基于全链路授权树授权
      */
-    BaseOnLinkTrack: 200,
+    //BaseOnLinkTrack: 200,
 
     /**
      * 基于资源合同(授权点)授权(resource to resource contract)
      */
-    BasedOnResourceContract: 201,
+    BasedOnReleaseContract: 201,
 
     /**
      * 基于节点合同授权(node to resource contract)
@@ -28,7 +28,7 @@ module.exports = Object.freeze({
     /**
      * 基于资源的策略(resource policy)
      */
-    BasedOnResourcePolicy: 204,
+    BasedOnReleasePolicy: 204,
 
     /**
      * 基于节点的策略授权(presentable policy)
@@ -36,59 +36,59 @@ module.exports = Object.freeze({
     BasedOnNodePolicy: 205,
 
     /**
-     * 基于个人用户认证
+     * 基于个人用户认证 (内部使用的错误码)
      */
     BasedOnIndividuals: 261,
 
     /**
-     * 基于用户组策略
+     * 基于用户组策略 (内部使用的错误码)
      */
     BasedOnGroup: 262,
 
     /**
-     * 基于用户自定义分组
+     * 基于用户自定义分组 (内部使用的错误码)
      */
     BasedOnCustomGroup: 263,
 
     /**
-     * 基于节点域名
+     * 基于节点域名 (内部使用的错误码)
      */
     BasedOnDomain: 264,
 
     /**
-     * 给予重签授权
+     * 基于重签授权
      */
-    BasedOnReContractableSign: 265,
+    //BasedOnReContractableSign: 265,
 
     /**
      * 给予presentable重签授权
      */
-    BasedOnPresentableSign: 266,
+    //BasedOnPresentableSign: 266,
 
     /**
      * 基于最后一次授权结果的缓存授权
      */
-    BaseOnLatestAuthCache: 299,
+    //BaseOnLatestAuthCache: 299,
 
     /**
      * 资源合同未激活
      */
-    ResourceContractNotActive: 301,
+    ReleaseContractNotActive: 301,
 
     /**
      * 资源合同中的策略身份认证失败
      */
-    ResourceContractIdentityAuthenticationFailed: 302,
+    ReleaseContractIdentityAuthenticationFailed: 302,
 
     /**
-     * 未找到有效的资源合同(未签约或者废弃)
+     * 未找到有效的资源合同(合约已终止)
      */
-    NotFoundResourceContract: 303,
+    ReleaseContractTerminated: 303,
 
     /**
      * 未找到资源的所有人信息
      */
-    NotFoundResourceOwnerUserInfo: 304,
+    //NotFoundResourceOwnerUserInfo: 304,
 
     /**
      * 节点合同未激活
@@ -101,23 +101,19 @@ module.exports = Object.freeze({
     NodeContractIdentityAuthenticationFailed: 402,
 
     /**
-     * 未找到有效的节点合同(未签约或者废弃)
+     * 未找到有效的节点合同(合约已终止)
      */
-    NotFoundNodeContract: 403,
+    NodeContractTerminated: 403,
 
-    /**
-     * 节点不满足资源策略中的身份认证 (不满足策略,说明需要合同.此处直接返回未找到合同即可)
-     *  ResourcePolicyIdentityAuthenticationFailedForNodeInfo: 404,
-     */
     /**
      * 未找到有效的节点信息(注销或者其他原因)
      */
-    NotFoundNodeInfo: 404,
+    NodeUnusable: 404,
 
     /**
      * 未找到节点的所有人用户信息
      */
-    NotFoundNodeOwnerUserInfo: 405,
+    //NotFoundNodeOwnerUserInfo: 405,
 
     /**
      * 节点presentable未上线
@@ -140,27 +136,32 @@ module.exports = Object.freeze({
     NotFoundUserPresentableContract: 503,
 
     /**
+     * 用户合同已终止
+     */
+    UserContractTerminated: 504,
+
+    /**
      * 未找到有效的resource合约(用户尚未与资源签约或者合约已废弃)
      */
-    NotFoundUserResourceContract: 504,
+    //NotFoundUserResourceContract: 504,
 
     /**
      * 未找到用户信息(未登陆或已注销)
      */
-    NotFoundUserInfo: 505,
+    UnLoginUser: 505,
 
     /**
      * [过时的]无法确定执行哪个用户合同(多个合同存在时,新版本已经设置了默认合同 此错误码已无意义)
      */
-    UnsureExecuteUserContracts: 506,
+    //UnsureExecuteUserContracts: 506,
 
     /**
      * 资源授权token无效
      */
-    ResourceAuthTokenInvalid: 507,
+    //ResourceAuthTokenInvalid: 507,
 
     /**
-     * 策略身份认证失败
+     * 策略身份认证失败(内部使用的错误码)
      */
     PolicyIdentityAuthenticationFailed: 601,
 
@@ -171,13 +172,13 @@ module.exports = Object.freeze({
 
     /**
      * 转签授权失败
-     */
-    ReContractableSignAuthFailed: 701,
+     *
+     //ReContractableSignAuthFailed: 701,
 
-    /**
+     /**
      * presentable签约授权失败
      */
-    PresentableSignAuthFailed: 702,
+    //PresentableSignAuthFailed: 702,
 
     /**
      * 系统异常

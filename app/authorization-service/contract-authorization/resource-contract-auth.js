@@ -14,12 +14,12 @@ module.exports = (ctx, {contract}) => {
     }
 
     if (contract.isActivated) {
-        authResult.authCode = authCodeEnum.BasedOnResourceContract
+        authResult.authCode = authCodeEnum.BasedOnReleaseContract
         return authResult
     }
 
-    authResult.authCode = authCodeEnum.ResourceContractNotActive
-    authResult.addError(ctx.gettext('资源合同未激活'))
+    authResult.authCode = authCodeEnum.ReleaseContractNotActive
+    authResult.addError(ctx.gettext('发行合同未激活'))
     
     return authResult
 }

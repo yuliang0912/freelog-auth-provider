@@ -1,7 +1,7 @@
 'use strict'
 
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {PresentableConsumptionEvent, PresentableOnlineAuthEvent} = require('../../enum/rabbit-mq-event')
+const {PresentableConsumptionEvent, PresentableOnlineAuthEvent} = require('../../enum/rabbit-mq-publish-event')
 
 /**
  * 状态机状态过渡完成事件处理

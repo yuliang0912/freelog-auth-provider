@@ -55,6 +55,7 @@ module.exports = class ContractService extends Service {
                 partyOne: releaseId,
                 partyTwo: partyTwoId,
                 policySegment: policyInfo,
+                nodeId: nodeInfo ? nodeInfo.nodeId : 0,
                 contractName: `${releaseName}-${policyInfo.policyName}`,
                 policyId: policyInfo.policyId,
                 policyStatus: policyInfo.status
@@ -166,9 +167,7 @@ module.exports = class ContractService extends Service {
         }
 
         return this.contractProvider.updateOne({_id: contractInfo.id}, model).tap(() => {
-            if (isDefault) {
-                this.app.emit(ContractSetDefaultEvent, contractInfo)
-            }
+            isDefault && this.app.emit(ContractSetDefaultEvent, contractInfo)
         }).then(data => Boolean(data.nModified > 0))
     }
 }
