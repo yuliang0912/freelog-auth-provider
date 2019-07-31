@@ -9,6 +9,7 @@ module.exports = app => {
         resourceId: {type: String, required: true},
         schemeId: {type: String, required: true},
         version: {type: String, required: true},
+        resolveReleaseCount: {type: Number, default: 0, required: true},
         isAuth: {type: Number, enum: [0, 1], default: 0, required: true},
         //0:初始太 1:自身已授权 2:自身未授权 4:授权链上游已获得授权 7:授权链上游未获得授权 (单一资源状态 (1 | 4 ) = 5)
         status: {type: Number, required: true, default: 0},
@@ -34,6 +35,7 @@ module.exports = app => {
 
     ReleaseAuthResultSchema.index({version: 1, status: 1})
     ReleaseAuthResultSchema.index({schemeId: 1}, {unique: true})
+    ReleaseAuthResultSchema.index({releaseId: 1, version: 1}, {unique: true})
 
     return mongoose.model('release-scheme-auth-result', ReleaseAuthResultSchema)
 }

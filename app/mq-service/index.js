@@ -28,6 +28,8 @@ module.exports = class RabbitMessageQueueEventHandler {
             rabbitClient.subscribe('auth#release-scheme-auth-reset-queue', handlerFunc)
             rabbitClient.subscribe('auth#release-scheme-contract-auth-changed-queue', handlerFunc)
             rabbitClient.subscribe('auth#release-scheme-auth-changed-queue', handlerFunc)
+            rabbitClient.subscribe('auth#release-contract-auth-changed-queue', handlerFunc)
+
         }
 
         if (rabbitClient.isReady) {
@@ -121,6 +123,10 @@ module.exports = class RabbitMessageQueueEventHandler {
             routingKey: 'auth.releaseScheme.authStatus.reset', eventName: 'releaseSchemeAuthResultResetEvent'
         }, ({message}) => {
             app.emit(outsideSystemEvent.ReleaseSchemeAuthResetEvent, message)
+        })
+
+        patrun.add({eventName: 'ContractAuthChangedEvent'}, ({message}) => {
+            app.emit(outsideSystemEvent.ReleaseContractAuthChangedEvent, message)
         })
 
         //事件注册完成事件

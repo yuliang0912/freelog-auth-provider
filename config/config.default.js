@@ -152,6 +152,16 @@ module.exports = appInfo => {
                             routingKey: 'auth.releaseScheme.authStatus.reset'
                         }
                     ]
+                },
+                {
+                    name: 'auth#release-contract-auth-changed-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'contract.1.contractStatus.changed'
+                        }
+                    ]
                 }
             ]
         },

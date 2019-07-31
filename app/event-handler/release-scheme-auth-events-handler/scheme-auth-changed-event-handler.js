@@ -17,8 +17,24 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
      */
     async handler({schemeId}) {
 
-        const {app} = this
         const {releaseId, version} = await this.releaseAuthResultProvider.findOne({schemeId})
+
+        const task1 = this.noticeDownstreamReleaseScheme(releaseId, schemeId, version)
+        const task2 = this.noticeDownstreamPresentable(releaseId, schemeId, version)
+
+        await Promise.all([task1, task2])
+    }
+
+    /**
+     * 通知下游使用此版本发行的其他发行
+     * @param releaseId
+     * @param schemeId
+     * @param version
+     * @returns {Promise<void>}
+     */
+    async noticeDownstreamReleaseScheme(releaseId, schemeId, version) {
+
+        const {app} = this
         const {resourceVersions} = await app.curlIntranetApi(`${app.webApi.releaseInfo}/${releaseId}`)
         const releaseVersions = resourceVersions.map(x => x.version)
 
@@ -33,5 +49,13 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
         })))
 
         await Promise.all(tasks)
+    }
+
+    /**
+     * 通知使用并解决此版本发行的presentable
+     * @returns {Promise<void>}
+     */
+    async noticeDownstreamPresentable(releaseId, schemeId, version) {
+        
     }
 }

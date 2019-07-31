@@ -1,7 +1,7 @@
 'use strict'
 
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {PresentableConsumptionEvent, PresentableOnlineAuthEvent} = require('../../enum/rabbit-mq-publish-event')
+const {PresentableConsumptionEvent, PresentableOnlineAuthEvent, ContractAuthChangedEvent} = require('../../enum/rabbit-mq-publish-event')
 
 /**
  * 状态机状态过渡完成事件处理
@@ -21,6 +21,7 @@ module.exports = class ContractFsmTransitionCompletedHandler {
      */
     async handler({contractInfo, prevState, currentState, eventId}) {
 
+        const oldContractStatus = contractInfo.status
         const currentStateInfo = contractInfo.contractClause.fsmStates[currentState]
 
         if (currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')) {
@@ -37,9 +38,13 @@ module.exports = class ContractFsmTransitionCompletedHandler {
             contractInfo.isConsumptive = 1
             this.sendConsumptionEvent(contractInfo)
         }
-        if (currentStateInfo.authorization.some(x => /^(presentable|recontractable)$/i.test(x))) {
-            this.sendPresentableOnlineAuthEvent(contractInfo)
-        }
+        //获得授权或者丢失授权则发送授权变更事件
+        // if (oldContractStatus !== contractInfo.status && (oldContractStatus === contractStatusEnum.active || contractInfo.status === contractStatusEnum.active)) {
+        //     this.sendContractAuthChangedEvent(contractInfo, oldContractStatus)
+        // }
+        // if (currentStateInfo.authorization.some(x => /^(presentable|recontractable)$/i.test(x))) {
+        //     this.sendPresentableOnlineAuthEvent(contractInfo)
+        // }
 
         await this.saveContractStatusData({contractInfo, prevState, currentState, eventId})
     }
@@ -98,6 +103,27 @@ module.exports = class ContractFsmTransitionCompletedHandler {
                 options: {mandatory: true}
             }))
         }
+    }
+
+    /**
+     * 发送合同授权发生变更事件
+     * @param contractInfo
+     * @param prevStatus
+     */
+    sendContractAuthChangedEvent(contractInfo, prevStatus) {
+
+        const messageParams = Object.assign({}, ContractAuthChangedEvent, {
+            body: {
+                prevStatus,
+                contractId: contractInfo.contractId,
+                currentStatus: contractInfo.status
+            },
+            options: {mandatory: true}
+        })
+
+        messageParams.routingKey = messageParams.routingKey.replace('${contractType}', contractInfo.contractType)
+
+        this.app.rabbitClient.publish(messageParams)
     }
 
     /**

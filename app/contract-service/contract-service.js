@@ -29,14 +29,14 @@ module.exports = class ContractService {
     async createContract(ctx, contractBaseInfo, isInitial = true) {
 
         await this.generateContractService.perfectContractInfo(contractBaseInfo)
-        await this.contractProvider.create(contractBaseInfo)
+        const contractInfo = await this.contractProvider.create(contractBaseInfo)
         if (isInitial) {
-            this.initialContractFsm(ctx, contractBaseInfo)
+            this.initialContractFsm(ctx, contractInfo)
         }
-        if (contractBaseInfo.isDefault) {
-            this.app.emit(ContractSetDefaultEvent, contractBaseInfo)
+        if (contractInfo.isDefault) {
+            this.app.emit(ContractSetDefaultEvent, contractInfo)
         }
-        return contractBaseInfo
+        return contractInfo
     }
 
     /**

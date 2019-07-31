@@ -49,6 +49,14 @@ module.exports = {
     }),
 
     /**
+     * 合同授权状态发生变化事件
+     */
+    ContractAuthChangedEvent: Object.freeze({
+        routingKey: 'contract.${contractType}.contractStatus.changed',
+        eventName: 'ContractAuthChangedEvent'
+    }),
+
+    /**
      * 创建合同事件
      */
     CreateContractEvent: Object.freeze({

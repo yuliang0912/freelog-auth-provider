@@ -39,15 +39,16 @@ module.exports = class SchemeCreatedEventHandler {
         })
 
         //创建时,还未绑定合约,所以结果中先保存关联的上游发行的授权信息,等合约绑定之后,再计算合约的状态.综合可得发行方案自身的授权状态
-        const tasks = []
-        tasks.push(this.releaseAuthResultProvider.create({
+        const createReleaseAuthResultTask = this.releaseAuthResultProvider.create({
             releaseId, schemeId, resourceId, version,
             status: resolveReleases.length ? 0 : 5,
             isAuth: resolveReleases.length ? 0 : 1,
-        }))
-        tasks.push(this.releaseSchemeAuthRelationProvider.insertMany(schemeResolveReleases))
+            resolveReleaseCount: resolveReleases.length
+        })
+        const createReleaseSchemeAuthRelationTask = this.releaseSchemeAuthRelationProvider.insertMany(schemeResolveReleases)
 
-        await Promise.all(tasks).then(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
+        //后续mongodb环境改成副本集群,改为事务的方式调用
+        await Promise.all([createReleaseAuthResultTask, createReleaseSchemeAuthRelationTask]).then(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
             body: {schemeId, operation: 2} //只重新计算上游发行的状态
         })))
     }
