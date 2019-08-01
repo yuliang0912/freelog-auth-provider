@@ -33,13 +33,18 @@ module.exports = class NodeContractAuthService extends Service {
             return new commonAuthResult(authToken.authCode, {authToken})
         }
 
+        const nodeResolveReleasesAuthResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
         const practicalUsedReleases = this._getPresentablePracticalUsedReleases(presentableInfo, presentableAuthTree)
-        const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).value()
+        const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).filter(x => x.contractId).value()
+
+        if (!allNodeContractIds.length) {
+            return nodeResolveReleasesAuthResult
+        }
+
         const contractMap = await this.contractProvider.find({_id: {$in: allNodeContractIds}}).then(list => new Map(list.map(x => [x.contractId, x])))
 
         await this._nodeResolveReleaseContractAuth(nodeInfo, nodeUserInfo, Array.from(contractMap.values()))
 
-        const nodeResolveReleasesAuthResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
         const authFailedNodeReleases = lodash.chain(practicalUsedReleases).filter(({contracts}) => !contracts.some(m => contractMap.get(m.contractId).isAuth)).value()
         if (authFailedNodeReleases.length) {
             nodeResolveReleasesAuthResult.data = authFailedNodeReleases

@@ -8,8 +8,6 @@ egg.startCluster({
     workers: 1
 });
 
-
-
 // const lodash = require('lodash')
 //console.log(lodash.sortedUniqBy(lodash.flatMapDeep(arr, 'tree.contractId'), 'contractId'))
 

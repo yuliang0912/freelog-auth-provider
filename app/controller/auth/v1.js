@@ -66,7 +66,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const version = ctx.checkQuery('version').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validate(false)
-        
+
         if (!subReleaseId && !subReleaseName) {
             throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'subReleaseName'))
         }
