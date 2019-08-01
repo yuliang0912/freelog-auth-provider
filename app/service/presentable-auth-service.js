@@ -83,6 +83,10 @@ module.exports = class PresentableAuthService extends Service {
 
         const {ctx} = this
 
+        if ([presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo].some(x => !x)) {
+            throw new ApplicationError('参数错误', {presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo})
+        }
+
         const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
         const nodeSideAuthTask = ctx.service.nodeContractAuthService.presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
 

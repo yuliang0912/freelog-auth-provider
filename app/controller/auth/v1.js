@@ -4,6 +4,7 @@ const lodash = require('lodash')
 const semver = require('semver')
 const Controller = require('egg').Controller
 const {ArgumentError, ApplicationError, AuthorizationError} = require('egg-freelog-base/error')
+const cryptoHelper = require('egg-freelog-base/app/extend/helper/crypto_helper')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
 
@@ -231,7 +232,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async batchPresentableNodeAndReleaseSideAuth(ctx) {
 
         const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().len(1, 100).value
-        ctx.validate()
+        ctx.validate(true)
 
         const presentableInfos = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}`)
         if (lodash.uniq(presentableIds).length !== presentableInfos.length) {
@@ -347,8 +348,13 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             url += `?subReleaseId=${subReleaseId}&subReleaseVersion=${subReleaseVersion}`
         }
 
-        const subDependencies = await ctx.curlIntranetApi(url)
+        const subDependencies = await ctx.curlIntranetApi(url).then(list => {
+            return list.map(item => Object({
+                v: item.version, id: item.releaseId, n: item.releaseName
+            }))
+        })
 
-        ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
+        //ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
+        ctx.set('freelog-sub-releases', cryptoHelper.base64Encode(JSON.stringify(subDependencies)))
     }
 }

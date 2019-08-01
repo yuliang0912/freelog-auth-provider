@@ -24,6 +24,11 @@ module.exports = class SchemeBindContractEventHandler {
         const resolveReleaseContractMap = await this.releaseSchemeAuthRelationProvider.find({schemeId})
             .then(list => new Map(list.map(x => [x.resolveReleaseId, x.associatedContracts])))
 
+        if (!resolveReleaseContractMap.size) {
+            return
+        }
+
+        //找出有差异的绑定
         const associatedContracts = lodash.chain(resolveReleases).filter(({releaseId, contracts}) => {
             if (!resolveReleaseContractMap.has(releaseId)) {
                 return false

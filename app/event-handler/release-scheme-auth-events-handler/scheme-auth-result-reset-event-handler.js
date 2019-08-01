@@ -2,10 +2,9 @@
 
 const lodash = require('lodash')
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {ReleaseSchemeAuthChangedEvent} = require('../../enum/rabbit-mq-publish-event')
-
+const {ReleaseSchemeAuthChangedEvent, ReleaseSchemeAuthResultResetEvent} = require('../../enum/rabbit-mq-publish-event')
 /**
- * 某些情况可能需要对方案授权信息进行重新计算,用以矫正授权结果
+ * 计算方案的授权结果
  * @type {module.ReleaseSchemeAuthResultResetEventHandler}
  */
 module.exports = class ReleaseSchemeAuthResultResetEventHandler {
@@ -77,6 +76,10 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
      */
     async getSchemeSelfAuthStatus(schemeId, resolveReleases) {
 
+        if (!resolveReleases.length) {
+            return 1
+        }
+
         const updateDate = new Date()
         const allContractIds = lodash.chain(resolveReleases).map(x => x.associatedContracts).flatten().map(x => x.contractId).value()
         const contractMap = await this.contractProvider.find({_id: {$in: allContractIds}})
@@ -121,9 +124,12 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
      */
     async getUpstreamReleaseAuthStatus(schemeId, resolveReleases) {
 
+        if (!resolveReleases.length) {
+            return 4
+        }
+
         const {app} = this
         const resolveReleaseIds = [], releaseResolveReleaseVersionRanges = []
-
         resolveReleases.forEach(({resolveReleaseId, resolveReleaseVersionRanges}) => {
             resolveReleaseVersionRanges.forEach(versionRange => {
                 resolveReleaseIds.push(resolveReleaseId)
@@ -133,6 +139,14 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
 
         const releaseVersions = await app.curlIntranetApi(`${app.webApi.releaseInfo}/maxSatisfyingVersion?releaseIds=${resolveReleaseIds.toString()}&versionRanges=${releaseResolveReleaseVersionRanges.toString()}`)
         const schemeAuthResults = await this.releaseAuthResultProvider.find({$or: releaseVersions})
+
+        if (schemeAuthResults.length !== releaseVersions.length) {
+            setTimeout(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
+                body: {schemeId, operation: 2} //重新计算发行的状态
+            })), 5000)
+            console.log('上游发行不全,已发送重新计算任务')
+            return 0
+        }
 
         return releaseVersions.some(x => x.version === null) || !schemeAuthResults.length || schemeAuthResults.some(x => !x.isAuth) ? 7 : 4
     }
@@ -147,10 +161,3 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
         return contractStatus === contractStatusEnum.uninitialized ? -1 : contractStatus === contractStatusEnum.active ? 8 : 2
     }
 }
-
-
-/** 后续实现
- * step1.重新拉去方案所绑定的合约
- * step2.重新计算所有合约的实时授权状态
- * step3.重新计算方案所解决的上游发行的授权状态
- */

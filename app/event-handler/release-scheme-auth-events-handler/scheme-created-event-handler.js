@@ -20,6 +20,11 @@ module.exports = class SchemeCreatedEventHandler {
      */
     async handler({releaseId, schemeId, resourceId, version, resolveReleases}) {
 
+        const existSchemeAuthResult = await this.releaseAuthResultProvider.findOne({schemeId})
+        if (existSchemeAuthResult) {
+            return
+        }
+
         //授权树种存在合并解决一个发行的情况,但是实际依赖不同的版本,所以需要记录下来分别授权.也存在解决了发行,但是实际未依赖的情况,也需要记录下来
         const resolveReleaseIds = [], resolveReleaseVersionRanges = [], updateDate = new Date()
         const schemeResolveReleases = resolveReleases.map(resolveReleaseInfo => {
