@@ -45,8 +45,6 @@ module.exports = class PresentableAuthResultResetEventHandler {
 
         const resetAuthStatus = await Promise.all(tasks).then(() => selfContractAuthStatus | upstreamAuthStatus)
 
-        console.log(resetAuthStatus)
-
         if (resetAuthStatus !== status) {
             await this.presentableAuthChangedHandle(presentableAuthResult, resetAuthStatus)
         }
@@ -91,7 +89,7 @@ module.exports = class PresentableAuthResultResetEventHandler {
         resolveReleases.forEach(resolveRelease => {
             let isChanged = false
             resolveRelease.associatedContracts.forEach(contract => {
-                let newContractStatus = this._convertContractStatus(contractMap.get(contract.contractId).status)
+                let newContractStatus = contractMap.has(contract.contractId) ? this._convertContractStatus(contractMap.get(contract.contractId).status) : -2
                 if (contract.contractStatus !== newContractStatus) {
                     isChanged = true
                     contract.updateDate = updateDate
