@@ -89,6 +89,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo, subReleaseInfo, version)
         if (extName === 'auth') {
+            await this._responseSubDependToHeader(presentableId)
             return ctx.success(authResult)
         }
         if (!authResult.isAuth) {

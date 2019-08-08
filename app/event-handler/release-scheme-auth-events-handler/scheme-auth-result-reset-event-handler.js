@@ -144,10 +144,12 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
         const schemeAuthResults = await this.releaseAuthResultProvider.find({$or: releaseVersions})
 
         if (schemeAuthResults.length !== releaseVersions.length) {
-            setTimeout(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
-                body: {schemeId, operation: 2} //重新计算发行的状态
-            })), 5000)
+            // setTimeout(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
+            //     body: {schemeId, operation: 2} //重新计算发行的状态
+            // })), 5000)
             console.log('上游发行不全,已发送重新计算任务')
+            console.log(JSON.stringify(releaseVersions))
+            console.log(JSON.stringify(schemeAuthResults))
             return 0
         }
 

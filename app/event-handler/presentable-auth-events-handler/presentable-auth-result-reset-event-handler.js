@@ -137,11 +137,12 @@ module.exports = class PresentableAuthResultResetEventHandler {
 
         const upstreamSchemeAuthResults = await this.releaseAuthResultProvider.find({$or: presentableResolveReleaseVersions})
 
-        if (lodash.differenceWith(presentableResolveReleaseVersions, upstreamSchemeAuthResults, (x, y) => x.releaseId === y.releaseId && x.version === y.version).length) {
-            setTimeout(() => app.rabbitClient.publish(Object.assign({}, PresentableAuthResultResetEvent, {
-                body: {presentableId, operation: 2} //重新计算上游发行的状态
-            })), 5000)
-            console.log('上游发行授权结果不全,已发送重新计算任务')
+        const differences = lodash.differenceWith(presentableResolveReleaseVersions, upstreamSchemeAuthResults, (x, y) => x.releaseId === y.releaseId && x.version === y.version)
+        if (differences.length) {
+            // setTimeout(() => app.rabbitClient.publish(Object.assign({}, PresentableAuthResultResetEvent, {
+            //     body: {presentableId, operation: 2} //重新计算上游发行的状态
+            // })), 5000)
+            console.log('上游发行授权结果不全,已发送重新计算任务', JSON.stringify(differences))
             return 0
         }
 

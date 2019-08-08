@@ -8,7 +8,7 @@ module.exports = class ContractInitialJob extends Subscription {
     static get schedule() {
         return {
             type: 'worker',
-            immediate: true,
+            immediate: false,
             cron: '0 */5 * * * *',
         }
     }
