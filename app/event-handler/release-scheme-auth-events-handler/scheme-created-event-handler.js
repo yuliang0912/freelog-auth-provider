@@ -26,7 +26,7 @@ module.exports = class SchemeCreatedEventHandler {
         }
 
         if (resolveReleases.some(x => !x.contracts.length || x.contracts.some(m => !m.contractId))) {
-            console.log('scheme-created-event-handler:异常的数据,无合约信息', ...arguments)
+            console.log('scheme-created-event-handler:异常的数据,无合约信息', JSON.stringify(...arguments))
             return
         }
 
