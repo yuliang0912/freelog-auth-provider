@@ -28,17 +28,20 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(presentableInfo)
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
+        if (!authResult.isAuth) {
+            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "policies"])
+        }
+
+        await this._responseSubDependToHeader(presentableId)
+
         if (extName === 'auth') {
-            await this._responseSubDependToHeader(presentableId)
             return ctx.success(authResult)
         }
         if (!authResult.isAuth) {
-            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "policies"])
             throw new AuthorizationError(ctx.gettext('presentable-authorization-failed'), {
                 authCode: authResult.authCode, authResult
             })
         }
-
         if (extName === 'info') {
             return ctx.success(presentableInfo)
         }
@@ -49,10 +52,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === presentableInfo.releaseInfo.version)
 
-        const subDependTask = this._responseSubDependToHeader(presentableId)
-        const responseResourceTask = this._responseResourceFile(resourceVersion.resourceId, presentableId)
-
-        await Promise.all([subDependTask, responseResourceTask])
+        await this._responseResourceFile(resourceVersion.resourceId, presentableId)
     }
 
     /**
