@@ -185,7 +185,6 @@ module.exports = class ContractController extends Controller {
     async batchCreateReleaseContracts(ctx) {
 
         const partyTwoId = ctx.checkBody("partyTwoId").exist().notEmpty().value
-        const targetId = ctx.checkBody("targetId").exist().isMongoObjectId().value
         const signReleases = ctx.checkBody("signReleases").exist().isArray().len(1, 200).value
         const contractType = ctx.checkBody("contractType").exist().toInt().in([1, 2]).value
         ctx.validate()
@@ -207,7 +206,7 @@ module.exports = class ContractController extends Controller {
         }
 
         await ctx.service.contractService.batchCreateReleaseContracts({
-            signReleases, contractType, partyTwoId, targetId, nodeInfo
+            signReleases, contractType, partyTwoId, nodeInfo
         }).then(ctx.success)
     }
 

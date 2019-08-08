@@ -20,10 +20,9 @@ module.exports = class ContractService extends Service {
      * @param signReleases
      * @param contractType
      * @param partyTwoId
-     * @param targetId
      * @returns {Promise<Array>}
      */
-    async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, targetId, nodeInfo}) {
+    async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, nodeInfo}) {
 
         const {ctx} = this
         const {userInfo} = ctx.request.identityInfo
@@ -49,9 +48,10 @@ module.exports = class ContractService extends Service {
         const contractModels = toBeSignedReleases.map(({releaseInfo, policyInfo}) => {
             const {releaseId, userId, releaseName} = releaseInfo
             return {
-                contractType, targetId,
+                contractType,
                 partyOneUserId: userId,
                 partyTwoUserId: ctx.request.userId,
+                targetId: releaseId,
                 partyOne: releaseId,
                 partyTwo: partyTwoId,
                 policySegment: policyInfo,

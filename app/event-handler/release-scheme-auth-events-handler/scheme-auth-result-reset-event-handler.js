@@ -28,18 +28,18 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
             return
         }
 
-        let {status, contractIsInitialized, selfIsAuth, upstreamIsAuth} = releaseSchemeAuthResult
+        let {status, selfContractAuthStatus, upstreamAuthStatus} = releaseSchemeAuthResult
         const resolveReleases = await this.releaseSchemeAuthRelationProvider.find({schemeId})
 
         const tasks = []
         if ((operation & 1) == 1) {
-            tasks.push(this.getSchemeSelfAuthStatus(schemeId, resolveReleases).then(selfAuthStatus => selfIsAuth = selfAuthStatus === 1))
+            tasks.push(this.getSchemeSelfAuthStatus(schemeId, resolveReleases).then(authStatus => selfContractAuthStatus = authStatus))
         }
         if ((operation & 2) == 2) {
-            tasks.push(this.getUpstreamReleaseAuthStatus(schemeId, resolveReleases).then(upstreamAuthStatus => upstreamIsAuth = upstreamAuthStatus === 4))
+            tasks.push(this.getUpstreamReleaseAuthStatus(schemeId, resolveReleases).then(authStatus => upstreamAuthStatus = authStatus))
         }
 
-        const resetAuthStatus = await Promise.all(tasks).then(() => (selfIsAuth ? 1 : contractIsInitialized ? 2 : 0) | (upstreamIsAuth ? 4 : 7))
+        const resetAuthStatus = await Promise.all(tasks).then(() => selfContractAuthStatus | upstreamAuthStatus)
 
         if (resetAuthStatus !== status) {
             await this.releaseSchemeAuthChangedHandle(releaseSchemeAuthResult, resetAuthStatus)
@@ -81,7 +81,7 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
         }
 
         const updateDate = new Date()
-        const allContractIds = lodash.chain(resolveReleases).map(x => x.associatedContracts).flatten().map(x => x.contractId).value()
+        const allContractIds = lodash.chain(resolveReleases).map(x => x.associatedContracts).flatten().filter(x => x.contractId).map(x => x.contractId).value()
         const contractMap = await this.contractProvider.find({_id: {$in: allContractIds}})
             .then(list => new Map(list.map(x => [x.contractId, x])))
 
@@ -113,8 +113,11 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
             this.releaseSchemeAuthRelationProvider.model.bulkWrite(bulkWrites).catch(console.error)
         }
 
+        const isExistUninitializedContract = resolveReleases.some(x => x.associatedContracts.some(m => m.contractStatus === -1))
+        const isEveryContractGroupIsAuth = resolveReleases.filter(x => x.resolveReleaseVersionRanges.length).every(x => x.contractIsAuth)
+
         //签约,但是实际未使用的合约,在授权的过程中不予校验,默认获得授权
-        return resolveReleases.some(x => x.resolveReleaseVersionRanges.length && !x.contractIsAuth) ? 2 : 1
+        return isExistUninitializedContract ? 0 : isEveryContractGroupIsAuth ? 1 : 2
     }
 
 
@@ -148,7 +151,7 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
             return 0
         }
 
-        return releaseVersions.some(x => x.version === null) || !schemeAuthResults.length || schemeAuthResults.some(x => !x.isAuth) ? 7 : 4
+        return releaseVersions.some(x => x.version === null) || !schemeAuthResults.length || schemeAuthResults.some(x => !x.isAuth) ? 8 : 4
     }
 
     /**

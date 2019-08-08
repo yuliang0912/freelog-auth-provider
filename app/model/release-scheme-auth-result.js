@@ -28,9 +28,14 @@ module.exports = app => {
         return (this.status & 4) === 4 ? 1 : 0
     })
 
-    //是否初始化合同状态
-    ReleaseAuthResultSchema.virtual("contractIsInitialized").get(function () {
-        return ((this.status & 1) === 1 || (this.status & 2) === 2) ? 1 : 0
+    //自身合同授权状态
+    ReleaseAuthResultSchema.virtual("selfContractAuthStatus").get(function () {
+        return (this.status & 1) === 1 ? 1 : (this.status & 2) === 2 ? 2 : 0
+    })
+
+    //上游发行授权状态
+    ReleaseAuthResultSchema.virtual("upstreamAuthStatus").get(function () {
+        return (this.status & 4) === 4 ? 4 : (this.status & 8) === 8 ? 8 : 0
     })
 
     ReleaseAuthResultSchema.index({version: 1, status: 1})

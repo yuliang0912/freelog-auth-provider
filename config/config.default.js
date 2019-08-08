@@ -134,16 +134,6 @@ module.exports = appInfo => {
                     ]
                 },
                 {
-                    name: 'auth#release-scheme-contract-auth-changed-queue',
-                    options: {autoDelete: false, durable: true},
-                    routingKeys: [
-                        {
-                            exchange: 'freelog-contract-exchange',
-                            routingKey: 'auth.releaseScheme.contractStatus.changed'
-                        }
-                    ]
-                },
-                {
                     name: 'auth#release-scheme-auth-reset-queue',
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
@@ -162,7 +152,57 @@ module.exports = appInfo => {
                             routingKey: 'contract.1.contractStatus.changed'
                         }
                     ]
-                }
+                },
+                {
+                    name: 'auth#node-contract-auth-changed-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'contract.2.contractStatus.changed'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#presentable-created-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-node-exchange',
+                            routingKey: 'node.presentable.created'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#presentable-bind-contract-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-node-exchange',
+                            routingKey: 'node.presentable.bindContract'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#presentable-auth-reset-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-contract-exchange',
+                            routingKey: 'auth.presentable.authStatus.reset'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#presentable-version-locked-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-node-exchange',
+                            routingKey: 'node.presentable.versionLocked'
+                        }
+                    ]
+                },
             ]
         },
 

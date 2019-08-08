@@ -56,4 +56,29 @@ module.exports = {
      * 发行方案授权重置事件(重新计算授权状态)
      */
     ReleaseSchemeAuthResetEvent: Symbol('auth#releaseSchemeAuthResetEvent'),
+
+    /**
+     * 节点合同授权发生变更事件
+     */
+    NodeContractAuthChangedEvent: Symbol('auth#nodeContractAuthChangedEvent'),
+
+    /**
+     * presentable授权结果重置事件(重新计算授权状态)
+     */
+    PresentableAuthResultResetEvent: Symbol('auth#presentableAuthResultResetEvent'),
+
+    /**
+     * presentable绑定关联合约事件
+     */
+    PresentableBindContractEvent: Symbol('auth#presentableBindContractEvent'),
+
+    /**
+     * presentable创建事件
+     */
+    PresentableCreatedEvent: Symbol('auth#PresentableCreatedEvent'),
+
+    /**
+     * presentable更新版本事件
+     */
+    PresentableLockedVersionChangedEvent: Symbol('auth#presentableLockedVersionChangedEvent'),
 }

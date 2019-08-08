@@ -17,19 +17,22 @@ module.exports = class RabbitMessageQueueEventHandler {
      */
     subscribe() {
 
+        const rabbitMqConfig = this.app.config.rabbitMq
         const rabbitClient = this.app.rabbitClient
         const handlerFunc = this.handleMessage.bind(this)
 
         const subscribeQueue = function () {
-            rabbitClient.subscribe('auth#contract-event-receive-queue', handlerFunc)
-            rabbitClient.subscribe('auth#event-register-completed-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-scheme-created-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-scheme-bind-contract-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-scheme-auth-reset-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-scheme-contract-auth-changed-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-scheme-auth-changed-queue', handlerFunc)
-            rabbitClient.subscribe('auth#release-contract-auth-changed-queue', handlerFunc)
 
+            rabbitMqConfig.queues.forEach(({name}) => rabbitClient.subscribe(name, handlerFunc))
+
+            // ['auth#contract-event-receive-queue', 'auth#event-register-completed-queue']
+            // rabbitClient.subscribe('auth#contract-event-receive-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#event-register-completed-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#release-scheme-created-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#release-scheme-bind-contract-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#release-scheme-auth-reset-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#release-scheme-auth-changed-queue', handlerFunc)
+            // rabbitClient.subscribe('auth#release-contract-auth-changed-queue', handlerFunc)
         }
 
         if (rabbitClient.isReady) {
@@ -107,26 +110,60 @@ module.exports = class RabbitMessageQueueEventHandler {
             app.emit(outsideSystemEvent.ReleaseSchemeBindContractEvent, message)
         })
 
-        patrun.add({
-            routingKey: 'auth.releaseScheme.contractStatus.changed', eventName: 'releaseSchemeContractAuthChangedEvent'
-        }, ({message}) => {
-            app.emit(outsideSystemEvent.ReleaseSchemeContractAuthChangedEvent, message)
-        })
-
+        //发行方案授权发生变化事件
         patrun.add({
             routingKey: 'auth.releaseScheme.authStatus.changed', eventName: 'releaseSchemeAuthChangedEvent'
         }, ({message}) => {
             app.emit(outsideSystemEvent.ReleaseSchemeAuthChangedEvent, message)
         })
 
+        //发行方案授权结果重置事件
         patrun.add({
             routingKey: 'auth.releaseScheme.authStatus.reset', eventName: 'releaseSchemeAuthResultResetEvent'
         }, ({message}) => {
             app.emit(outsideSystemEvent.ReleaseSchemeAuthResetEvent, message)
         })
 
-        patrun.add({eventName: 'ContractAuthChangedEvent'}, ({message}) => {
+        //发行的合同授权发行变化事件
+        patrun.add({
+            routingKey: 'contract.1.contractStatus.changed', eventName: 'contractAuthChangedEvent'
+        }, ({message}) => {
             app.emit(outsideSystemEvent.ReleaseContractAuthChangedEvent, message)
+        })
+
+        //节点的合同授权发生变化事件
+        patrun.add({
+            routingKey: 'contract.2.contractStatus.changed', eventName: 'contractAuthChangedEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.NodeContractAuthChangedEvent, message)
+        })
+
+        //presentable创建事件
+        patrun.add({
+            routingKey: 'node.presentable.created', eventName: 'presentableCreatedEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.PresentableCreatedEvent, message)
+        })
+
+        //presentable绑定或者换绑合同事件
+        patrun.add({
+            routingKey: 'node.presentable.bindContract', eventName: 'presentableBindContractEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.PresentableBindContractEvent, message)
+        })
+
+        //presentable授权结果重置事件
+        patrun.add({
+            routingKey: 'auth.presentable.authStatus.reset', eventName: 'presentableAuthResultResetEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.PresentableAuthResultResetEvent, message)
+        })
+
+        //presentable版本锁定事件
+        patrun.add({
+            routingKey: 'node.presentable.versionLocked', eventName: 'presentableVersionLockedEvent'
+        }, ({message}) => {
+            app.emit(outsideSystemEvent.PresentableLockedVersionChangedEvent, message)
         })
 
         //事件注册完成事件

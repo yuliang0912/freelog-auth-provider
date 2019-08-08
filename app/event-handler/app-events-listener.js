@@ -14,11 +14,9 @@ const EventRegisterCompletedEventHandler = require('./outside-events-handler/eve
 const ContractFsmStateTransitioningEventHandler = require('./internal-event-handler/fsm-state-transitioning-handler')
 const ContractFsmTransitionCompletedHandler = require('./internal-event-handler/fsm-state-transition-completed-handler')
 
-const ReleaseSchemeCreateEventHandler = require('./release-scheme-auth-events-handler/scheme-created-event-handler')
-const ReleaseSchemeBindContractEventHandler = require('./release-scheme-auth-events-handler/scheme-bind-contract-event-handler')
-const ReleaseSchemeAuthChangedEventHandler = require('./release-scheme-auth-events-handler/scheme-auth-changed-event-handler')
-const ReleaseSchemeAuthResultResetEventHandler = require('./release-scheme-auth-events-handler/scheme-auth-result-reset-event-handler')
-const ReleaseContractAuthChangedEventHandler = require('./release-scheme-auth-events-handler/release-contract-auth-changed-event-handler')
+const presentableAuthEventHandler = require('./presentable-auth-events-handler')
+const releaseSchemeAuthEventHandler = require('./release-scheme-auth-events-handler')
+
 
 module.exports = class AppEventsListener {
 
@@ -42,17 +40,14 @@ module.exports = class AppEventsListener {
         this.registerEventAndHandler(outsideSystemEvent.PaymentOrderStatusChangedEvent)
         this.registerEventAndHandler(outsideSystemEvent.TransferRecordTradeStatusChangedEvent)
 
-        //发行授权事件
-        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeCreateEvent)
-        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeBindContractEvent)
-        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeAuthChangedEvent)
-        this.registerEventAndHandler(outsideSystemEvent.ReleaseContractAuthChangedEvent)
-        this.registerEventAndHandler(outsideSystemEvent.ReleaseSchemeAuthResetEvent)
-
         //合同状态机事件
         this.registerEventAndHandler(contractFsmEvents.ContractFsmStateChangedEvent)
         this.registerEventAndHandler(contractFsmEvents.ContractFsmEventTriggerEvent)
         this.registerEventAndHandler(contractFsmEvents.ContractFsmStateTransitionCompletedEvent)
+
+        presentableAuthEventHandler.concat(releaseSchemeAuthEventHandler).forEach(({eventName}) => {
+            this.registerEventAndHandler(eventName)
+        })
     }
 
     /**
@@ -84,17 +79,14 @@ module.exports = class AppEventsListener {
         patrun.add({event: outsideSystemEvent.PaymentOrderStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
         patrun.add({event: outsideSystemEvent.TransferRecordTradeStatusChangedEvent.toString()}, new TradeStatusChangedEventHandler(app))
 
-        //发行授权事件
-        patrun.add({event: outsideSystemEvent.ReleaseSchemeCreateEvent.toString()}, new ReleaseSchemeCreateEventHandler(app))
-        patrun.add({event: outsideSystemEvent.ReleaseSchemeBindContractEvent.toString()}, new ReleaseSchemeBindContractEventHandler(app))
-        patrun.add({event: outsideSystemEvent.ReleaseContractAuthChangedEvent.toString()}, new ReleaseContractAuthChangedEventHandler(app))
-        patrun.add({event: outsideSystemEvent.ReleaseSchemeAuthChangedEvent.toString()}, new ReleaseSchemeAuthChangedEventHandler(app))
-        patrun.add({event: outsideSystemEvent.ReleaseSchemeAuthResetEvent.toString()}, new ReleaseSchemeAuthResultResetEventHandler(app))
-
         //状态机事件
         patrun.add({event: contractFsmEvents.ContractFsmEventTriggerEvent.toString()}, new ContractEventTriggerHandler(app))
         patrun.add({event: contractFsmEvents.ContractFsmStateChangedEvent.toString()}, new ContractFsmStateTransitioningEventHandler(app))
         patrun.add({event: contractFsmEvents.ContractFsmStateTransitionCompletedEvent.toString()}, new ContractFsmTransitionCompletedHandler(app))
         patrun.add({event: contractFsmEvents.ContractSetDefaultEvent.toString()}, new ContractSetDefaultEventHandler(app))
+
+        presentableAuthEventHandler.concat(releaseSchemeAuthEventHandler).forEach(({eventName, handler}) => {
+            patrun.add({event: eventName.toString()}, new handler(app))
+        })
     }
 }

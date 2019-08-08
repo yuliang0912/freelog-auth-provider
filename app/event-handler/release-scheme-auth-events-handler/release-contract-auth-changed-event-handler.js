@@ -10,7 +10,6 @@ module.exports = class ReleaseContractAuthChangedEventHandler {
 
     constructor(app) {
         this.app = app
-        this.contractProvider = app.dal.contractProvider
         this.releaseSchemeAuthRelationProvider = app.dal.releaseSchemeAuthRelationProvider
     }
 
@@ -20,7 +19,7 @@ module.exports = class ReleaseContractAuthChangedEventHandler {
      * 此事件只负责检索与分发任务
      */
     async handler({contractId, prevStatus, currentStatus}) {
-        
+
         const contractAssociatedReleaseSchemes = await this.releaseSchemeAuthRelationProvider.find({'associatedContracts.contractId': contractId}, 'schemeId')
 
         //合同只在同一个发行的不同版本之间才可能重用,所以数量一般很少.一次批量查询.然后单独分发即可.

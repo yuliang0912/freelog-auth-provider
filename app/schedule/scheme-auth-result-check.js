@@ -56,7 +56,7 @@ module.exports = class ReleaseSchemeAssociatedUninitializedContractCheckJob exte
                 }
             }
         }
-        
+
         const publishTasks = lodash.uniq(contractAuthChangedSchemeIds).map(schemeId => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
             body: {schemeId, operation: 1}
         })))
@@ -71,7 +71,7 @@ module.exports = class ReleaseSchemeAssociatedUninitializedContractCheckJob exte
      */
     async getNoCalculateAuthReleaseSchemes(limit = 200) {
 
-        const noCalculateAuthReleaseSchemes = await this.app.dal.releaseAuthResultProvider.find({status: {$in: [4, 7]}}, 'schemeId', {
+        const noCalculateAuthReleaseSchemes = await this.app.dal.releaseAuthResultProvider.find({status: {$in: [0, 4, 8]}}, 'schemeId', {
             limit, sort: {createDate: -1}
         })
 

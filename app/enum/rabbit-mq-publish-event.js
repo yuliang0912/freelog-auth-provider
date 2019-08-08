@@ -53,7 +53,7 @@ module.exports = {
      */
     ContractAuthChangedEvent: Object.freeze({
         routingKey: 'contract.${contractType}.contractStatus.changed',
-        eventName: 'ContractAuthChangedEvent'
+        eventName: 'contractAuthChangedEvent'
     }),
 
     /**
@@ -86,5 +86,21 @@ module.exports = {
     ReleaseSchemeAuthResultResetEvent: Object.freeze({
         routingKey: 'auth.releaseScheme.authStatus.reset',
         eventName: 'releaseSchemeAuthResultResetEvent'
+    }),
+
+    /**
+     * 重新计算presentable授权结果事件
+     */
+    PresentableAuthResultResetEvent: Object.freeze({
+        routingKey: 'auth.presentable.authStatus.reset',
+        eventName: 'presentableAuthResultResetEvent'
+    }),
+
+    /**
+     * presentable授权状态发生变更事件(一般节点接受此事件,修改presentable授权状态信息)
+     */
+    PresentableAuthChangedEvent: Object.freeze({
+        routingKey: 'auth.presentable.authStatus.changed',
+        eventName: 'presentableAuthChangedEvent'
     }),
 }
