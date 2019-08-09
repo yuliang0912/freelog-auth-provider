@@ -2,7 +2,8 @@
 
 const lodash = require('lodash')
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {PresentableAuthResultResetEvent, PresentableAuthChangedEvent} = require('../../enum/rabbit-mq-publish-event')
+const {PresentableAuthChangedEvent} = require('../../enum/rabbit-mq-publish-event')
+const {GenerateSchemeAuthInfoEvent} = require('../../enum/outside-system-event')
 
 /**
  * 计算presentable的授权结果
@@ -141,6 +142,9 @@ module.exports = class PresentableAuthResultResetEventHandler {
             //     body: {presentableId, operation: 2} //重新计算上游发行的状态
             // })), 5000)
             console.log('上游发行授权结果不全,已发送重新计算任务', JSON.stringify(differences))
+
+            differences.forEach(({releaseId, version}) => app.emit(GenerateSchemeAuthInfoEvent, {releaseId, version}))
+
             return 0
         }
 

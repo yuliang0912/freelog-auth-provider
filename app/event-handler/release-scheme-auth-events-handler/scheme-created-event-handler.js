@@ -36,7 +36,7 @@ module.exports = class SchemeCreatedEventHandler {
             releaseId, schemeId, resourceId, version,
             resolveReleaseId: resolveReleaseInfo.releaseId,
             resolveReleaseVersionRanges: resolveReleaseInfo.versionRanges || [],
-            associatedContracts: resolveReleaseInfo.contracts.map(contractId => {
+            associatedContracts: resolveReleaseInfo.contracts.map(({contractId}) => {
                 return {contractId, contractStatus: -1, updateDate}
             }),
             contractIsAuth: 0

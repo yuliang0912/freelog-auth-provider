@@ -58,6 +58,11 @@ module.exports = {
     ReleaseSchemeAuthResetEvent: Symbol('auth#releaseSchemeAuthResetEvent'),
 
     /**
+     * 生成方案授权信息事件
+     */
+    GenerateSchemeAuthInfoEvent: Symbol('auth#generateSchemeAuthInfoEvent'),
+
+    /**
      * 节点合同授权发生变更事件
      */
     NodeContractAuthChangedEvent: Symbol('auth#nodeContractAuthChangedEvent'),

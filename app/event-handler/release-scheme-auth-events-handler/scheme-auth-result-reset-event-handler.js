@@ -2,7 +2,9 @@
 
 const lodash = require('lodash')
 const contractStatusEnum = require('../../enum/contract-status-enum')
-const {ReleaseSchemeAuthChangedEvent, ReleaseSchemeAuthResultResetEvent} = require('../../enum/rabbit-mq-publish-event')
+const {ReleaseSchemeAuthChangedEvent} = require('../../enum/rabbit-mq-publish-event')
+const {GenerateSchemeAuthInfoEvent} = require('../../enum/outside-system-event')
+
 /**
  * 计算方案的授权结果
  * @type {module.ReleaseSchemeAuthResultResetEventHandler}
@@ -143,13 +145,18 @@ module.exports = class ReleaseSchemeAuthResultResetEventHandler {
         const releaseVersions = await app.curlIntranetApi(`${app.webApi.releaseInfo}/maxSatisfyingVersion?releaseIds=${resolveReleaseIds.toString()}&versionRanges=${releaseResolveReleaseVersionRanges.toString()}`)
         const schemeAuthResults = await this.releaseAuthResultProvider.find({$or: releaseVersions})
 
-        if (schemeAuthResults.length !== releaseVersions.length) {
+        const differences = lodash.differenceWith(releaseVersions, schemeAuthResults, (x, y) => x.releaseId === y.releaseId && x.version === y.version)
+
+        if (differences.length) {
             // setTimeout(() => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {
             //     body: {schemeId, operation: 2} //重新计算发行的状态
             // })), 5000)
             console.log('上游发行不全,已发送重新计算任务')
             console.log(JSON.stringify(releaseVersions))
             console.log(JSON.stringify(schemeAuthResults))
+
+            differences.forEach(({releaseId, version}) => app.emit(GenerateSchemeAuthInfoEvent, {releaseId, version}))
+            
             return 0
         }
 

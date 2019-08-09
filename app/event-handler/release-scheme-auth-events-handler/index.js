@@ -7,6 +7,7 @@ const ReleaseSchemeBindContractEventHandler = require('./scheme-bind-contract-ev
 const ReleaseSchemeAuthChangedEventHandler = require('./scheme-auth-changed-event-handler')
 const ReleaseSchemeAuthResultResetEventHandler = require('./scheme-auth-result-reset-event-handler')
 const ReleaseContractAuthChangedEventHandler = require('./release-contract-auth-changed-event-handler')
+const GenerateReleaseSchemeAuthInfoEventHandler = require('./scheme-generate-auth-info-event-handler')
 
 module.exports = [
     {
@@ -28,5 +29,9 @@ module.exports = [
     {
         eventName: outsideSystemEvent.ReleaseSchemeAuthResetEvent,
         handler: ReleaseSchemeAuthResultResetEventHandler
-    }
+    },
+    {
+        eventName: outsideSystemEvent.GenerateSchemeAuthInfoEvent,
+        handler: GenerateReleaseSchemeAuthInfoEventHandler
+    },
 ]
