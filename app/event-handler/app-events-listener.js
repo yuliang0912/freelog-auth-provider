@@ -62,7 +62,7 @@ module.exports = class AppEventsListener {
         }
 
         this.app.on(eventName, (...args) => eventHandler.handler(...args).catch(error => {
-            console.log(`事件执行异常,eventName:${eventName}`, error)
+            console.log(`事件执行异常,eventName:${eventName.toString()}`, error)
         }))
     }
 
