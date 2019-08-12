@@ -1,11 +1,13 @@
 'use strict'
 
+const lodash = require('lodash')
 const {PresentableAuthResultResetEvent} = require('../../enum/rabbit-mq-publish-event')
 
 module.exports = class PresentableBindContractEventHandler {
 
     constructor(app) {
         this.app = app
+        this.presentableAuthResultProvider = app.dal.presentableAuthResultProvider
         this.presentableBindContractProvider = app.dal.presentableBindContractProvider
     }
 
@@ -18,6 +20,12 @@ module.exports = class PresentableBindContractEventHandler {
 
         //此处的resolveReleases应该是确定的版本.由节点服务处理好发送过来
         const {presentableId, resolveReleases} = presentableInfo
+
+        const existAuthResult = await this.presentableAuthResultProvider.findOne({presentableId})
+        if (!existAuthResult) {
+            console.log('scheme-bind-contract-event-handler-error:异常的数据,无授权结果数据', ...arguments)
+            return
+        }
 
         if (resolveReleases.some(x => !x.contracts.length || x.contracts.some(m => !m.contractId))) {
             console.log('scheme-bind-contract-event-handler-error:异常的数据,无合约信息', ...arguments)
