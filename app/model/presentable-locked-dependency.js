@@ -13,10 +13,6 @@ module.exports = app => {
 
     const lockReleaseVersionSchema = new mongoose.Schema({
         version: {type: String, required: true},
-        // 1:未获得身份授权  2:未获得状态机授权  4:已获得身份授权  8:已获得状态机授权
-        //0:初始太 1:自身已授权 2:自身未授权 4:授权链上游已获得授权 8:授权链上游未获得授权 (单一资源状态 (1 | 4 ) = 5),结果引用自发行的授权结果
-        authStatus: {type: Number, required: true},
-        updateDate: {type: Date, required: true},
     }, {_id: false})
 
     const PresentableAuthRelationSchema = new mongoose.Schema({

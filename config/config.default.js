@@ -154,6 +154,16 @@ module.exports = appInfo => {
                     ]
                 },
                 {
+                    name: 'auth#release-scheme-generate-auth-info-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-resource-exchange',
+                            routingKey: 'release.scheme.generateAuthInfo'
+                        }
+                    ]
+                },
+                {
                     name: 'auth#node-contract-auth-changed-queue',
                     options: {autoDelete: false, durable: true},
                     routingKeys: [
@@ -200,6 +210,16 @@ module.exports = appInfo => {
                         {
                             exchange: 'freelog-node-exchange',
                             routingKey: 'node.presentable.versionLocked'
+                        }
+                    ]
+                },
+                {
+                    name: 'auth#presentable-generate-auth-info-queue',
+                    options: {autoDelete: false, durable: true},
+                    routingKeys: [
+                        {
+                            exchange: 'freelog-node-exchange',
+                            routingKey: 'node.presentable.generateAuthInfo'
                         }
                     ]
                 },

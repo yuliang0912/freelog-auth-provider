@@ -9,8 +9,8 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
     constructor(app) {
         this.app = app
         this.releaseAuthResultProvider = app.dal.releaseAuthResultProvider
-        this.presentableAuthRelationProvider = app.dal.presentableAuthRelationProvider
         this.releaseSchemeAuthRelationProvider = app.dal.releaseSchemeAuthRelationProvider
+        this.presentableLockedDependencyProvider = app.dal.presentableLockedDependencyProvider
     }
 
     /**
@@ -58,8 +58,8 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
      */
     async noticeDownstreamPresentable(releaseId, schemeId, version) {
 
-        const allAssociatedPresentables = await this.presentableAuthRelationProvider.find({
-            resolveReleaseId: releaseId, resolveReleaseVersions: version
+        const allAssociatedPresentables = await this.presentableLockedDependencyProvider.find({
+            dependReleaseId: releaseId, lockedReleaseVersions: version
         })
 
         const tasks = allAssociatedPresentables.map(presentableId => this.app.rabbitClient.publish(Object.assign({}, ReleaseSchemeAuthResultResetEvent, {

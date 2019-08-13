@@ -86,4 +86,9 @@ module.exports = {
      * presentable更新版本事件
      */
     PresentableLockedVersionChangedEvent: Symbol('auth#presentableLockedVersionChangedEvent'),
+
+    /**
+     * 生成presentable授权信息事件
+     */
+    GeneratePresentableAuthInfoEvent: Symbol('auth#generatePresentableAuthInfoEvent'),
 }
