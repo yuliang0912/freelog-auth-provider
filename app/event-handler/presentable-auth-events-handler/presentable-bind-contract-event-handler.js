@@ -21,7 +21,9 @@ module.exports = class PresentableBindContractEventHandler {
         //此处的resolveReleases应该是确定的版本.由节点服务处理好发送过来
         const {presentableId, resolveReleases} = presentableInfo
 
-        const existAuthResult = await this.presentableAuthResultProvider.findOne({presentableId})
+        const existAuthResult = await this.presentableAuthResultProvider.findOne({presentableId}).catch(error => {
+            console.log('findOne-error', error)
+        })
         if (!existAuthResult) {
             console.log('scheme-bind-contract-event-handler-error:异常的数据,无授权结果数据', ...arguments)
             return
@@ -34,7 +36,9 @@ module.exports = class PresentableBindContractEventHandler {
 
         const updateDate = new Date()
         const resolveReleaseContractMap = await this.presentableBindContractProvider.find({presentableId})
-            .then(list => new Map(list.map(x => [x.resolveReleaseId, x.associatedContracts])))
+            .then(list => new Map(list.map(x => [x.resolveReleaseId, x.associatedContracts]))).catch(error => {
+                console.log('findOne-map', error)
+            })
 
         if (!resolveReleaseContractMap.size) {
             return
@@ -68,6 +72,8 @@ module.exports = class PresentableBindContractEventHandler {
             return this.app.rabbitClient.publish(Object.assign({}, PresentableAuthResultResetEvent, {
                 body: {presentableId, operation: 1} //发送指令,要求计算方案的授权状态(只计算自身绑定的合约部分)
             }))
+        }).catch(error => {
+            console.log('bulkWrite-error', error)
         })
     }
 }
