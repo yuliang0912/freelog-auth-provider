@@ -18,8 +18,10 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
      */
     async handler({schemeId}) {
 
-        const {releaseId, version} = await this.releaseAuthResultProvider.findOne({schemeId})
 
+        const releaseAuthResult = await this.releaseAuthResultProvider.findOne({schemeId})
+
+        const {releaseId, version} = releaseAuthResult
         const task1 = this.noticeDownstreamReleaseScheme(releaseId, schemeId, version)
         const task2 = this.noticeDownstreamPresentable(releaseId, schemeId, version)
 
