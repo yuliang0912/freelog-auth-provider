@@ -18,7 +18,6 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
      */
     async handler({schemeId}) {
 
-
         const releaseAuthResult = await this.releaseAuthResultProvider.findOne({schemeId})
 
         const {releaseId, version} = releaseAuthResult

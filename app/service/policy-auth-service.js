@@ -43,17 +43,18 @@ module.exports = class PolicyAuthService extends Service {
                 if (presentableIds[i] === presentableId) {
                     let policyId = policyIds[i]
                     let policyInfo = policies.find(m => m.policyId === policyId)
-                    if (!policyInfo || policyInfo.status !== 1) {
-                        acc.policies.push({presentableId, policyId, authenticationResult: -1})
+
+                    if (!policyInfo || (policyInfo.status !== 1 && !signedContractSet.has(`${presentableId}-${policyId}`))) {
+                        acc.policies.push({releaseId, policyId, authenticationResult: -1})
                     }
                     else {
-                        policyInfo.isValidateIdentity = true
+                        policyInfo.isNeedValidateIdentity = true
                     }
                 }
             }
             for (let i = 0, j = policies.length; i < j; i++) {
                 let policyInfo = policies[i]
-                if (!policyInfo.isValidateIdentity && policyIds.length) {
+                if (!policyInfo.isNeedValidateIdentity && policyIds.length) {
                     continue
                 }
                 let result = {presentableId, policyId: policyInfo.policyId}
@@ -112,17 +113,17 @@ module.exports = class PolicyAuthService extends Service {
                 if (releaseIds[i] === releaseId) {
                     let policyId = policyIds[i]
                     let policyInfo = policies.find(m => m.policyId === policyId)
-                    if (!policyInfo || policyInfo.status !== 1) {
+                    if (!policyInfo || (policyInfo.status !== 1 && !signedContractSet.has(`${releaseId}-${policyId}`))) {
                         acc.policies.push({releaseId, policyId, authenticationResult: -1})
                     }
                     else {
-                        policyInfo.isValidateIdentity = true
+                        policyInfo.isNeedValidateIdentity = true
                     }
                 }
             }
             for (let i = 0, j = policies.length; i < j; i++) {
                 let policyInfo = policies[i]
-                if (!policyInfo.isValidateIdentity && policyIds.length) {
+                if (!policyInfo.isNeedValidateIdentity && policyIds.length) {
                     continue
                 }
                 let result = {releaseId, policyId: policyInfo.policyId}
