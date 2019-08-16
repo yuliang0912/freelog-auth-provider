@@ -40,7 +40,8 @@ module.exports = class PresentableBindContractEventHandler {
             return
         }
 
-        console.log(JSON.stringify({presentableId, resolveReleaseContractMap}))
+        console.log(resolveReleaseContractMap.size, resolveReleaseContractMap)
+        await this.presentableBindContractProvider.find({presentableId}).then(console.log)
 
         const associatedContracts = lodash.chain(resolveReleases).filter(({releaseId, contracts}) => {
             if (!resolveReleaseContractMap.has(releaseId)) {
