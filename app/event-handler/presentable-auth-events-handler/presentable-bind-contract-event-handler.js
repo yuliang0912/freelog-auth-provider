@@ -53,7 +53,7 @@ module.exports = class PresentableBindContractEventHandler {
             }))
         })).value()
 
-        if (associatedContracts.length) {
+        if (!associatedContracts.length) {
             return
         }
 

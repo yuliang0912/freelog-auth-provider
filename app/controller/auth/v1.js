@@ -264,6 +264,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const nodeId = ctx.checkQuery('nodeId').optional().isInt().toInt().gt(0).value
         const policyIds = ctx.checkQuery('policyIds').optional().match(policyIdsRegex).toSplitArray().len(1, 100).default([]).value
         const isFilterSignedPolicy = ctx.checkQuery('isFilterSignedPolicy').optional().toInt().default(0).in([0, 1]).value
+        ctx.validate()
 
         var nodeInfo = null
         if (nodeId) {
