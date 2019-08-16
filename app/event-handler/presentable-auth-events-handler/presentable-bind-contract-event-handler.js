@@ -40,15 +40,12 @@ module.exports = class PresentableBindContractEventHandler {
             return
         }
 
-        console.log(resolveReleaseContractMap.size, resolveReleaseContractMap)
-        await this.presentableBindContractProvider.find({presentableId}).then(console.log)
-
         const associatedContracts = lodash.chain(resolveReleases).filter(({releaseId, contracts}) => {
             if (!resolveReleaseContractMap.has(releaseId)) {
                 return false
             }
             let associatedContracts = resolveReleaseContractMap.get(releaseId)
-            return associatedContracts.length !== associatedContracts.length || lodash.differenceBy(contracts, associatedContracts, x => x.contractId).length
+            return contracts.length !== associatedContracts.length || lodash.differenceBy(contracts, associatedContracts, x => x.contractId).length
         }).map(({releaseId, contracts}) => Object({
             resolveReleaseId: releaseId, status: 0,
             associatedContracts: contracts.map(({contractId}) => Object({
@@ -57,7 +54,6 @@ module.exports = class PresentableBindContractEventHandler {
         })).value()
 
         if (!associatedContracts.length) {
-            console.log('associatedContracts is empty')
             return
         }
 

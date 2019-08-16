@@ -37,7 +37,7 @@ module.exports = class SchemeBindContractEventHandler {
                 return false
             }
             let associatedContracts = resolveReleaseContractMap.get(releaseId)
-            return associatedContracts.length !== associatedContracts.length || lodash.differenceBy(contracts, associatedContracts, x => x.contractId).length
+            return contracts.length !== associatedContracts.length || lodash.differenceBy(contracts, associatedContracts, x => x.contractId).length
         }).map(({releaseId, contracts}) => Object({
             resolveReleaseId: releaseId, contractIsAuth: 0,
             associatedContracts: contracts.map(({contractId}) => Object({
