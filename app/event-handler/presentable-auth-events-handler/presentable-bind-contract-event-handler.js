@@ -54,6 +54,7 @@ module.exports = class PresentableBindContractEventHandler {
         })).value()
 
         if (!associatedContracts.length) {
+            console.log(JSON.stringify({resolveReleases, resolveReleaseContractMap}))
             return
         }
 

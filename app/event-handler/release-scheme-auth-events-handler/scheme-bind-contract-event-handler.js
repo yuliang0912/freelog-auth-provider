@@ -45,7 +45,7 @@ module.exports = class SchemeBindContractEventHandler {
             }))
         })).value()
 
-        if (associatedContracts.length) {
+        if (!associatedContracts.length) {
             return
         }
 
