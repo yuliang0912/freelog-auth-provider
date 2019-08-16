@@ -40,6 +40,8 @@ module.exports = class PresentableBindContractEventHandler {
             return
         }
 
+        console.log(JSON.stringify({presentableId, resolveReleaseContractMap}))
+
         const associatedContracts = lodash.chain(resolveReleases).filter(({releaseId, contracts}) => {
             if (!resolveReleaseContractMap.has(releaseId)) {
                 return false
@@ -54,7 +56,7 @@ module.exports = class PresentableBindContractEventHandler {
         })).value()
 
         if (!associatedContracts.length) {
-            console.log(JSON.stringify({resolveReleases, resolveReleaseContractMap}))
+            console.log('associatedContracts is empty')
             return
         }
 
