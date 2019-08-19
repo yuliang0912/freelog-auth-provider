@@ -41,6 +41,7 @@ module.exports = class rabbitMqClient extends Emitter {
         if (this.isReady || this.connection) {
             return Promise.resolve(this.instance)
         }
+
         return new Promise((...args) => this._startConnect(...args)).timeout(timeout).catch(Promise.TimeoutError, (err) => {
             return Promise.reject(new ApplicationError('rabbitMQ connect timeout'))
         })

@@ -5,6 +5,7 @@ const Controller = require('egg').Controller
 const {ArgumentError, AuthorizationError} = require('egg-freelog-base/error')
 const {mongoObjectId} = require('egg-freelog-base/app/extend/helper/common_regex')
 const SignReleaseValidator = require('../../extend/json-schema/batch-sign-release-validator')
+const {LoginUser, InternalClient} = require('egg-freelog-base/app/enum/identity-type')
 
 module.exports = class ContractController extends Controller {
 
@@ -30,7 +31,7 @@ module.exports = class ContractController extends Controller {
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
         const keywords = ctx.checkQuery("keywords").optional().decodeURIComponent().value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const condition = {}
         if (contractType) {
@@ -84,7 +85,7 @@ module.exports = class ContractController extends Controller {
         const partyTwo = ctx.checkQuery('partyTwo').optional().notEmpty().value
         const contractType = ctx.checkQuery('contractType').optional().toInt().in([0, 1, 2, 3]).value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser | InternalClient)
 
         const condition = {}
         if ([contractIds, targetIds, partyOne, partyTwo].every(x => x === undefined)) {
@@ -122,7 +123,7 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkParams("id").notEmpty().isContractId().value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser | InternalClient)
 
         await this.contractProvider.findById(contractId, projection.join(' ')).then(ctx.success)
     }
@@ -138,7 +139,7 @@ module.exports = class ContractController extends Controller {
         const identityType = ctx.checkQuery('identityType').exist().toInt().in([1, 2]).value //甲or乙
         const policyId = ctx.checkQuery('policyId').optional().exist().isMd5().value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const condition = {isTerminate: 1, targetId, partyTwo}
         if (policyId) {
@@ -164,7 +165,7 @@ module.exports = class ContractController extends Controller {
         const policyId = ctx.checkBody('policyId').exist().isMd5().value
         const presentableId = ctx.checkBody('presentableId').exist().isPresentableId().value
         const isDefault = ctx.checkBody('isDefault').exist().toInt().in([0, 1]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         if (!presentableInfo || presentableInfo.isOnline !== 1) {
@@ -187,7 +188,7 @@ module.exports = class ContractController extends Controller {
         const partyTwoId = ctx.checkBody("partyTwoId").exist().notEmpty().value
         const signReleases = ctx.checkBody("signReleases").exist().isArray().len(1, 200).value
         const contractType = ctx.checkBody("contractType").exist().toInt().in([1, 2]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const validateResult = new SignReleaseValidator().signReleaseValidate(signReleases)
         if (validateResult.errors.length) {
@@ -219,7 +220,7 @@ module.exports = class ContractController extends Controller {
         const contractId = ctx.checkParams("id").notEmpty().isMongoObjectId().value
         const remark = ctx.checkBody('remark').exist().type('string').len(0, 500).value
         const isDefault = ctx.checkBody('isDefault').optional().toInt().in([1]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         if (remark === undefined && isDefault === undefined) {
             throw new ArgumentError(ctx.gettext('params-required-validate-failed'))
@@ -242,7 +243,7 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkBody('contractId').exist().notEmpty().isMongoObjectId().value
         const eventId = ctx.checkBody('eventId').exist().notEmpty().value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         await ctx.app.contractService.execContractFsmEvent(contractId, eventId).then(ctx.success)
     }
@@ -255,7 +256,7 @@ module.exports = class ContractController extends Controller {
 
         const contractId = ctx.checkQuery('contractId').exist().isContractId().value
         const eventId = ctx.checkQuery('eventId').exist().value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const contractInfo = await this.contractProvider.findById(contractId).then(model => ctx.entityNullObjectCheck(model))
         const result = ctx.app.contractService.isCanExecEvent(contractInfo, eventId)

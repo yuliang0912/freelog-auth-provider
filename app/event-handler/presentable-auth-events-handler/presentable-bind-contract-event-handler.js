@@ -68,8 +68,6 @@ module.exports = class PresentableBindContractEventHandler {
             return this.app.rabbitClient.publish(Object.assign({}, PresentableAuthResultResetEvent, {
                 body: {presentableId, operation: 1} //发送指令,要求计算方案的授权状态(只计算自身绑定的合约部分)
             }))
-        }).catch(error => {
-            console.log('bulkWrite-error', error, JSON.stringify(bulkWrites))
         })
     }
 }

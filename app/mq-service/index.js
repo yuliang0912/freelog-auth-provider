@@ -170,5 +170,10 @@ module.exports = class RabbitMessageQueueEventHandler {
         patrun.add({routingKey: 'register.event.completed'}, ({message, header}) => {
             app.emit(outsideSystemEvent.RegisterCompletedEvent, message, header.eventName)
         })
+
+        //生成presentable授权信息事件
+        patrun.add({routingKey: 'node.presentable.generateAuthInfo'}, ({message, header}) => {
+            app.emit(outsideSystemEvent.GeneratePresentableAuthInfoEvent, message, header.eventName)
+        })
     }
 }

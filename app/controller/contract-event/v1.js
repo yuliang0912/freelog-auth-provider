@@ -2,6 +2,7 @@
 
 const Controller = require('egg').Controller
 const {ArgumentError, AuthorizationError} = require('egg-freelog-base/error')
+const {LoginUser} = require('egg-freelog-base/app/enum/identity-type')
 
 module.exports = class ContractEventsController extends Controller {
 
@@ -19,9 +20,8 @@ module.exports = class ContractEventsController extends Controller {
 
         const licenseIds = ctx.checkBody('licenseIds').exist().isArray().len(1).value
         const nodeId = ctx.checkBody('nodeId').optional().toInt().gt(0).value
-        ctx.validate()
-
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
+
         if (contractInfo.partyTwoUserId !== userInfo.userId) {
             throw new AuthorizationError(ctx.gettext('user-authorization-failed'))
         }
@@ -49,9 +49,8 @@ module.exports = class ContractEventsController extends Controller {
         const amount = ctx.checkBody('amount').exist().toInt().gt(0).value
         const fromAccountId = ctx.checkBody('fromAccountId').exist().isTransferAccountId().value
         const password = ctx.checkBody('password').exist().isNumeric().len(6, 6).value
-        ctx.validate()
-
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
+
         await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, amount, fromAccountId, password
         }).then(ctx.success)
@@ -65,8 +64,6 @@ module.exports = class ContractEventsController extends Controller {
     async escrowConfiscated(ctx) {
 
         const toAccountId = ctx.checkBody('toAccountId').exist().isTransferAccountId().value
-        ctx.validate()
-
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
 
         await ctx.app.contractService.singletonEventHandler(ctx, {
@@ -82,8 +79,6 @@ module.exports = class ContractEventsController extends Controller {
     async escrowRefunded(ctx) {
 
         const toAccountId = ctx.checkBody('toAccountId').exist().isTransferAccountId().value
-        ctx.validate()
-
         const {contractInfo, userInfo, eventInfo} = await this._baseEventParamsValidate(ctx)
         await ctx.app.contractService.singletonEventHandler(ctx, {
             contractInfo, eventInfo, userInfo, toAccountId
@@ -113,7 +108,7 @@ module.exports = class ContractEventsController extends Controller {
 
         const contractId = ctx.checkBody('contractId').exist().isContractId().value
         const eventId = ctx.checkBody('eventId').exist().isEventId().value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const userInfo = ctx.request.identityInfo.userInfo
         const contractInfo = await this.contractProvider.findById(contractId).then(model => ctx.entityNullObjectCheck(model))

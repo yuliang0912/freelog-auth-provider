@@ -57,7 +57,6 @@ module.exports = class PresentableGenerateAuthInfoEventHandler {
         const deleteTask2 = this.presentableLockedDependencyProvider.deleteMany({presentableId})
         await Promise.all([deleteTask1, deleteTask2])
 
-
         //先保存初始状态,再计算上游合约的授权的状态以及发行方案自身的授权状态
         const createOrUpdatePresentableAuthResultTask = this.presentableAuthResultProvider.findOneAndUpdate({presentableId}, {resolveReleaseCount: resolveReleases.length}).then(model => {
             return model || this.presentableAuthResultProvider.create({

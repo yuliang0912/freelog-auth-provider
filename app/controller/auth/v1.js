@@ -5,6 +5,7 @@ const semver = require('semver')
 const Controller = require('egg').Controller
 const {ArgumentError, ApplicationError, AuthorizationError} = require('egg-freelog-base/error')
 const cryptoHelper = require('egg-freelog-base/app/extend/helper/crypto_helper')
+const {LoginUser, UnLoginUser, InternalClient} = require('egg-freelog-base/app/enum/identity-type')
 
 module.exports = class PresentableOrResourceAuthController extends Controller {
 
@@ -22,7 +23,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'release', 'auth']).value
-        ctx.validate(false)
+        ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullObjectCheck(presentableInfo)
@@ -67,7 +68,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const subReleaseName = ctx.checkQuery('subReleaseName').optional().isFullReleaseName().value
         const version = ctx.checkQuery('version').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
-        ctx.validate(false)
+        ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
         if (!subReleaseId && !subReleaseName) {
             throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'subReleaseName'))
@@ -122,7 +123,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const identityType = ctx.checkQuery('identityType').exist().toInt().in([1, 2, 3]).value //1:资源方 2:节点方 3:C端消费
         const versionRange = ctx.checkQuery("versionRange").exist().is(semver.validRange, ctx.gettext('params-format-validate-failed', 'versionRange')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
-        ctx.validate(false)
+        ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
         if (identityType === 2 && !nodeId) {
             throw new ArgumentError(ctx.gettext('params-comb-validate-failed', 'identityType,nodeId'), {versionRange})
@@ -139,7 +140,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         var nodeInfo = null
         if (identityType === 2) {
             nodeInfo = await ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
-            ctx.entityNullValueAndUserAuthorizationCheck(nodeInfo)
+            ctx.entityNullObjectCheck(nodeInfo)
         }
 
         const authResult = await ctx.service.policyAuthService.policyAuthorization({
@@ -174,7 +175,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableNodeAndReleaseSideAuthSketch(ctx) {
 
         const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullValueAndUserAuthorizationCheck(presentableInfo, {
@@ -193,7 +194,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const releaseId = ctx.checkParams("releaseId").exist().isReleaseId().value
         const version = ctx.checkParams("version").exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${releaseId}`)
         ctx.entityNullValueAndUserAuthorizationCheck(releaseInfo, {
@@ -213,7 +214,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableNodeAndReleaseSideAuth(ctx) {
 
         const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullValueAndUserAuthorizationCheck(presentableInfo)
@@ -234,7 +235,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async batchPresentableNodeAndReleaseSideAuth(ctx) {
 
         const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().len(1, 100).value
-        ctx.validate(true)
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const presentableInfos = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}`)
         if (lodash.uniq(presentableIds).length !== presentableInfos.length) {
@@ -264,7 +265,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const nodeId = ctx.checkQuery('nodeId').optional().isInt().toInt().gt(0).value
         const policyIds = ctx.checkQuery('policyIds').optional().match(policyIdsRegex).toSplitArray().len(1, 100).default([]).value
         const isFilterSignedPolicy = ctx.checkQuery('isFilterSignedPolicy').optional().toInt().default(0).in([0, 1]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         var nodeInfo = null
         if (nodeId) {
@@ -294,7 +295,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().len(1, 100).value
         const policyIds = ctx.checkQuery('policyIds').optional().match(policyIdsRegex).toSplitArray().len(1, 100).default([]).value
         const isFilterSignedPolicy = ctx.checkQuery('isFilterSignedPolicy').optional().toInt().default(0).in([0, 1]).value
-        ctx.validate()
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         if (policyIds.length && policyIds.length !== presentableIds.length) {
             throw new ArgumentError(ctx.gettext('params-comb-validate-failed', 'presentableIds,policyIds'))
