@@ -41,12 +41,8 @@ module.exports = class PresentableAuthService extends Service {
         const [nodeInfo, presentableAuthTree, nodeUserInfo] = await Promise.all([nodeInfoTask, presentableAuthTreeTask, nodeUserInfoTask])
         const {authTree} = presentableAuthTree
 
-        let subAuthTreeNode = null
-        if (subReleaseInfo && subReleaseVersion) {
-            subAuthTreeNode = authTree.find(x => x.releaseId === subReleaseInfo.releaseId && x.version === subReleaseVersion)
-            if (!subAuthTreeNode) {
-                throw ApplicationError(ctx.gettext('params-validate-failed', 'subReleaseId,subReleaseVersion'))
-            }
+        if (subReleaseInfo && subReleaseVersion && !authTree.some(x => x.releaseId === subReleaseInfo.releaseId && x.version === subReleaseVersion)) {
+            throw ApplicationError(ctx.gettext('params-validate-failed', 'subReleaseId,subReleaseVersion'))
         }
 
         return this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
@@ -140,5 +136,4 @@ module.exports = class PresentableAuthService extends Service {
 
         return recursion()
     }
-
 }

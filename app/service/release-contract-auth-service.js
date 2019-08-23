@@ -214,10 +214,7 @@ module.exports = class ReleaseContractAuthService extends Service {
                     targetId: schemeId, partyTwo: releaseId, identityType: 1
                 }))
             })
-            lodashChain = lodashChain.differenceWith(authTokens, (schemeInfo, tokenInfo) => {
-                let {schemeId, releaseId} = schemeInfo
-                return schemeId === tokenInfo.targetId && releaseId === tokenInfo.partyTwo
-            })
+            lodashChain = lodashChain.differenceWith(authTokens, (schemeInfo, tokenInfo) => schemeInfo.schemeId === tokenInfo.targetId && schemeInfo.releaseId === tokenInfo.partyTwo)
         }
         return lodashChain.value()
     }
