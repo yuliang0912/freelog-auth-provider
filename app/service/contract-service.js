@@ -123,7 +123,6 @@ module.exports = class ContractService extends Service {
         }
 
         const policySegment = policies.find(t => t.policyId === policyId)
-
         const authResult = await authService.policyIdentityAuthentication(ctx, {
             policySegment, partyTwoUserInfo: userInfo,
             partyOneUserId: presentableInfo.userId,
@@ -134,14 +133,19 @@ module.exports = class ContractService extends Service {
             })
         }
 
+        const policyInfo = releasePolicyCompiler.compile(policySegment.policyText, policySegment.policyName)
+        policyInfo.status = policySegment.status
+        policyInfo.policyId = policySegment.policyId
+
         const contractModel = {
-            policyId, nodeId, policySegment, isDefault,
+            policyId, nodeId, isDefault,
             targetId: presentableId,
             partyOne: nodeId,
             partyTwo: userInfo.userId,
+            policySegment: policyInfo,
             partyOneUserId: presentableInfo.userId,
             partyTwoUserId: userInfo.userId,
-            contractName: policySegment.policyName,
+            contractName: policyInfo.policyName,
             contractType: app.contractType.PresentableToUser,
             isDynamicAuthentication: authResult.authCode === BasedOnCustomGroup
         }

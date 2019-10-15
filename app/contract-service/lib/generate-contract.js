@@ -22,6 +22,8 @@ module.exports = class GenerateContract {
 
         const {contractId, policySegment, partyTwoUserId, isDynamicAuthentication} = contractInfo
 
+        console.log(JSON.stringify(contractInfo))
+
         for (let declaration of Object.values(policySegment.fsmDeclarations)) {
             if (declaration.declareType === 'contractAccount' && /^escrowAccount$/i.test(declaration.type)) {
                 //测试.目前声明区域没有货币类型参数
