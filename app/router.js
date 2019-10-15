@@ -4,6 +4,7 @@ module.exports = app => {
 
     const {router, controller} = app
     const {contract, contractEvent, auth} = controller
+    const {presentableV1, releaseV1, testNodeV1} = auth
 
     //合同相关
     router.get('contract-list', '/v1/contracts/list', contract.v1.list)
@@ -18,19 +19,20 @@ module.exports = app => {
     router.post('contract-event-customEventInvoking', '/v1/contracts/events/customEventInvoking', contractEvent.v1.customEventInvoking)
 
     //授权相关
-    router.get('release-policy-identity-authorization', '/v1/auths/releases/batchPolicyIdentityAuthentication', auth.v1.batchReleasePolicyIdentityAuthentication)
-    router.get('presentable-policy-identity-authorization', '/v1/auths/presentables/batchPolicyIdentityAuthentication', auth.v1.batchPresentablePolicyIdentityAuthentication)
-    router.get('presentable-node-and-release-side-auth', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuth', auth.v1.presentableNodeAndReleaseSideAuth)
-    router.get('presentable-batch-node-and-release-side-auth', '/v1/auths/presentables/batchNodeAndReleaseSideAuth', auth.v1.batchPresentableNodeAndReleaseSideAuth)
-    router.get('presentable-node-and-release-side-auth-sketch', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuthSketch', auth.v1.presentableNodeAndReleaseSideAuthSketch)
+    router.get('release-policy-identity-authorization', '/v1/auths/releases/batchPolicyIdentityAuthentication', presentableV1.batchReleasePolicyIdentityAuthentication)
+    router.get('presentable-policy-identity-authorization', '/v1/auths/presentables/batchPolicyIdentityAuthentication', presentableV1.batchPresentablePolicyIdentityAuthentication)
+    router.get('presentable-node-and-release-side-auth', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuth', presentableV1.presentableNodeAndReleaseSideAuth)
+    router.get('presentable-batch-node-and-release-side-auth', '/v1/auths/presentables/batchNodeAndReleaseSideAuth', presentableV1.batchPresentableNodeAndReleaseSideAuth)
+    router.get('presentable-node-and-release-side-auth-sketch', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuthSketch', presentableV1.presentableNodeAndReleaseSideAuthSketch)
+
     //以下六个路由不能随意调换顺序
-    router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', auth.v1.releaseAuth)
-    router.get('release-auth', '/v1/auths/releases/:releaseId', auth.v1.releaseAuth)
-    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId.:extName', auth.v1.presentableSubReleaseAuth)
-    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId', auth.v1.presentableSubReleaseAuth)
-    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease', auth.v1.presentableSubReleaseAuth)
-    router.get('presentable-auth-ext', '/v1/auths/presentables/:presentableId.:extName', auth.v1.presentableAuth)
-    router.get('presentable-auth', '/v1/auths/presentables/:presentableId', auth.v1.presentableAuth)
+    router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', releaseV1.releaseAuth)
+    router.get('release-auth', '/v1/auths/releases/:releaseId', releaseV1.releaseAuth)
+    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId.:extName', presentableV1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId', presentableV1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease', presentableV1.presentableSubReleaseAuth)
+    router.get('presentable-auth-ext', '/v1/auths/presentables/:presentableId.:extName', presentableV1.presentableAuth)
+    router.get('presentable-auth', '/v1/auths/presentables/:presentableId', presentableV1.presentableAuth)
 
     router.resources('contract-info', '/v1/contracts', contract.v1)
 };
