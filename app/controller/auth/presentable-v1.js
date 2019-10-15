@@ -30,7 +30,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
         if (!authResult.isAuth) {
-            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "releaseInfo", "intro", "policies"])
+            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
         }
 
         await this._responseSubDependToHeader(presentableId)
