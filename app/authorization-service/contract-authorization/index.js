@@ -1,23 +1,21 @@
 'use strict'
 
 const Patrun = require('patrun')
-const AuthResult = require('../common-auth-result')
-const authCodeEnum = require('../../enum/auth-code')
-const nodeContractAuth = require('./node-contract-auth')
-const userContractAuth = require('./user-contract-auth')
-const resourceContractAuth = require('./resource-contract-auth')
 const {ApplicationError} = require('egg-freelog-base/error')
-const policyIdentityAuthentication = require('../identity-authentication/index')
+const NodeContractAuthHandler = require('./node-contract-auth')
+const UserContractAuthHandler = require('./user-contract-auth')
+const ReleaseContractAuthHandler = require('./release-contract-auth')
 const {ResourceToNode, PresentableToUser, ResourceToResource} = require('egg-freelog-base/app/enum/contract_type')
-const {terminate} = require('../../enum/contract-status-enum')
 
 /**
  * 合同授权包含两个部分(A:合同本身处在激活态  B:乙方依然满足合同策略中规定的用户对象范围)
  */
-class ContractAuthorization {
+module.exports = class ContractAuthHandler {
 
-    constructor() {
-        this.certificationRules = this.__registerCertificationRules__()
+    constructor(app) {
+        this.app = app
+        this.patrun = Patrun()
+        this.__registerCertificationRules__()
     }
 
     /**
@@ -26,41 +24,36 @@ class ContractAuthorization {
      * @param partyTwoInfo
      * @param partyTwoUserInfo
      */
-    async main(ctx, {contract, partyTwoInfo, partyTwoUserInfo}) {
+    async contractAuth({contract, partyTwoInfo, partyTwoUserInfo}) {
 
-        const {contractType, contractClause, partyOneUserId} = contract
-        const contractAuthHandler = this.certificationRules.find({contractType})
+        const {contractType} = contract
+        const contractAuthHandler = this.patrun.find({contractType})
         if (!contractAuthHandler) {
             throw new ApplicationError('contract-authorization Error: 不被支持的合同')
         }
-        //如果合同已经终止,则直接返回对应的错误码
-        if (contract.status === terminate) {
-            let authCode = contractType === ResourceToResource ? authCodeEnum.ReleaseContractTerminated :
-                contractType === ResourceToNode ? authCodeEnum.NodeContractTerminated : authCodeEnum.UserContractTerminated
-            return new AuthResult(authCode)
-        }
 
-        const contractAuthResult = contractAuthHandler(ctx, {contract})
-        //如果合同中的授权对象是固定的(非动态,例如分组),则不再需要后续进行身份认证
-        if (!contractAuthResult.isAuth || !contract.contractClause.isDynamicAuthentication) {
-            return contractAuthResult
-        }
-
-        const identityAuthResult = await policyIdentityAuthentication.main(ctx, {
-            policySegment: contractClause, contractType, partyOneUserId, partyTwoInfo, partyTwoUserInfo
-        })
-
-        if (identityAuthResult.authCode === authCodeEnum.PolicyIdentityAuthenticationFailed) {
-            identityAuthResult.authCode =
-                contractType === ResourceToResource ? authCodeEnum.ReleaseContractIdentityAuthenticationFailed :
-                    contractType === ResourceToNode ? authCodeEnum.NodeContractIdentityAuthenticationFailed :
-                        contractType === PresentableToUser ? authCodeEnum.UserContractIdentityAuthenticationFailed :
-                            authCodeEnum.PolicyIdentityAuthenticationFailed
-        }
-
-        return identityAuthResult.isAuth ? contractAuthResult : identityAuthResult
+        return contractAuthHandler.handle({contract, partyTwoInfo, partyTwoUserInfo})
     }
 
+
+    /**
+     * 合同测试授权
+     * @param ctx
+     * @param contract
+     * @param partyTwoInfo
+     * @param partyTwoUserInfo
+     * @returns {Promise<void>}
+     */
+    async contractTestAuth({contract, partyTwoInfo, partyTwoUserInfo}) {
+
+        const {contractType} = contract
+        const contractAuthHandler = this.patrun.find({contractType, authType: 'testAuth'})
+        if (!contractAuthHandler) {
+            throw new ApplicationError('contract-authorization Error: 不被支持的合同')
+        }
+
+        return contractAuthHandler.contractTestAuthHandle({contract, partyTwoInfo, partyTwoUserInfo})
+    }
 
     /**
      * 合同激活状态检查
@@ -77,24 +70,34 @@ class ContractAuthorization {
     }
 
     /**
+     * 是否激活测试授权
+     * @param contract
+     */
+    isActivateTestAuthorization(contract) {
+
+        const contractClause = contract.contractClause || {}
+
+        const currentStateInfo = contractClause.fsmStates[contractClause.currentFsmState]
+
+        return currentStateInfo && currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'test-active')
+    }
+
+
+    /**
      * 注册认证规则
      * @private
      */
     __registerCertificationRules__() {
 
-        const patrun = Patrun()
+        const {app, patrun} = this
+        const nodeContractAuthHandler = new NodeContractAuthHandler(app)
+        const userContractAuthHandler = new UserContractAuthHandler(app)
+        const releaseContractAuthHandler = new ReleaseContractAuthHandler(app)
 
-        //节点合同校验
-        patrun.add({contractType: ResourceToNode}, nodeContractAuth)
-
-        //用户合同校验
-        patrun.add({contractType: PresentableToUser}, userContractAuth)
-
-        //资源合同校验
-        patrun.add({contractType: ResourceToResource}, resourceContractAuth)
-
-        return patrun
+        patrun.add({contractType: ResourceToNode}, nodeContractAuthHandler)
+        patrun.add({contractType: PresentableToUser}, userContractAuthHandler)
+        patrun.add({contractType: ResourceToResource}, releaseContractAuthHandler)
+        patrun.add({contractType: ResourceToNode, authType: 'testAuth'}, nodeContractAuthHandler)
+        patrun.add({contractType: ResourceToResource, authType: 'testAuth'}, releaseContractAuthHandler)
     }
 }
-
-module.exports = new ContractAuthorization()

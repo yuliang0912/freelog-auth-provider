@@ -4,7 +4,7 @@ const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
 const PolicyIdentityAuthHandler = require('../identity-authentication/index')
 
-module.exports = class PresentablePolicyAuthHandler {
+module.exports = class ReleasePolicyAuthHandler {
 
     constructor(app) {
         this.app = app
@@ -19,9 +19,9 @@ module.exports = class PresentablePolicyAuthHandler {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async handle({policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async handle(policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo) {
 
-        const authResult = new AuthResult(authCodeEnum.BasedOnNodePolicy, {policySegment})
+        const authResult = new AuthResult(authCodeEnum.BasedOnReleasePolicy, {policySegment})
 
         const fsmStates = Object.keys(policySegment.fsmStates)
         const isInitialTerminateMode = policySegment.status === 1 && fsmStates.length === 1 && fsmStates.some(m => /^(initial|init)$/i.test(m))

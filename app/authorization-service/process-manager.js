@@ -2,11 +2,18 @@
 
 const authCodeEnum = require('../enum/auth-code')
 const commonAuthResult = require('./common-auth-result')
-const IdentityAuthentication = require('./identity-authentication/index')
-const ContractAuthorization = require('./contract-authorization/index')
-const PolicyAuthorization = require('./policy-authorization/index')
+const IdentityAuthHandler = require('./identity-authentication/index')
+const ContractAuthHandler = require('./contract-authorization/index')
+const PolicyAuthHandler = require('./policy-authorization/index')
 
-module.exports = {
+module.exports = class AuthServiceHandler {
+
+    constructor(app) {
+        this.app = app
+        this.policyAuthHandler = new PolicyAuthHandler(app)
+        this.identityAuthHandler = new IdentityAuthHandler(app)
+        this.contractAuthHandler = new ContractAuthHandler(app)
+    }
 
     /**
      * 获取合同授权结果
@@ -15,9 +22,22 @@ module.exports = {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async contractAuthorization(ctx, {contract, partyTwoInfo, partyTwoUserInfo}) {
-        return ContractAuthorization.main(...arguments)
-    },
+    async contractAuthorization({contract, partyTwoInfo, partyTwoUserInfo}) {
+        return this.contractAuthHandler.contractAuth(...arguments)
+    }
+
+
+    /**
+     * 获取合同测试授权结果
+     * @param contract
+     * @param partyTwoInfo 如果是节点合同,则需要传入nodeInfo,其他类型合同可以不穿此参数
+     * @param partyTwoUserInfo
+     * @returns {Promise<*>}
+     */
+    async contractTestAuthorization({contract, partyTwoInfo, partyTwoUserInfo}) {
+        return this.contractAuthHandler.contractTestAuth(...arguments)
+    }
+
 
     /***
      * 针对策略段尝试获取授权(用户对象满足,策略满足initial-terminate模式)
@@ -28,7 +48,7 @@ module.exports = {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyAuthorization(ctx, {policySegments, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async policyAuthorization({policySegments, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const authResult = new commonAuthResult(authCodeEnum.BasedOnReleasePolicy)
         const params = {policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}
@@ -38,7 +58,7 @@ module.exports = {
             if (policySegment.status !== 1) {
                 continue
             }
-            let policyAuthResult = await PolicyAuthorization.main(ctx, Object.assign({}, params, {policySegment}))
+            let policyAuthResult = await this.policyAuthHandler.handle(Object.assign({}, params, {policySegment}))
             if (!policyAuthResult.isAuth) {
                 continue
             }
@@ -49,11 +69,10 @@ module.exports = {
 
         if (!authResult.data.policySegment) {
             authResult.authCode = authCodeEnum.PolicyAuthFailed
-            authResult.addError(ctx.gettext('未能通过资源策略授权'))
         }
 
         return authResult
-    },
+    }
 
     /**
      * 针对策略尝试对目标对象做认证
@@ -63,7 +82,7 @@ module.exports = {
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async policyIdentityAuthentication(ctx, {policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
-        return IdentityAuthentication.main(...arguments)
+    async policyIdentityAuthentication({policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+        return this.identityAuthHandler.handle(...arguments)
     }
 }

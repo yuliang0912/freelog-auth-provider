@@ -4,10 +4,13 @@
 
 'use strict'
 
+const authCodeEnum = require('../enum/auth-code')
+
 module.exports = class CommonAuthResult {
 
     constructor(authCode = 0, data = {}) {
         this.authCode = authCode
+        this.testAuthCode = 0
         this.data = data
         this.errors = []
     }
@@ -26,6 +29,14 @@ module.exports = class CommonAuthResult {
      */
     get isAuth() {
         return this.authCode >= 200 && this.authCode <= 299
+    }
+
+    /**
+     * 是否通过测试授权
+     * @returns {boolean}
+     */
+    get isTestAuth() {
+        return this.testAuthCode === authCodeEnum.BasedOnNodeContractTestAuth || this.testAuthCode === authCodeEnum.BasedOnReleaseContractTestAuth
     }
 
     /**

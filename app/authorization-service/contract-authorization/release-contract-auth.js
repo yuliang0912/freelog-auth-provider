@@ -1,8 +1,3 @@
-/**
- * Created by yuliang on 2017/10/30.
- * 针对node授权,主要检测节点是否有权限使用resource
- */
-
 'use strict'
 
 const authCodeEnum = require('../../enum/auth-code')
@@ -10,7 +5,7 @@ const commonAuthResult = require('.././common-auth-result')
 const {terminate} = require('../../enum/contract-status-enum')
 const PolicyIdentityAuthHandler = require('../identity-authentication/index')
 
-module.exports = class NodeContractAuthHandler {
+module.exports = class ReleaseContractAuthHandler {
 
     constructor(app) {
         this.app = app
@@ -29,14 +24,14 @@ module.exports = class NodeContractAuthHandler {
         const authResult = new commonAuthResult(authCodeEnum.Default, {contract})
 
         if (contract.status === terminate) {
-            authResult.authCode = authCodeEnum.NodeContractTerminated
+            authResult.authCode = authCodeEnum.ReleaseContractTerminated
             return authResult
         }
 
         if (this._getContractAuth(contract, 'active')) {
-            authResult.authCode = authCodeEnum.BasedOnNodeContract
+            authResult.authCode = authCodeEnum.BasedOnReleaseContract
         } else {
-            authResult.authCode = authCodeEnum.NodeContractNotActive
+            authResult.authCode = authCodeEnum.ReleaseContractNotActive
             return authResult
         }
 
@@ -45,9 +40,11 @@ module.exports = class NodeContractAuthHandler {
             return authResult
         }
 
-        const identityAuthResult = await this._contractIdentityAuthentication(ctx, contract, partyTwoInfo, partyTwoUserInfo)
+        const identityAuthResult = await this._contractIdentityAuthentication({
+            contract, partyTwoInfo, partyTwoUserInfo
+        })
         if (identityAuthResult.authCode === authCodeEnum.PolicyIdentityAuthenticationFailed) {
-            identityAuthResult.authCode = authCodeEnum.NodeContractIdentityAuthenticationFailed
+            identityAuthResult.authCode = authCodeEnum.ReleaseContractIdentityAuthenticationFailed
         }
         if (!identityAuthResult.isAuth) {
             authResult.authCode = identityAuthResult.authCode
@@ -68,20 +65,19 @@ module.exports = class NodeContractAuthHandler {
         const authResult = new commonAuthResult(authCodeEnum.Default, {contract})
 
         if (contract.status === terminate) {
-            authResult.authCode = authCodeEnum.NodeContractTerminated
+            authResult.authCode = authCodeEnum.ReleaseContractTerminated
             return authResult
         }
-
         if (this._getContractAuth(contract, 'test-active')) {
-            authResult.testAuthCode = authCodeEnum.BasedOnNodeContractTestAuth
+            authResult.testAuthCode = authCodeEnum.BasedOnReleaseContractTestAuth
         } else {
-            authResult.testAuthCode = authCodeEnum.NodeContractNotActiveTestAuthorization
+            authResult.testAuthCode = authCodeEnum.ReleaseContractNotActiveTestAuthorization
         }
 
         if (this._getContractAuth(contract, 'active')) {
-            authResult.authCode = authCodeEnum.BasedOnNodeContract
+            authResult.authCode = authCodeEnum.BasedOnReleaseContract
         } else {
-            authResult.authCode = authCodeEnum.NodeContractNotActive
+            authResult.authCode = authCodeEnum.ReleaseContractNotActive
         }
 
         //如果正式授权和测试授权均不通过,则代表不通过
@@ -95,12 +91,10 @@ module.exports = class NodeContractAuthHandler {
         }
 
         const identityAuthResult = await this._contractIdentityAuthentication({
-            contract,
-            partyTwoInfo,
-            partyTwoUserInfo
+            contract, partyTwoInfo, partyTwoUserInfo
         })
         if (identityAuthResult.authCode === authCodeEnum.PolicyIdentityAuthenticationFailed) {
-            identityAuthResult.authCode = authCodeEnum.NodeContractIdentityAuthenticationFailed
+            identityAuthResult.authCode = authCodeEnum.ReleaseContractIdentityAuthenticationFailed
         }
         if (!identityAuthResult.isAuth) {
             authResult.authCode = identityAuthResult.authCode
@@ -124,7 +118,6 @@ module.exports = class NodeContractAuthHandler {
 
     /**
      * 合同身份授权
-     * @param ctx
      * @param contract
      * @param partyTwoInfo
      * @param partyTwoUserInfo
@@ -134,7 +127,6 @@ module.exports = class NodeContractAuthHandler {
     async _contractIdentityAuthentication({contract, partyTwoInfo, partyTwoUserInfo}) {
 
         const {contractClause, partyOneUserId} = contract
-
         return this.policyIdentityAuthHandler.handle({
             policySegment: contractClause, partyOneUserId, partyTwoInfo, partyTwoUserInfo
         })

@@ -314,7 +314,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async _responseResourceFile(resourceId, filename) {
 
-        const {ctx} = this
+        const {ctx, app} = this
 
         const signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceId}/signedResourceInfo`)
         const {aliasName, meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
@@ -333,6 +333,10 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.set('content-type', headers['content-type'])
             ctx.set('content-length', headers['content-length'])
         })
+
+        if (resourceType === app.resourceType.VIDEO || resourceType === app.resourceType.AUDIO) {
+            ctx.set('Accept-Ranges', 'bytes')
+        }
     }
 
     /**

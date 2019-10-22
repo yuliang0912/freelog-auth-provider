@@ -50,12 +50,16 @@ module.exports = app => {
     })
 
     ContractSchema.virtual("isActivated").get(function () {
-
         if (this.status === contractStatusEnum.active) {
             return true
         }
         const currentStateInfo = this.contractClause.fsmStates[this.contractClause.currentFsmState]
         return currentStateInfo && currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'active')
+    })
+
+    ContractSchema.virtual("isActiveTestAuthorization").get(function () {
+        const currentStateInfo = this.contractClause.fsmStates[this.contractClause.currentFsmState]
+        return currentStateInfo && currentStateInfo.authorization.some(x => x.toLocaleLowerCase() === 'test-active')
     })
 
     ContractSchema.virtual("isLocked").get(function () {

@@ -54,6 +54,8 @@ module.exports = {
 
     'presentable-authorization-failed': 'presentable授权失败',
 
+    'test-resource-authorization-failed': '节点测试资源授权失败',
+
     'release-policy-authorization-failed': 'release策略授权失败',
 
     'presentable-online-check-failed': 'presentable未上线',

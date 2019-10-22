@@ -4,13 +4,14 @@ const lodash = require('lodash')
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
 const {ArgumentError} = require('egg-freelog-base/error')
-const authService = require('../authorization-service/process-manager')
+const AuthService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 
 module.exports = class ReleaseContractAuthService extends Service {
 
     constructor({app}) {
         super(...arguments)
+        this.authService = new AuthService(app)
         this.contractProvider = app.dal.contractProvider
     }
 
@@ -92,10 +93,10 @@ module.exports = class ReleaseContractAuthService extends Service {
      */
     async _releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap) {
 
-        const {ctx} = this
+        const {authService} = this
         const releaseContractAuthTasks = contracts.map(contract => {
             let partyTwoUserInfo = partyTwoUserInfoMap.get(contract.partyTwoUserId)
-            return authService.contractAuthorization(ctx, {
+            return authService.contractAuthorization({
                 contract, partyTwoUserInfo
             }).then(authResult => contract.isAuth = authResult.isAuth)
         })
@@ -112,7 +113,7 @@ module.exports = class ReleaseContractAuthService extends Service {
      */
     async _releaseSchemesAuth(releaseSchemes, contractMap, userInfoMap) {
 
-        let {ctx} = this, index = 0
+        let {ctx, authService} = this, index = 0
         const authorizedReleaseSet = new Set() //授权通过的方案-发行
         const returnAuthResult = new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
 
@@ -135,7 +136,7 @@ module.exports = class ReleaseContractAuthService extends Service {
             }
             const nodeContractAuthTasks = batchContracts.map(contract => {
                 let partyTwoUserInfo = userInfoMap.get(contract.partyTwoUserId)
-                return !Reflect.has(contract, 'isAuth') ? authService.contractAuthorization(ctx, {
+                return !Reflect.has(contract, 'isAuth') ? authService.contractAuthorization({
                     contract, partyTwoUserInfo
                 }).then(authResult => contract.isAuth = authResult.isAuth) : undefined
             })

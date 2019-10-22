@@ -4,7 +4,7 @@ const lodash = require('lodash')
 const Service = require('egg').Service
 const {BasedOnCustomGroup} = require('../enum/auth-code')
 const {ContractSetDefaultEvent} = require('../enum/contract-fsm-event')
-const authService = require('../authorization-service/process-manager')
+const AuthService = require('../authorization-service/process-manager')
 const {ArgumentError, ApplicationError} = require('egg-freelog-base/error')
 const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
 
@@ -12,6 +12,7 @@ module.exports = class ContractService extends Service {
 
     constructor({app}) {
         super(...arguments)
+        this.authService = new AuthService(app)
         this.contractProvider = app.dal.contractProvider
     }
 
@@ -24,7 +25,7 @@ module.exports = class ContractService extends Service {
      */
     async batchCreateReleaseContracts({signReleases, contractType, partyTwoId, nodeInfo}) {
 
-        const {ctx} = this
+        const {ctx, authService} = this
         const {userInfo} = ctx.request.identityInfo
         const signReleaseMap = new Map(signReleases.map(x => [x.releaseId, new Set(x.policyIds)]))
 
@@ -81,7 +82,7 @@ module.exports = class ContractService extends Service {
 
         const identityAuthTasks = signContractModels.map(model => {
             let {policySegment, partyOneUserId} = model
-            return authService.policyIdentityAuthentication(ctx, {
+            return authService.policyIdentityAuthentication({
                 policySegment, partyOneUserId, partyTwoUserInfo: userInfo, partyTwoInfo: nodeInfo
             }).then(authResult => {
                 model.isAuth = authResult.isAuth
@@ -108,7 +109,7 @@ module.exports = class ContractService extends Service {
      */
     async createUserContract({presentableInfo, policyId, isDefault}) {
 
-        const {ctx, app} = this
+        const {ctx, app, authService} = this
         const {userInfo} = ctx.request.identityInfo
         const {presentableId, nodeId, policies} = presentableInfo
 
@@ -123,7 +124,7 @@ module.exports = class ContractService extends Service {
         }
 
         const policySegment = policies.find(t => t.policyId === policyId)
-        const authResult = await authService.policyIdentityAuthentication(ctx, {
+        const authResult = await authService.policyIdentityAuthentication({
             policySegment, partyTwoUserInfo: userInfo,
             partyOneUserId: presentableInfo.userId,
         })

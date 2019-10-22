@@ -55,6 +55,7 @@ module.exports = Object.freeze({
      */
     BasedOnDomain: 264,
 
+
     /**
      * 基于重签授权
      */
@@ -84,6 +85,11 @@ module.exports = Object.freeze({
      * 未找到有效的资源合同(合约已终止)
      */
     ReleaseContractTerminated: 303,
+
+    /**
+     * 发行合同未激活测试授权
+     */
+    ReleaseContractNotActiveTestAuthorization: 304,
 
     /**
      * 未找到资源的所有人信息
@@ -121,6 +127,16 @@ module.exports = Object.freeze({
     PresentableNotOnline: 406,
 
     /**
+     * 节点合同未激活测试授权
+     */
+    NodeContractNotActiveTestAuthorization: 407,
+
+    /**
+     * 测试资源未上线
+     */
+    TestResourceNotOnline: 450,
+
+    /**
      * 用户合同未激活
      */
     UserContractNotActive: 501,
@@ -151,6 +167,11 @@ module.exports = Object.freeze({
     UnLoginUser: 505,
 
     /**
+     * 登陆用户未获得授权
+     */
+    UserUnauthorized: 550,
+
+    /**
      * [过时的]无法确定执行哪个用户合同(多个合同存在时,新版本已经设置了默认合同 此错误码已无意义)
      */
     //UnsureExecuteUserContracts: 506,
@@ -169,6 +190,16 @@ module.exports = Object.freeze({
      * 策略授权失败
      */
     PolicyAuthFailed: 602,
+
+    /**
+     * 基于节点合同的测试授权
+     */
+    BasedOnNodeContractTestAuth: 701,
+
+    /**
+     * 基于发行合同的测试授权
+     */
+    BasedOnReleaseContractTestAuth: 702,
 
     /**
      * 转签授权失败

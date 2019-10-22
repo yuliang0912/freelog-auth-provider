@@ -3,40 +3,43 @@
 const Patrun = require('patrun')
 const AuthResult = require('../common-auth-result')
 const authCodeEnum = require('../../enum/auth-code')
-const nodeDomainRule = require('./node-domain-rule')
-const userIndividualRule = require('./user-individual-rule')
-const userOrNodeGroupRule = require('./user-or-node-group-rule')
 const {ApplicationError} = require('egg-freelog-base/error')
+const NodeDomainRoleAuthHandler = require('./node-domain-role')
+const UserIndividualRoleAuthHandler = require('./user-individual-role')
+const UserOrNodeGroupRoleAuthHandler = require('./user-or-node-group-role')
 
+module.exports = class IdentityAuthHandler {
 
-class FreelogPolicyIdentityAuthentication {
-
-    constructor() {
-        this.certificationRules = this.__registerCertificationRules__()
+    constructor(app) {
+        this.app = app
+        this.patrun = Patrun()
+        this.__registerCertificationRules__()
     }
 
     /**
-     *  策略段身份认证
+     * 策略段身份认证
      * @param partyTwoInfo 节点信息,只有针对节点做身份认证时,才需要此参数
      * @param partyTwoUserInfo
      * @returns {Promise<*>}
      */
-    async main(ctx, {policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
+    async handle({policySegment, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
         const authResults = []
-        const params = {partyOneUserId, partyTwoInfo, partyTwoUserInfo}
         for (let i = 0, j = this.authRuleSteps.length; i < j; i++) {
             let stepRule = this.authRuleSteps[i]
-            params.authUserObject = policySegment.authorizedObjects.find(t => t.userType.toUpperCase() === stepRule.userType)
+            let params = {
+                partyOneUserId, partyTwoInfo, partyTwoUserInfo,
+                authUserObject: policySegment.authorizedObjects.find(t => t.userType.toUpperCase() === stepRule.userType)
+            }
             if (!params.authUserObject) {
                 continue
             }
-            let authRule = this.certificationRules.find(stepRule);
+            let authRule = this.patrun.find(stepRule);
             if (!authRule) {
                 continue
             }
 
-            let authResult = await authRule(ctx, params)
+            let authResult = await authRule.handle(params)
             if (authResult.isAuth) {
                 authResult.data.policyId = policySegment.policyId
                 return authResult
@@ -73,20 +76,11 @@ class FreelogPolicyIdentityAuthentication {
      */
     __registerCertificationRules__() {
 
-        const patrun = Patrun()
+        const {app, patrun} = this
 
-        //节点域名认证
-        patrun.add({ruleName: 'nodeDomainAuth', userType: 'DOMAIN'}, nodeDomainRule)
-
-        //用户个体认证
-        patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, userIndividualRule)
-
-        //节点或者用户分组认证
-        patrun.add({ruleName: 'userOrNodeGroupAuth', userType: 'GROUP'}, userOrNodeGroupRule)
-
-        return patrun
+        patrun.add({ruleName: 'nodeDomainAuth', userType: 'DOMAIN'}, new NodeDomainRoleAuthHandler(app))
+        patrun.add({ruleName: 'userOrNodeGroupAuth', userType: 'GROUP'}, new UserOrNodeGroupRoleAuthHandler(app))
+        patrun.add({ruleName: 'userIndividualAuth', userType: 'INDIVIDUAL'}, new UserIndividualRoleAuthHandler(app))
     }
 }
-
-module.exports = new FreelogPolicyIdentityAuthentication()
 

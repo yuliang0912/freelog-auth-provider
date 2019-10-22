@@ -3,13 +3,14 @@
 const lodash = require('lodash')
 const Service = require('egg').Service
 const {ArgumentError} = require('egg-freelog-base/error')
-const authService = require('../authorization-service/process-manager')
+const AuthService = require('../authorization-service/process-manager')
 const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
 
 module.exports = class PolicyAuthService extends Service {
 
     constructor({app}) {
         super(...arguments)
+        this.authService = new AuthService(app)
         this.contractProvider = app.dal.contractProvider
     }
 
@@ -22,7 +23,7 @@ module.exports = class PolicyAuthService extends Service {
      */
     async batchPresentablePolicyIdentityAuthentication(presentableIds, policyIds, isFilterSignedPolicy) {
 
-        const {ctx} = this
+        const {ctx, authService} = this
         const signedContractSet = new Set()
         const {userInfo} = ctx.request.identityInfo
         const presentables = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}&projection=policies,userId`)
@@ -63,7 +64,7 @@ module.exports = class PolicyAuthService extends Service {
                     result.authenticationResult = 2
                     continue
                 }
-                let task = authService.policyIdentityAuthentication(ctx, {
+                let task = authService.policyIdentityAuthentication({
                     policySegment: policyInfo, partyOneUserId: userId, partyTwoUserInfo: userInfo
                 }).then(authResult => {
                     result.authenticationResult = authResult.isAuth ? 1 : 0
@@ -87,7 +88,7 @@ module.exports = class PolicyAuthService extends Service {
      */
     async batchReleasePolicyIdentityAuthentication(releaseIds, policyIds, nodeInfo, isFilterSignedPolicy) {
 
-        const {ctx} = this
+        const {ctx, authService} = this
         const signedContractSet = new Set()
         const {userInfo} = ctx.request.identityInfo
         const releases = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/list?releaseIds=${releaseIds.toString()}&projection=policies,userId`)
@@ -132,7 +133,7 @@ module.exports = class PolicyAuthService extends Service {
                     result.authenticationResult = 2
                     continue
                 }
-                let task = authService.policyIdentityAuthentication(ctx, Object.assign({
+                let task = authService.policyIdentityAuthentication(Object.assign({
                     policySegment: policyInfo, partyOneUserId: userId
                 }, params)).then(authResult => {
                     result.authenticationResult = authResult.isAuth ? 1 : 0
@@ -157,11 +158,11 @@ module.exports = class PolicyAuthService extends Service {
      */
     async policyIdentityAuthentication({policies, partyOneUserId, partyTwoUserInfo, partyTwoInfo = null, policyIds = []}) {
 
-        const {ctx} = this
+        const {ctx, authService} = this
 
         const targetPolicies = lodash.isEmpty(policyIds) ? policies : policies.filter(x => policyIds.includes(x.policyId))
 
-        const tasks = targetPolicies.map(policyInfo => authService.policyIdentityAuthentication(ctx, {
+        const tasks = targetPolicies.map(policyInfo => authService.policyIdentityAuthentication({
             partyOneUserId, partyTwoInfo, partyTwoUserInfo,
             policySegment: policyInfo,
         }).then(authResult => {
@@ -178,10 +179,10 @@ module.exports = class PolicyAuthService extends Service {
      */
     async policyAuthorization({policies, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo}) {
 
-        const {ctx} = this
+        const {authService} = this
         const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
 
-        return authService.policyAuthorization(ctx, {
+        return authService.policyAuthorization({
             policySegments, policyType, partyOneUserId, partyTwoInfo, partyTwoUserInfo
         })
     }

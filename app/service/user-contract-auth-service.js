@@ -2,7 +2,7 @@
 
 const Service = require('egg').Service
 const authCodeEnum = require('../enum/auth-code')
-const authService = require('../authorization-service/process-manager')
+const AuthService = require('../authorization-service/process-manager')
 const commonAuthResult = require('../authorization-service/common-auth-result')
 const releasePolicyCompiler = require('egg-freelog-base/app/extend/policy-compiler/release-policy-compiler')
 
@@ -10,6 +10,7 @@ module.exports = class UserContractAuthService extends Service {
 
     constructor({app}) {
         super(...arguments)
+        this.authService = new AuthService(app)
         this.contractProvider = app.dal.contractProvider
     }
 
@@ -42,7 +43,7 @@ module.exports = class UserContractAuthService extends Service {
      */
     async _loginUserPresentableContractAuth(presentableInfo, userInfo) {
 
-        const {ctx, app} = this
+        const {ctx, app, authService} = this
         const {presentableId} = presentableInfo
 
         const authToken = await ctx.service.authTokenService.getAuthToken({
@@ -58,7 +59,7 @@ module.exports = class UserContractAuthService extends Service {
         })
 
         if (defaultExecContract) {
-            return authService.contractAuthorization(ctx, {contract: defaultExecContract, partyTwoUserInfo: userInfo})
+            return authService.contractAuthorization({contract: defaultExecContract, partyTwoUserInfo: userInfo})
         }
 
         const freeContractInfo = await this._tryCreateFreeUserContract(presentableInfo, userInfo)
@@ -75,13 +76,13 @@ module.exports = class UserContractAuthService extends Service {
      */
     async _tryCreateFreeUserContract(presentableInfo, userInfo) {
 
-        const {ctx, app} = this
+        const {ctx, app, authService} = this
         const {presentableId, policies, nodeId} = presentableInfo
         const contractType = app.contractType.PresentableToUser
 
         const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
 
-        const policyAuthResult = await authService.policyAuthorization(ctx, {
+        const policyAuthResult = await authService.policyAuthorization({
             policySegments, contractType,
             partyOneUserId: presentableInfo.userId,
             partyTwoUserInfo: userInfo
@@ -113,12 +114,12 @@ module.exports = class UserContractAuthService extends Service {
      */
     async _unLoginUserPresentablePolicyAuth(presentableInfo) {
 
-        const {ctx, app} = this
+        const {app, authService} = this
         const {policies, userId} = presentableInfo
 
         const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
 
-        return authService.policyAuthorization(ctx, {
+        return authService.policyAuthorization({
             policySegments,
             contractType: app.contractType.PresentableToUser,
             partyOneUserId: userId,
