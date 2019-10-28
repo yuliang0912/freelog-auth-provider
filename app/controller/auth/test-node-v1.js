@@ -47,21 +47,23 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             return ctx.success(testResourceInfo)
         }
 
-        let {testResourceName, resourceFileInfo} = testResourceInfo
+        const {testResourceName, resourceFileInfo} = testResourceInfo
+
         await this._responseResourceFile(resourceFileInfo.id, resourceFileInfo.type, testResourceName)
     }
 
+
     /**
-     * 测试资源子依赖授权
+     * 测试资源子级依赖授权
      * @param ctx
      * @returns {Promise<void>}
      */
-    async testResourceDependencyAuth(ctx) {
+    async testResourceSubDependAuth(ctx) {
 
         const testResourceId = ctx.checkParams('testResourceId').exist().isMd5().value
-        const subEntityId = ctx.checkParams('subEntityId').optional().isMongoObjectId().value
-        const subEntityName = ctx.checkParams('subEntityName').optional().value
-        const subEntityType = ctx.checkParams('subEntityType').exist().in(['release', 'mock']).value
+        const subEntityId = ctx.checkQuery('subEntityId').optional().isMongoObjectId().value
+        const subEntityName = ctx.checkQuery('subEntityName').optional().value
+        const subEntityType = ctx.checkQuery('subEntityType').exist().in(['release', 'mock']).value
         const subEntityVersion = ctx.checkQuery('subEntityVersion').optional().is(semver.valid, ctx.gettext('params-format-validate-failed', 'subEntityVersion')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'release', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
@@ -69,6 +71,32 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         if (!subEntityId && !subEntityName) {
             throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'subEntityId,subEntityName'))
         }
+
+        const testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}`)
+        ctx.entityNullObjectCheck(testResourceInfo)
+
+        const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo, subEntityId, subEntityName, subEntityType, subEntityVersion)
+        if (!authResult.isAuth) {
+            authResult.data.testResourceInfo = testResourceInfo
+        }
+
+        await this._responseSubDependToHeader(testResourceId)
+
+        if (extName === 'auth') {
+            return ctx.success(authResult)
+        }
+        if (!authResult.isAuth) {
+            throw new AuthorizationError(ctx.gettext('test-resource-authorization-failed'), {
+                authCode: authResult.authCode, authResult
+            })
+        }
+        if (extName === 'info') {
+            return ctx.success(testResourceInfo)
+        }
+
+        const {resourceId, id, name, type} = authResult.data.subEntityInfo
+
+        await this._responseResourceFile(resourceId || id, type, name)
     }
 
 

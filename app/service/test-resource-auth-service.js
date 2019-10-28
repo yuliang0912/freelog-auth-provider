@@ -39,14 +39,21 @@ module.exports = class NodeTestResourceAuthService extends Service {
             return new commonAuthResult(authCodeEnum.UserUnauthorized)
         }
 
-        // if (subEntityId && subEntityVersion && !authTree.some(x => x.id === subEntityId && x.version === subEntityVersion)) {
-        //     throw ApplicationError(ctx.gettext('params-validate-failed', 'subEntityId,subEntityVersion'))
-        // }
+        var subEntityInfo = null
+        if (subEntityId || subEntityName) {
+            subEntityInfo = this._getSubEntityInfo(authTree, subEntityId, subEntityName, subEntityType, subEntityVersion)
+            if (!subEntityInfo) {
+                throw ApplicationError(ctx.gettext('params-validate-failed', 'subReleaseId,subEntityName'))
+            }
+        }
 
         const releaseSideAuthTask = ctx.service.releaseContractAuthService.testResourceReleaseSideAuth(testResourceAuthTree)
         const nodeSideAuthTask = ctx.service.nodeContractAuthService.testResourceNodeSideAuth(testResourceInfo, nodeInfo, userInfo)
 
         const [nodeSideAuthResult, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
+
+        releaseSideAuthResult.data.subEntityInfo = nodeSideAuthResult.data.subEntityInfo = subEntityInfo
+
         return nodeSideAuthResult.isAuth ? releaseSideAuthResult : nodeSideAuthResult
     }
 
@@ -79,7 +86,7 @@ module.exports = class NodeTestResourceAuthService extends Service {
         if (authTreeChain.values().length > 1) {
             throw new ArgumentError(this.ctx.gettext('params-comb-validate-failed', 'subEntityId, subEntityName, subEntityType, subEntityVersion'))
         }
-        return authTreeChain.first().values()
+        return authTreeChain.first().value()
     }
 }
 
