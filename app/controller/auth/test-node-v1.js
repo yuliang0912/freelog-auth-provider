@@ -46,14 +46,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         if (extName === 'info') {
             return ctx.success(testResourceInfo)
         }
-        // const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${presentableInfo.releaseInfo.releaseId}`)
-        // if (extName === 'release') {
-        //     return ctx.success(releaseInfo)
-        // }
-        //
-        // const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === presentableInfo.releaseInfo.version)
-        //
-        // await this._responseResourceFile(resourceVersion.resourceId, presentableId)
+
+        let {testResourceName, resourceFileInfo} = testResourceInfo
+        await this._responseResourceFile(resourceFileInfo.id, resourceFileInfo.type, testResourceName)
     }
 
     /**
@@ -67,7 +62,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const subEntityId = ctx.checkParams('subEntityId').optional().isMongoObjectId().value
         const subEntityName = ctx.checkParams('subEntityName').optional().value
         const subEntityType = ctx.checkParams('subEntityType').exist().in(['release', 'mock']).value
-        const subEntityVersion = ctx.checkQuery('subEntityVersion').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'subEntityVersion')).value
+        const subEntityVersion = ctx.checkQuery('subEntityVersion').optional().is(semver.valid, ctx.gettext('params-format-validate-failed', 'subEntityVersion')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'release', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
@@ -76,55 +71,67 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }
     }
 
+
     /**
-     * 响应资源文件
-     * @param entityId
-     * @param entityType
-     * @param responseFilename
+     * 响应依赖发行到http-header
+     * @param presentableId
+     * @param subReleaseId
+     * @param subReleaseVersion
      * @returns {Promise<void>}
      * @private
      */
-    // async _responseFile(entityId, entityVersion, entityType, responseFilename) {
-    //
-    //     const {ctx} = this
-    //     const signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceId}/signedResourceInfo`)
-    //     if (entityType === '')
-    //         const {aliasName, meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
-    //
-    //     ctx.set('freelog-resource-type', resourceType)
-    //     ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(meta)))
-    //     ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(lodash.omit(systemMeta, 'dependencies'))))
-    //
-    //     await ctx.curl(resourceFileUrl, {streaming: true}).then(({status, headers, res}) => {
-    //         if (status < 200 || status > 299) {
-    //             throw new ApplicationError(ctx.gettext('文件流读取失败'), {httpStatus: status})
-    //         }
-    //         ctx.body = res
-    //         ctx.status = status
-    //         ctx.attachment(filename || aliasName)
-    //         ctx.set('content-type', headers['content-type'])
-    //         ctx.set('content-length', headers['content-length'])
-    //     })
-    // }
-    //
-    // async _getResourceOrMockInfo(entityId, entityVersion, entityType) {
-    //
-    //     const {ctx} = this
-    //     var result = null
-    //     if (entityType === 'release') {
-    //         let releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${entityId}`)
-    //         let resourceVersionInfo = releaseInfo.resourceVersions.find(x => x.version === entityVersion)
-    //         if (resourceVersionInfo) {
-    //             const resourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${resourceVersionInfo.resourceId}/signedResourceInfo`)
-    //         }
-    //         //resourceVersionInfo.resourceId
-    //     }
-    //     else if (entityType === 'presentable') {
-    //         let presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${entityId}`)
-    //     }
-    //     else if (entityType === 'mock') {
-    //         result = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/mocks/${entityId}`)
-    //     }
-    //     return result
-    // }
+    async _responseSubDependToHeader(testResourceId, subEntityId, subReleaseVersion) {
+
+        const {ctx} = this
+        let url = `${ctx.webApi.testNode}/testResources/${testResourceId}/subDependencies`
+        if (subEntityId) {
+            url += `?subEntityId=${subEntityId}`
+        }
+        if (subReleaseVersion) {
+            url += `&subEntityVersion=${subReleaseVersion}`
+        }
+
+        const subDependencies = await ctx.curlIntranetApi(url).then(list => list.map(item => Object({
+            v: item.version, t: item.type, id: item.id, n: item.name
+        })))
+
+        ctx.set('freelog-sub-entities', cryptoHelper.base64Encode(JSON.stringify(subDependencies)))
+    }
+
+    /**
+     * 响应资源文件
+     * @param resourceId
+     * @param filename
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _responseResourceFile(id, type, filename) {
+
+        const {ctx, app} = this
+
+        let url = type === "mock" ? `${ctx.webApi.resourceInfo}/mocks/${id}/signedMockResourceInfo` :
+            `${ctx.webApi.resourceInfo}/${id}/signedResourceInfo`
+
+        const signedResourceInfo = await ctx.curlIntranetApi(url)
+        const {meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
+
+        ctx.set('freelog-resource-type', resourceType)
+        ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(meta)))
+        ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(lodash.omit(systemMeta, 'dependencies'))))
+
+        await ctx.curl(resourceFileUrl, {streaming: true}).then(({status, headers, res}) => {
+            if (status < 200 || status > 299) {
+                throw new ApplicationError(ctx.gettext('文件流读取失败'), {httpStatus: status})
+            }
+            ctx.body = res
+            ctx.status = status
+            ctx.attachment(filename)
+            ctx.set('content-type', headers['content-type'])
+            ctx.set('content-length', headers['content-length'])
+        })
+
+        if (resourceType === app.resourceType.VIDEO || resourceType === app.resourceType.AUDIO) {
+            ctx.set('Accept-Ranges', 'bytes')
+        }
+    }
 }

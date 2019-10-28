@@ -17,41 +17,84 @@ module.exports = class ReleaseContractAuthService extends Service {
 
     /**
      * presentable发行侧授权
-     * @param presentableInfo
      * @param presentableAuthTree
      * @returns {Promise<void>}
      */
-    async presentableReleaseSideAuth(presentableInfo, presentableAuthTree) {
+    async presentableReleaseSideAuth(presentableAuthTree) {
 
         const {ctx} = this
         const {authTree} = presentableAuthTree
         const releaseSchemeIds = lodash.chain(authTree).map(({releaseSchemeId}) => releaseSchemeId).uniq().value()
+        if (!releaseSchemeIds.length) {
+            return new commonAuthResult(authCodeEnum.BasedOnDefaultAuth)
+        }
+
         const allReleaseSchemes = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/versions/list?projection=releaseId,version,resolveReleases&schemeIds=${releaseSchemeIds.toString()}`)
 
         //过滤掉已经获得授权的方案(没有依赖的OR缓存中通过授权的)
-        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes)
+        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes, true, true)
         if (!releaseSchemes.length) {
             return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
         }
 
-        this._getSchemePracticalUsedReleases(releaseSchemes, presentableAuthTree)
+        //排除掉基础上抛中未实际使用到的发行,这部分不管合约状态如何,都不参与授权运算
+        releaseSchemes.forEach(releaseScheme => {
+            let {schemeId, resolveReleases} = releaseScheme
+            let dependencies = authTree.filter(({parentReleaseSchemeId}) => parentReleaseSchemeId === schemeId)
+            releaseScheme.resolveReleases = lodash.intersectionBy(resolveReleases, dependencies, x => x.releaseId)
+        })
 
-        //如果没有合同需要做授权,则代表是单一资源,没有依赖的发行需要做授权,天生通过
         const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
-
         const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
         const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
         const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${userIds.toString()}`)
             .then(list => new Map(list.map(x => [x.userId, x])))
-        const contractMap = new Map(contracts.map(x => [x.contractId, x]))
+        const contractMap = new Map(contracts.map(x => [x.contractId, x.toObject()]))
 
-        const releaseSchemesAuthResult = await this._releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap)
+        const releaseSchemesAuthResult = await this._releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap, false)
 
         //针对授权通过的发行方案进行结果缓存
         const authorisedReleaseSchemes = lodash.differenceBy(releaseSchemes, releaseSchemesAuthResult.data.authFailedReleaseSchemes || [], x => x.releaseId)
         this._batchSaveReleaseSchemeAuthResults(authorisedReleaseSchemes)
 
         return releaseSchemesAuthResult
+    }
+
+    /**
+     * 节点测试资源发行侧授权
+     * @param testResourceAuthTree
+     * @returns {Promise<module.CommonAuthResult|*>}
+     */
+    async testResourceReleaseSideAuth(testResourceAuthTree) {
+
+        const {ctx} = this
+        const {authTree} = testResourceAuthTree
+        const releaseSchemeIds = lodash.chain(authTree).filter(x => Reflect.has(x, 'releaseSchemeId')).map(({releaseSchemeId}) => releaseSchemeId).uniq().value()
+        if (!releaseSchemeIds.length) {
+            return new commonAuthResult(authCodeEnum.BasedOnDefaultAuth)
+        }
+        const allReleaseSchemes = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/versions/list?projection=releaseId,version,resolveReleases&schemeIds=${releaseSchemeIds.toString()}`)
+        //过滤掉已经获得授权的方案(没有依赖的OR缓存中通过授权的)
+        const releaseSchemes = await this._filterAuthorisedSchemes(allReleaseSchemes, true, false)
+        if (!releaseSchemes.length) {
+            return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
+        }
+
+        releaseSchemes.forEach(releaseScheme => {
+            let {releaseId, version, resolveReleases} = releaseScheme
+            let dependencies = authTree.filter(({parentId, type, parentVersion}) => type === 'release' && parentId === releaseId && parentVersion === version)
+            releaseScheme.resolveReleases = lodash.intersectionWith(resolveReleases, dependencies, (x, y) => x.releaseId === y.id)
+        })
+
+        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
+
+        const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
+        const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
+        const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${userIds.toString()}`)
+            .then(list => new Map(list.map(x => [x.userId, x])))
+        const contractMap = new Map(contracts.map(x => [x.contractId, x.toObject()]))
+
+        return this._releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap, true)
     }
 
     /**
@@ -73,9 +116,9 @@ module.exports = class ReleaseContractAuthService extends Service {
         const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()
         const partyTwoUserInfoMap = await ctx.curlIntranetApi(`${ctx.webApi.userInfo}?userIds=${userIds.toString()}`)
             .then(list => new Map(list.map(x => [x.userId, x])))
-        const contractMap = new Map(contracts.map(x => [x.contractId, x]))
+        const contractMap = new Map(contracts.map(x => [x.contractId, x.toObject()]))
 
-        await this._releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap)
+        await this._releaseContractAuth(contracts, partyTwoUserInfoMap)
 
         return resolveReleases.map(({releaseId, releaseName, contracts}) => Object({
             releaseId, releaseName,
@@ -91,30 +134,36 @@ module.exports = class ReleaseContractAuthService extends Service {
      * @returns {Promise<any>}
      * @private
      */
-    async _releaseSchemeContractAuth(userInfo, contracts, partyTwoUserInfoMap) {
+    async _releaseContractAuth(contracts, partyTwoUserInfoMap, isTestAuth = false) {
 
         const {authService} = this
         const releaseContractAuthTasks = contracts.map(contract => {
+            if (Reflect.has(contract, 'isAuth')) {
+                return
+            }
             let partyTwoUserInfo = partyTwoUserInfoMap.get(contract.partyTwoUserId)
-            return authService.contractAuthorization({
-                contract, partyTwoUserInfo
-            }).then(authResult => contract.isAuth = authResult.isAuth)
+            let handleFunc = isTestAuth ? authService.contractTestAuthorization : authService.contractAuthorization
+            return handleFunc.call(authService, {contract, partyTwoUserInfo}).then(authResult => {
+                contract.isAuth = isTestAuth ? (authResult.isAuth || authResult.isTestAuth) : authResult.isAuth
+            })
         })
 
         return Promise.all(releaseContractAuthTasks).then(() => contracts)
     }
 
+
     /**
      * 批量针对发行的方案进行授权
      * @param releaseSchemes 调用方自动去除实际未依赖的发行
      * @param contractMap
-     * @param userInfoMap
+     * @param partyTwoUserInfoMap
+     * @param isTestAuth
      * @returns {Promise<module.CommonAuthResult|*>}
      */
-    async _releaseSchemesAuth(releaseSchemes, contractMap, userInfoMap) {
+    async _releaseSchemesAuth(releaseSchemes, contractMap, partyTwoUserInfoMap, isTestAuth) {
 
-        let {ctx, authService} = this, index = 0
-        const authorizedReleaseSet = new Set() //授权通过的方案-发行
+        let {ctx} = this, index = 0
+        const authorizedReleaseSet = new Set() //授权通过的发行方案
         const returnAuthResult = new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
 
         while (true) {
@@ -122,8 +171,8 @@ module.exports = class ReleaseContractAuthService extends Service {
             for (let x = 0, y = releaseSchemes.length; x < y; x++) {
                 let {schemeId, resolveReleases} = releaseSchemes[x]
                 for (let m = 0, n = resolveReleases.length; m < n; m++) {
-                    let {releaseId, contracts} = resolveReleases[m]
-                    if (contracts.length - 1 >= index && !authorizedReleaseSet.has(schemeId + releaseId)) {
+                    let {contracts} = resolveReleases[m]
+                    if (contracts.length - 1 >= index && !authorizedReleaseSet.has(schemeId)) {
                         batchContracts.push(contractMap.get(contracts[index].contractId))
                     }
                 }
@@ -134,28 +183,22 @@ module.exports = class ReleaseContractAuthService extends Service {
             if (batchContracts.some(x => x === undefined)) {
                 throw new ArgumentError(ctx.gettext('params-validate-failed', 'contractMap'))
             }
-            const nodeContractAuthTasks = batchContracts.map(contract => {
-                let partyTwoUserInfo = userInfoMap.get(contract.partyTwoUserId)
-                return !Reflect.has(contract, 'isAuth') ? authService.contractAuthorization({
-                    contract, partyTwoUserInfo
-                }).then(authResult => contract.isAuth = authResult.isAuth) : undefined
-            })
 
-            await Promise.all(nodeContractAuthTasks)
+            await this._releaseContractAuth(batchContracts, partyTwoUserInfoMap, isTestAuth)
 
             for (let x = 0, y = releaseSchemes.length; x < y; x++) {
                 let {schemeId, resolveReleases} = releaseSchemes[x]
                 for (let m = 0, n = resolveReleases.length; m < n; m++) {
-                    let {releaseId, contracts} = resolveReleases[m]
-                    if (!authorizedReleaseSet.has(schemeId + releaseId) && contracts.some(m => contractMap.get(m.contractId).isAuth)) {
-                        authorizedReleaseSet.add(schemeId + releaseId)
+                    let {contracts} = resolveReleases[m]
+                    if (!authorizedReleaseSet.has(schemeId) && contracts.some(m => contractMap.get(m.contractId).isAuth)) {
+                        authorizedReleaseSet.add(schemeId)
                     }
                 }
             }
             index++
         }
 
-        const authFailedReleaseSchemes = releaseSchemes.filter(({schemeId, resolveReleases}) => resolveReleases.some(m => !authorizedReleaseSet.has(schemeId + m.releaseId)))
+        const authFailedReleaseSchemes = releaseSchemes.filter(({schemeId, resolveReleases}) => resolveReleases.some(m => !authorizedReleaseSet.has(schemeId)))
         if (authFailedReleaseSchemes.length) {
             returnAuthResult.authCode = authCodeEnum.ReleaseContractNotActive
             returnAuthResult.data.authFailedReleaseSchemes = authFailedReleaseSchemes
@@ -171,13 +214,11 @@ module.exports = class ReleaseContractAuthService extends Service {
      * @returns {*}
      * @private
      */
-    _getSchemePracticalUsedReleases(releaseSchemes, presentableAuthTree) {
-
-        const {authTree} = presentableAuthTree
+    _getSchemePracticalUsedReleases(releaseSchemes, getDependencyFromAuthTreeFunc) {
 
         releaseSchemes.forEach(releaseScheme => {
-            let {schemeId, resolveReleases} = releaseScheme
-            let dependencies = authTree.filter(({parentReleaseSchemeId}) => parentReleaseSchemeId === schemeId)
+            let {resolveReleases} = releaseScheme
+            let dependencies = getDependencyFromAuthTreeFunc(releaseScheme)
             releaseScheme.resolveReleases = lodash.intersectionBy(resolveReleases, dependencies, x => x.releaseId)
         })
 
@@ -206,6 +247,7 @@ module.exports = class ReleaseContractAuthService extends Service {
     async _filterAuthorisedSchemes(releaseSchemes, isFilterEmptyResolveReleases = true, isFilterCacheToken = true) {
 
         let lodashChain = lodash.chain(releaseSchemes)
+
         if (isFilterEmptyResolveReleases) {
             lodashChain = lodashChain.filter(x => x.resolveReleases.length)
         }
@@ -217,6 +259,8 @@ module.exports = class ReleaseContractAuthService extends Service {
             })
             lodashChain = lodashChain.differenceWith(authTokens, (schemeInfo, tokenInfo) => schemeInfo.schemeId === tokenInfo.targetId && schemeInfo.releaseId === tokenInfo.partyTwo)
         }
+
         return lodashChain.value()
     }
+
 }

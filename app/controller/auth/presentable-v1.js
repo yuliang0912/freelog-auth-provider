@@ -235,6 +235,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async batchPresentableNodeAndReleaseSideAuth(ctx) {
 
         const presentableIds = ctx.checkQuery('presentableIds').exist().isSplitMongoObjectId().toSplitArray().len(1, 100).value
+        ctx.request.userId = 50018
+        ctx.request.identityInfo.userInfo = {userId: 50018}
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const presentableInfos = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/list?presentableIds=${presentableIds.toString()}`)

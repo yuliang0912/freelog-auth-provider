@@ -20,26 +20,34 @@ module.exports = class NodeTestResourceAuthService extends Service {
 
         const {ctx} = this
         const {userInfo} = ctx.request.identityInfo
-        const {testResourceId, differenceInfo, nodeId} = testResourceInfo
+        const {testResourceId, differenceInfo, nodeId, resolveReleaseSignStatus} = testResourceInfo
         const {onlineStatusInfo} = differenceInfo
 
         if (!onlineStatusInfo.isOnline) {
-            return new commonAuthResult(authCodeEnum.TestResourceNotOnline)
+            return new commonAuthResult(authCodeEnum.NodeTestResourceNotOnline)
+        }
+        if (resolveReleaseSignStatus === 2) { //未完成签约
+            return new commonAuthResult(authCodeEnum.NodeTestResourceNotCompleteSignContract)
         }
 
         const nodeInfoTask = ctx.curlIntranetApi(`${ctx.webApi.nodeInfo}/${nodeId}`)
         const testResourceAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}/authTree`)
         const [nodeInfo, testResourceAuthTree] = await Promise.all([nodeInfoTask, testResourceAuthTreeTask])
+        const {authTree} = testResourceAuthTree
 
         if (nodeInfo.ownerUserId !== userInfo.userId) {
             return new commonAuthResult(authCodeEnum.UserUnauthorized)
         }
 
-        const {authTree} = testResourceAuthTree
+        // if (subEntityId && subEntityVersion && !authTree.some(x => x.id === subEntityId && x.version === subEntityVersion)) {
+        //     throw ApplicationError(ctx.gettext('params-validate-failed', 'subEntityId,subEntityVersion'))
+        // }
 
-        if (subEntityId && subEntityVersion && !authTree.some(x => x.id === subEntityId && x.version === subEntityVersion)) {
-            throw ApplicationError(ctx.gettext('params-validate-failed', 'subEntityId,subEntityVersion'))
-        }
+        const releaseSideAuthTask = ctx.service.releaseContractAuthService.testResourceReleaseSideAuth(testResourceAuthTree)
+        const nodeSideAuthTask = ctx.service.nodeContractAuthService.testResourceNodeSideAuth(testResourceInfo, nodeInfo, userInfo)
+
+        const [nodeSideAuthResult, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
+        return nodeSideAuthResult.isAuth ? releaseSideAuthResult : nodeSideAuthResult
     }
 
 

@@ -33,6 +33,8 @@ module.exports = app => {
     router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease', presentableV1.presentableSubReleaseAuth)
     router.get('presentable-auth-ext', '/v1/auths/presentables/:presentableId.:extName', presentableV1.presentableAuth)
     router.get('presentable-auth', '/v1/auths/presentables/:presentableId', presentableV1.presentableAuth)
+    router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId.:extName', testNodeV1.testResourceAuth)
+    router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId', testNodeV1.testResourceAuth)
 
     router.resources('contract-info', '/v1/contracts', contract.v1)
 };

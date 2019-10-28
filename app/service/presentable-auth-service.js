@@ -83,7 +83,7 @@ module.exports = class PresentableAuthService extends Service {
             throw new ApplicationError('参数错误', {presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo})
         }
 
-        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
+        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableAuthTree)
         const nodeSideAuthTask = ctx.service.nodeContractAuthService.presentableNodeSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
 
         const [nodeSideAuthResult, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
@@ -107,7 +107,7 @@ module.exports = class PresentableAuthService extends Service {
         const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         const [nodeInfo, presentableAuthTree] = await Promise.all([nodeInfoTask, presentableAuthTreeTask])
 
-        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableInfo, presentableAuthTree)
+        const releaseSideAuthTask = ctx.service.releaseContractAuthService.presentableReleaseSideAuth(presentableAuthTree)
         const nodeSideAuthTask = ctx.service.nodeContractAuthService.nodeResolveReleaseContractSketch(presentableInfo, presentableAuthTree, nodeInfo, userInfo)
 
         //节点侧直接返回每个合同的授权结果,发行的方案侧直接返回方案的授权结果(不具体到每个合约)

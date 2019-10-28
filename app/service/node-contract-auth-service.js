@@ -38,6 +38,7 @@ module.exports = class NodeContractAuthService extends Service {
         const practicalUsedReleases = this._getPresentablePracticalUsedReleases(presentableInfo, presentableAuthTree)
         const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().filter(x => x.contractId).map(x => x.contractId).value()
         if (!allNodeContractIds.length) {
+            nodeResolveReleasesAuthResult.authCode = authCodeEnum.BasedOnDefaultAuth
             return nodeResolveReleasesAuthResult
         }
 
@@ -64,17 +65,14 @@ module.exports = class NodeContractAuthService extends Service {
      * @param nodeUserInfo
      * @returns {Promise<void>}
      */
-    async testResourceNodeSideAuth(testResourceInfo, testResourceAuthTree, nodeInfo, nodeUserInfo) {
+    async testResourceNodeSideAuth(testResourceInfo, nodeInfo, nodeUserInfo) {
 
-        const {authTree} = testResourceAuthTree
+        const {resolveReleases} = testResourceInfo
         const nodeResolveReleasesAuthResult = new commonAuthResult(authCodeEnum.BasedOnNodeContract)
-        //测试授权中,如果是自己的mock或者发行,则自动获得授权.不需要额外走一次合约授权
-        const masterReleaseDependReleaseSet = new Set(authTree.filter(x => x.deep === 1 && x.type === 'release' && x.userId !== nodeUserInfo.userId).map(x => x.id))
-        //实际使用过程中用到的发行,如果上抛了,但是没有使用,则忽略其授权状态
-        const practicalUsedReleases = testResourceInfo.resolveReleases.filter(x => masterReleaseDependReleaseSet.has(x.releaseId))
-        const allNodeContractIds = lodash.chain(practicalUsedReleases).map(({contracts}) => contracts).flattenDeep().filter(x => x.contractId).map(x => x.contractId).value()
 
+        const allNodeContractIds = lodash.chain(resolveReleases).map(({contracts}) => contracts).flattenDeep().filter(x => x.contractId).map(x => x.contractId).value()
         if (!allNodeContractIds.length) {
+            nodeResolveReleasesAuthResult.authCode = authCodeEnum.BasedOnDefaultAuth
             return nodeResolveReleasesAuthResult
         }
 
@@ -82,7 +80,7 @@ module.exports = class NodeContractAuthService extends Service {
 
         await this._nodeResolveReleaseContractTestAuth(nodeInfo, nodeUserInfo, Array.from(contractMap.values()))
 
-        const authFailedNodeReleases = lodash.chain(practicalUsedReleases).filter(({contracts}) => !contracts.some(m => contractMap.get(m.contractId).isAuth)).value()
+        const authFailedNodeReleases = lodash.chain(resolveReleases).filter(({contracts}) => !contracts.some(m => contractMap.get(m.contractId).isAuth)).value()
         if (authFailedNodeReleases.length) {
             nodeResolveReleasesAuthResult.data = authFailedNodeReleases
             nodeResolveReleasesAuthResult.authCode = authCodeEnum.NodeContractNotActive
@@ -146,7 +144,7 @@ module.exports = class NodeContractAuthService extends Service {
      */
     async _nodeResolveReleaseContractTestAuth(nodeInfo, nodeUserInfo, contracts) {
 
-        const {ctx, authService} = this
+        const {authService} = this
         const nodeContractAuthTasks = contracts.map(contract => {
             let params = {contract, partyTwoInfo: nodeInfo, partyTwoUserInfo: nodeUserInfo}
             return authService.contractTestAuthorization(params).then(authResult => {

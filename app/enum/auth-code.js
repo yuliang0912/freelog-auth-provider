@@ -36,6 +36,11 @@ module.exports = Object.freeze({
     BasedOnNodePolicy: 205,
 
     /**
+     * 默认授权,例如发行没有解决的合约,则默认返回此值
+     */
+    BasedOnDefaultAuth: 206,
+
+    /**
      * 基于个人用户认证 (内部使用的错误码)
      */
     BasedOnIndividuals: 261,
@@ -134,7 +139,12 @@ module.exports = Object.freeze({
     /**
      * 测试资源未上线
      */
-    TestResourceNotOnline: 450,
+    NodeTestResourceNotOnline: 450,
+
+    /**
+     * 测试资源未完成全部签约
+     */
+    NodeTestResourceNotCompleteSignContract: 451,
 
     /**
      * 用户合同未激活
