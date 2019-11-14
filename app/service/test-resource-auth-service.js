@@ -87,7 +87,7 @@ module.exports = class NodeTestResourceAuthService extends Service {
 
         const {ctx} = this
 
-        return ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}/subDependencies?maxDeep=${maxDeep}&${entityNid ? 'entityNid=' + entityNid : ''}`)
+        return ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}/dependencyTree?maxDeep=${maxDeep}&${entityNid ? 'entityNid=' + entityNid : ''}`)
     }
 }
 
