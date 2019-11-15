@@ -21,11 +21,23 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async testNodeReleaseAuth(ctx) {
 
         const nodeId = ctx.checkParams('nodeId').isInt().gt(0).value
-        const releaseName = ctx.checkQuery('releaseName').exist().isFullReleaseName().value
+        const releaseName = ctx.checkQuery('releaseName').optional().isFullReleaseName().value
+        const releaseId = ctx.checkQuery('releaseId').optional().isReleaseId().value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
-        const testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?releaseName=${releaseName}`)
+        if (!releaseId && !releaseName) {
+            throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'releaseId,releaseName'))
+        }
+
+        var getTestResourceUrl = `${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?`
+        if (releaseId) { //同时存在时,优先ID
+            getTestResourceUrl += `releaseId=${releaseId}`
+        }
+        else if (releaseName) {
+            getTestResourceUrl += `releaseName=${releaseName}`
+        }
+        const testResourceInfo = await ctx.curlIntranetApi(getTestResourceUrl)
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const {testResourceId, testResourceName} = testResourceInfo
