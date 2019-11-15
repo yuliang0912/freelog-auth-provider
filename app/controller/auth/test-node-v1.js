@@ -14,6 +14,29 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     }
 
     /**
+     * 根据发行名称获取指定节点中的测试资源
+     * @param ctx
+     * @returns {Promise<void>}
+     */
+    async testNodeReleaseAuth(ctx) {
+
+        const nodeId = ctx.checkParams('nodeId').isInt().gt(0).value
+        const releaseName = ctx.checkQuery('releaseName').exist().isFullReleaseName().value
+        const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
+        ctx.validateParams().validateVisitorIdentity(LoginUser)
+
+        const testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?releaseName=${releaseName}`)
+        ctx.entityNullObjectCheck(testResourceInfo)
+
+        const {testResourceId, testResourceName} = testResourceInfo
+        const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
+        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId)
+        responseResourceInfo.name = testResourceName
+
+        await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
+    }
+
+    /**
      * 测试资源授权
      * @param ctx
      * @returns {Promise<void>}
@@ -28,42 +51,16 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
-        if (!authResult.isAuth) {
-            authResult.data.testResourceInfo = testResourceInfo
-        }
-
         const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId)
+        responseResourceInfo.name = testResourceInfo['testResourceName']
 
-        await this._responseSubDependToHeader(responseResourceInfo.dependencies, responseResourceInfo.nid)
-
-        if (extName === 'auth') {
-            return ctx.success(authResult)
-        }
-        if (!authResult.isAuth) {
-            throw new AuthorizationError(ctx.gettext('test-resource-authorization-failed'), {
-                authCode: authResult.authCode, authResult
-            })
-        }
-        if (extName === 'info') {
-            return ctx.success(testResourceInfo)
-        }
-
-        const {testResourceName} = testResourceInfo
-
-        await this._responseResourceFile(responseResourceInfo.resourceId || responseResourceInfo.id, responseResourceInfo.type, testResourceName)
+        await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
     }
 
     /**
      * 测试资源子级依赖授权
      * @param ctx
      * @returns {Promise<void>}
-     */
-    /**
-     * TODO: 2019-11-8重新讨论整理的授权逻辑:
-     * 直接请求测试资源主体文件时,验证整体授权树是否通过即可.
-     * 请求子资源时,先验证子资源是否在依赖树中存在(存在替换的需要做逻辑运算匹配),然后再验证整个授权树.
-     * 依赖树的每个节点会单独分配一个唯一的ID,用于确定唯一性(请求子资源时,则传入这个ID参数),系统根据ID来确定依赖以及依赖的具体版本.用户无需传递版本信息
-     * 依赖树的节点唯一ID会在请求主体资源时,响应到headers中.告知releaseName与ID的映射关系
      */
     async testResourceSubDependAuth(ctx) {
 
@@ -88,12 +85,33 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }
 
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
+
+        await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
+    }
+
+    /**
+     * 响应授权结果
+     * @param authResult
+     * @param responseResourceInfo
+     * @param extName
+     * @returns {Promise<*>}
+     * @private
+     */
+    async _responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName) {
+
+        const {ctx} = this, responseDependencies = []
+        const {dependencies, nid} = responseResourceInfo
+        for (let i = 0; i < dependencies.length; i++) {
+            let {replaceRecords = []} = dependencies[i]
+            let result = replaceRecords.length ? replaceRecords[0] : dependencies[i]
+            responseDependencies.push(lodash.pick(result, ['id', 'name', 'type']))
+        }
+        ctx.set('freelog-entity-nid', nid)
+        ctx.set('freelog-sub-dependencies', cryptoHelper.base64Encode(JSON.stringify(responseDependencies)))
+
         if (!authResult.isAuth) {
             authResult.data.testResourceInfo = testResourceInfo
         }
-
-        await this._responseSubDependToHeader(responseResourceInfo.dependencies, responseResourceInfo.nid)
-
         if (extName === 'auth') {
             return ctx.success(authResult)
         }
@@ -107,25 +125,6 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         }
 
         await this._responseResourceFile(responseResourceInfo.resourceId || responseResourceInfo.id, responseResourceInfo.type, responseResourceInfo.name)
-    }
-
-    /**
-     * 响应依赖发行到http-header
-     * @param presentableId
-     * @param subReleaseId
-     * @param subReleaseVersion
-     * @returns {Promise<void>}
-     * @private
-     */
-    async _responseSubDependToHeader(subDependencies, entityNid) {
-        const {ctx} = this, responseDependencies = []
-        for (let i = 0; i < subDependencies.length; i++) {
-            let {replaceRecords = []} = subDependencies[i]
-            let result = replaceRecords.length ? replaceRecords[0] : subDependencies[i]
-            responseDependencies.push(lodash.pick(result, ['id', 'name', 'type']))
-        }
-        ctx.set('freelog-entity-nid', entityNid)
-        ctx.set('freelog-sub-dependencies', cryptoHelper.base64Encode(JSON.stringify(responseDependencies)))
     }
 
     /**
