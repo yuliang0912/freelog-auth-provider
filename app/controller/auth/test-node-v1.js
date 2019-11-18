@@ -116,7 +116,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         for (let i = 0; i < dependencies.length; i++) {
             let {replaceRecords = []} = dependencies[i]
             let result = replaceRecords.length ? replaceRecords[0] : dependencies[i]
-            responseDependencies.push(lodash.pick(result, ['id', 'name', 'type']))
+            responseDependencies.push(lodash.pick(result, ['id', 'name', 'type', 'resourceType']))
         }
         ctx.set('freelog-entity-nid', nid)
         ctx.set('freelog-sub-dependencies', cryptoHelper.base64Encode(JSON.stringify(responseDependencies)))
