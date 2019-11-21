@@ -29,7 +29,7 @@ module.exports = class PresentableGenerateAuthInfoEventHandler {
         }
 
         //此处的resolveReleases应该是确定的版本.由节点服务处理好发送过来
-        const {presentableId, releaseInfo, resolveReleases} = presentableInfo
+        const {releaseInfo, resolveReleases} = presentableInfo
 
         if (lodash.isEmpty(resolveReleases) || resolveReleases.some(x => !x.contracts.length || x.contracts.some(m => !m.contractId))) {
             console.log('presentable-generate-auth-info-event-handler:异常的数据', ...arguments)

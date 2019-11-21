@@ -26,17 +26,22 @@ module.exports = app => {
     router.get('presentable-node-and-release-side-auth-sketch', '/v1/auths/presentables/:presentableId/nodeAndReleaseSideAuthSketch', presentableV1.presentableNodeAndReleaseSideAuthSketch)
 
     //以下六个路由不能随意调换顺序
+    //发行授权
     router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', releaseV1.releaseAuth)
     router.get('release-auth', '/v1/auths/releases/:releaseId', releaseV1.releaseAuth)
-    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId.:extName', presentableV1.presentableSubReleaseAuth)
-    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease/:subReleaseId', presentableV1.presentableSubReleaseAuth)
-    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subRelease', presentableV1.presentableSubReleaseAuth)
+    //presentable子依赖授权
+    router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subDepend.:extName', presentableV1.presentableSubReleaseAuth)
+    router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subDepend', presentableV1.presentableSubReleaseAuth)
+    //presentable主发行授权
     router.get('presentable-auth-ext', '/v1/auths/presentables/:presentableId.:extName', presentableV1.presentableAuth)
     router.get('presentable-auth', '/v1/auths/presentables/:presentableId', presentableV1.presentableAuth)
+    //测试资源通过发行名称授权
     router.get('node-test-resource-auth', '/v1/auths/:nodeId/testResources/release.:extName', testNodeV1.testNodeReleaseAuth)
     router.get('node-test-resource-auth', '/v1/auths/:nodeId/testResources/release', testNodeV1.testNodeReleaseAuth)
+    //测试资源子依赖授权
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId/subDepend.:extName', testNodeV1.testResourceSubDependAuth)
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId/subDepend', testNodeV1.testResourceSubDependAuth)
+    //测试资源主引用授权
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId.:extName', testNodeV1.testResourceAuth)
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId', testNodeV1.testResourceAuth)
 

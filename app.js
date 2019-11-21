@@ -1,8 +1,12 @@
 'use strict'
 
-module.exports = (app) => {
+module.exports = class AppBootHook {
 
-    app.beforeStart(async () => {
-        await app.rabbitClient.connect()
-    })
+    constructor(app) {
+        this.app = app;
+    }
+
+    async willReady() {
+        await this.app.rabbitClient.connect()
+    }
 }

@@ -29,31 +29,12 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(presentableInfo)
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
-        if (!authResult.isAuth) {
-            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
-        }
 
-        await this._responseSubDependToHeader(presentableId)
+        const entityNid = presentableId.substr(0, 12)
+        const responseResourceInfo = await ctx.service.presentableAuthService.getRealResponseReleaseInfo(presentableId, entityNid)
+        responseResourceInfo.releaseName = presentableInfo['presentableName']
 
-        if (extName === 'auth') {
-            return ctx.success(authResult)
-        }
-        if (!authResult.isAuth) {
-            throw new AuthorizationError(ctx.gettext('presentable-authorization-failed'), {
-                authCode: authResult.authCode, authResult
-            })
-        }
-        if (extName === 'info') {
-            return ctx.success(presentableInfo)
-        }
-        const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${presentableInfo.releaseInfo.releaseId}`)
-        if (extName === 'release') {
-            return ctx.success(releaseInfo)
-        }
-
-        const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === presentableInfo.releaseInfo.version)
-
-        await this._responseResourceFile(resourceVersion.resourceId, presentableId)
+        await this._responseAuthResult(presentableInfo, authResult, responseResourceInfo, extName)
     }
 
     /**
@@ -64,9 +45,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async presentableSubReleaseAuth(ctx) {
 
         const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
-        const subReleaseId = ctx.checkParams('subReleaseId').optional().isReleaseId().value
+        const entityNid = ctx.checkQuery('entityNid').exist().type('string').len(12, 12).value
+        const subReleaseId = ctx.checkQuery('subReleaseId').optional().isReleaseId().value
         const subReleaseName = ctx.checkQuery('subReleaseName').optional().isFullReleaseName().value
-        const version = ctx.checkQuery('version').exist().is(semver.valid, ctx.gettext('params-format-validate-failed', 'version')).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
@@ -77,38 +58,14 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
         ctx.entityNullObjectCheck(presentableInfo)
 
-        const subReleaseInfo = subReleaseId ?
-            await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${subReleaseId}`) :
-            await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/detail?releaseName=${subReleaseName}`)
-
-        ctx.entityNullObjectCheck(subReleaseInfo)
-
-        const resourceVersion = subReleaseInfo.resourceVersions.find(x => x.version === version)
-        if (!resourceVersion) {
-            throw new ArgumentError(ctx.gettext('params-validate-failed', 'version'))
+        const responseResourceInfo = await ctx.service.presentableAuthService.getRealResponseReleaseInfo(presentableId, entityNid, subReleaseId, subReleaseName)
+        if (!responseResourceInfo) {
+            throw new ArgumentError(ctx.gettext('params-relevance-validate-failed', 'presentableId,entityNid,subReleaseId,subReleaseName'))
         }
 
-        const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo, subReleaseInfo, version)
-        if (extName === 'auth') {
-            await this._responseSubDependToHeader(presentableId)
-            return ctx.success(authResult)
-        }
-        if (!authResult.isAuth) {
-            authResult.data = Object.assign(authResult.data || {}, {
-                presentableInfo: lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
-            })
-            throw new AuthorizationError(ctx.gettext('presentable-authorization-failed'), {
-                authCode: authResult.authCode, authResult
-            })
-        }
-        if (extName === 'info') {
-            return ctx.success(subReleaseInfo)
-        }
+        const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
 
-        const subDependTask = this._responseSubDependToHeader(presentableId)
-        const responseResourceTask = this._responseResourceFile(resourceVersion.resourceId)
-
-        await Promise.all([subDependTask, responseResourceTask])
+        await this._responseAuthResult(presentableInfo, authResult, responseResourceInfo, extName)
     }
 
     /**
@@ -163,9 +120,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             return ctx.success(releaseInfo)
         }
 
-        const resourceVersion = releaseInfo.resourceVersions.find(x => x.version === version)
+        const resourceVersion = releaseInfo['resourceVersions'].find(x => x.version === version)
 
-        await this._responseResourceFile(resourceVersion.resourceId, releaseId)
+        await this._responseResourceFile(resourceVersion.resourceId, releaseInfo.releaseName)
     }
 
     /**
@@ -347,21 +304,62 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      * @returns {Promise<void>}
      * @private
      */
-    async _responseSubDependToHeader(presentableId, subReleaseId, subReleaseVersion) {
+    // async _responseSubDependToHeader(presentableId, subReleaseId, subReleaseVersion) {
+    //
+    //     const {ctx} = this
+    //     let url = `${ctx.webApi.presentableInfo}/${presentableId}/dependencyTree`
+    //     if (subReleaseId && subReleaseVersion) {
+    //         url += `?subReleaseId=${subReleaseId}&subReleaseVersion=${subReleaseVersion}`
+    //     }
+    //
+    //     const subDependencies = await ctx.curlIntranetApi(url).then(list => {
+    //         return list.map(item => Object({
+    //             v: item.version, id: item.releaseId, n: item.releaseName
+    //         }))
+    //     })
+    //
+    //     //ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
+    //     ctx.set('freelog-sub-releases', cryptoHelper.base64Encode(JSON.stringify(subDependencies)))
+    // }
+
+    /**
+     * 响应授权结果
+     * @param presentableInfo
+     * @param authResult
+     * @param responseResourceInfo
+     * @param extName
+     * @returns {Promise<*>}
+     * @private
+     */
+    async _responseAuthResult(presentableInfo, authResult, responseResourceInfo, extName) {
 
         const {ctx} = this
-        let url = `${ctx.webApi.presentableInfo}/${presentableId}/subDependencies`
-        if (subReleaseId && subReleaseVersion) {
-            url += `?subReleaseId=${subReleaseId}&subReleaseVersion=${subReleaseVersion}`
+        const responseDependencies = responseResourceInfo.dependencies.map(x => Object({
+            id: x.releaseId, name: x.releaseName, type: 'release', resourceType: x.resourceType
+        }))
+
+        ctx.set('freelog-entity-nid', responseResourceInfo['nid'])
+        ctx.set('freelog-sub-dependencies', cryptoHelper.base64Encode(JSON.stringify(responseDependencies)))
+
+        if (!authResult.isAuth) {
+            authResult.data.presentableInfo = lodash.pick(presentableInfo, ["presentableId", "presentableName", "intro", "nodeId", "policies", "releaseInfo"])
+        }
+        if (extName === 'auth') {
+            return ctx.success(authResult)
+        }
+        if (!authResult.isAuth) {
+            throw new AuthorizationError(ctx.gettext('test-resource-authorization-failed'), {
+                authCode: authResult.authCode, authResult
+            })
+        }
+        if (extName === 'info') {
+            return ctx.success(presentableInfo)
+        }
+        if (extName === 'release') {
+            const releaseInfo = await ctx.curlIntranetApi(`${ctx.webApi.releaseInfo}/${presentableInfo.releaseInfo.releaseId}`)
+            return ctx.success(releaseInfo)
         }
 
-        const subDependencies = await ctx.curlIntranetApi(url).then(list => {
-            return list.map(item => Object({
-                v: item.version, id: item.releaseId, n: item.releaseName
-            }))
-        })
-
-        //ctx.set('freelog-sub-releases', subDependencies.map(({releaseId, version}) => `${releaseId}-${version}`).toString())
-        ctx.set('freelog-sub-releases', cryptoHelper.base64Encode(JSON.stringify(subDependencies)))
+        await this._responseResourceFile(responseResourceInfo.resourceId, responseResourceInfo.releaseName)
     }
 }

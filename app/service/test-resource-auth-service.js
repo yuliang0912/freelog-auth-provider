@@ -53,14 +53,22 @@ module.exports = class NodeTestResourceAuthService extends Service {
      */
     async getRealResponseTestResourceInfo(testResourceId, parentEntityNid, subEntityId, subEntityName, subEntityType) {
 
-        const dependencies = await this.getTestResourceDependencies(testResourceId, parentEntityNid, 2)
+        const dependencies = await this.getTestResourceDependencies(testResourceId, parentEntityNid, true, 3)
+        if (!dependencies.length) {
+            return null
+        }
+
+        const rootNodeInfo = dependencies[0]
+        if (!subEntityId && !subEntityName) {
+            return rootNodeInfo
+        }
 
         const filterFunc = (item, field, value) => {
             let targetInfo = lodash.isEmpty(item['replaceRecords']) ? item : item['replaceRecords'][0]
             return targetInfo[field].toLowerCase() === value.toLowerCase()
         }
 
-        var subDependencyChain = lodash.chain(dependencies)
+        var subDependencyChain = lodash.chain(rootNodeInfo.dependencies)
         if (subEntityId) {
             subDependencyChain = subDependencyChain.filter(x => filterFunc(x, 'id', subEntityId))
         }
@@ -69,10 +77,6 @@ module.exports = class NodeTestResourceAuthService extends Service {
         }
         if (subEntityType) {
             subDependencyChain = subDependencyChain.filter(x => filterFunc(x, 'type', subEntityType))
-        }
-        if (!parentEntityNid) {
-            let defaultRootNodeId = testResourceId.substr(0, 12)
-            subDependencyChain = subDependencyChain.filter(x => x.nid === defaultRootNodeId)
         }
         return subDependencyChain.first().value()
     }
@@ -83,11 +87,10 @@ module.exports = class NodeTestResourceAuthService extends Service {
      * @param entityNid
      * @returns {Promise<*>}
      */
-    async getTestResourceDependencies(testResourceId, entityNid, maxDeep = 100) {
+    async getTestResourceDependencies(testResourceId, entityNid, isContainRootNode = true, maxDeep = 100) {
 
         const {ctx} = this
-
-        return ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}/dependencyTree?maxDeep=${maxDeep}&${entityNid ? 'entityNid=' + entityNid : ''}`)
+        return ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}/dependencyTree?isContainRootNode=${isContainRootNode}&maxDeep=${maxDeep}&entityNid=${entityNid}`)
     }
 }
 

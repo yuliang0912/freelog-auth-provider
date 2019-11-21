@@ -20,7 +20,7 @@ module.exports = class PresentableAuthService extends Service {
      * @param subReleaseVersion 子依赖版本号
      * @returns {Promise<*>}
      */
-    async presentableAllChainAuth(presentableInfo, subReleaseInfo, subReleaseVersion) {
+    async presentableAllChainAuth(presentableInfo) {
 
         const {ctx} = this
         const {userInfo} = ctx.request.identityInfo
@@ -39,11 +39,6 @@ module.exports = class PresentableAuthService extends Service {
         const presentableAuthTreeTask = ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/authTree`)
         const nodeUserInfoTask = ctx.curlIntranetApi(`${ctx.webApi.userInfo}/${userId}`)
         const [nodeInfo, presentableAuthTree, nodeUserInfo] = await Promise.all([nodeInfoTask, presentableAuthTreeTask, nodeUserInfoTask])
-        const {authTree} = presentableAuthTree
-
-        if (subReleaseInfo && subReleaseVersion && !authTree.some(x => x.releaseId === subReleaseInfo.releaseId && x.version === subReleaseVersion)) {
-            throw ApplicationError(ctx.gettext('params-validate-failed', 'subReleaseId,subReleaseVersion'))
-        }
 
         return this.presentableNodeAndReleaseSideAuth(presentableInfo, presentableAuthTree, nodeInfo, nodeUserInfo)
     }
@@ -115,7 +110,7 @@ module.exports = class PresentableAuthService extends Service {
         const [nodeResolveReleasesSketch, releaseSideAuthResult] = await Promise.all([nodeSideAuthTask, releaseSideAuthTask])
 
         const recursion = (parentSchemeId = '', deep = 1) => {
-            return lodash.chain(authTree).filter(x => x.parentReleaseSchemeId === parentSchemeId && x.deep === deep)
+            return lodash.chain(authTree).filter(x => x['parentReleaseSchemeId'] === parentSchemeId && x.deep === deep)
                 .groupBy(x => x.releaseId).values().map(getReleaseVersionAuthInfo).value()
         }
 
@@ -135,5 +130,46 @@ module.exports = class PresentableAuthService extends Service {
         }
 
         return recursion()
+    }
+
+    /**
+     * 获取presentable依赖树
+     * @param testResourceId
+     * @param entityNid
+     * @param isContainRootNode
+     * @param maxDeep
+     * @returns {Promise<*>}
+     */
+    async getPresentableDependencies(presentableId, entityNid, isContainRootNode = true, maxDeep = 100) {
+        const {ctx} = this
+        return ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}/dependencyTree?isContainRootNode=${isContainRootNode}&maxDeep=${maxDeep}&entityNid=${entityNid}`)
+    }
+
+    /**
+     * 获取真实响应的实体(依赖可能被替换了,此时需要响应被替换过的,但是参数传入还是原始的ID或名称)
+     * @param dependencies
+     * @param subEntityId
+     * @param subEntityName
+     */
+    async getRealResponseReleaseInfo(presentableId, parentEntityNid, subReleaseId, subReleaseName) {
+
+        const dependencies = await this.getPresentableDependencies(presentableId, parentEntityNid, true, 3)
+        if (!dependencies.length) {
+            return null
+        }
+
+        const rootNodeInfo = dependencies[0]
+        if (!subReleaseId && !subReleaseName) {
+            return rootNodeInfo
+        }
+
+        var subDependencyChain = lodash.chain(rootNodeInfo.dependencies)
+        if (subReleaseId) {
+            subDependencyChain = subDependencyChain.filter(x => x.releaseId === subReleaseId)
+        }
+        if (subReleaseName) {
+            subDependencyChain = subDependencyChain.filter(x => x.releaseName.toUpperCase() === subReleaseName.toUpperCase())
+        }
+        return subDependencyChain.first().value()
     }
 }

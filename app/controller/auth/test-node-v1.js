@@ -41,8 +41,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const {testResourceId, testResourceName} = testResourceInfo
+        const entityNid = testResourceId.substr(0, 12)
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
-        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId)
+        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId, entityNid)
         responseResourceInfo.name = testResourceName
 
         await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
@@ -63,7 +64,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
-        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId)
+        const entityNid = testResourceId.substr(0, 12)
+        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId, entityNid)
         responseResourceInfo.name = testResourceInfo['testResourceName']
 
         await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)

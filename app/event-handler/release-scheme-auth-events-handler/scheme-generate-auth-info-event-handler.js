@@ -29,7 +29,7 @@ module.exports = class SchemeGenerateAuthInfoEventHandler {
             return
         }
 
-        const {schemeId, resourceId, version} = schemeInfo
+        const {schemeId, resourceId} = schemeInfo
         if (schemeAuthTree.some(x => !x.contracts.length || x.contracts.some(m => !m.contractId))) {
             console.log('scheme-created-event-handler:异常的数据,无合约信息', JSON.stringify(schemeAuthTree))
             return
