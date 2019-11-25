@@ -21,11 +21,25 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async presentableAuth(ctx) {
 
-        const presentableId = ctx.checkParams('presentableId').exist().isPresentableId().value
+        const presentableId = ctx.checkParams('presentableId').optional().isPresentableId().value
+        const releaseName = ctx.checkQuery('releaseName').optional().isFullReleaseName().value
+        const releaseId = ctx.checkQuery('releaseId').optional().isReleaseId().value
+        const nodeId = ctx.checkParams('nodeId').optional().isInt().gt(0).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'release', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
-        const presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        if (!presentableId && (!releaseId || !releaseName)) {
+            throw new ArgumentError("params-required-validate-failed", 'releaseId,releaseName')
+        }
+
+        var presentableInfo = null
+        if (presentableId) {
+            presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/${presentableId}`)
+        } else if (releaseId) {
+            presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/detail?nodeId=${nodeId}&releaseId=${releaseId}`)
+        } else if (releaseName) {
+            presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/detail?nodeId=${nodeId}&releaseName=${releaseName}`)
+        }
         ctx.entityNullObjectCheck(presentableInfo)
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)

@@ -12,43 +12,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         super(...arguments)
         this.contractProvider = app.dal.contractProvider
     }
-
-    /**
-     * 根据发行名称获取指定节点中的测试资源
-     * @param ctx
-     * @returns {Promise<void>}
-     */
-    async testNodeReleaseAuth(ctx) {
-
-        const nodeId = ctx.checkParams('nodeId').isInt().gt(0).value
-        const releaseName = ctx.checkQuery('releaseName').optional().isFullReleaseName().value
-        const releaseId = ctx.checkQuery('releaseId').optional().isReleaseId().value
-        const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
-        ctx.validateParams().validateVisitorIdentity(LoginUser)
-
-        if (!releaseId && !releaseName) {
-            throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'releaseId,releaseName'))
-        }
-        
-        var getTestResourceUrl = `${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?`
-        if (releaseId) { //同时存在时,优先ID
-            getTestResourceUrl += `releaseId=${releaseId}`
-        }
-        else if (releaseName) {
-            getTestResourceUrl += `releaseName=${releaseName}`
-        }
-        const testResourceInfo = await ctx.curlIntranetApi(getTestResourceUrl)
-        ctx.entityNullObjectCheck(testResourceInfo)
-
-        const {testResourceId, testResourceName} = testResourceInfo
-        const entityNid = testResourceId.substr(0, 12)
-        const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
-        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId, entityNid)
-        responseResourceInfo.name = testResourceName
-
-        await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
-    }
-
+    
     /**
      * 测试资源授权
      * @param ctx
@@ -57,10 +21,24 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
     async testResourceAuth(ctx) {
 
         const testResourceId = ctx.checkParams('testResourceId').exist().isMd5().value
+        const releaseName = ctx.checkQuery('releaseName').optional().isFullReleaseName().value
+        const releaseId = ctx.checkQuery('releaseId').optional().isReleaseId().value
+        const nodeId = ctx.checkParams('nodeId').optional().isInt().gt(0).value
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
-        const testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}`)
+        if (!testResourceId && (!releaseId || !releaseName)) {
+            throw new ArgumentError("params-required-validate-failed", 'releaseId,releaseName')
+        }
+
+        var testResourceInfo = null
+        if (testResourceId) {
+            testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/testResources/${testResourceId}`)
+        } else if (releaseId) {
+            testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?releaseId=${releaseId}`)
+        } else if (releaseName) {
+            testResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?releaseName=${releaseName}`)
+        }
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
