@@ -44,6 +44,9 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
         const entityNid = testResourceInfo['testResourceId'].substr(0, 12)
         const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceInfo['testResourceId'], entityNid)
+        if (!responseResourceInfo) {
+            throw new ApplicationError('请重新匹配规则,待响应的实体信息不存在')
+        }
         responseResourceInfo.name = testResourceInfo['testResourceName']
 
         await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
@@ -128,11 +131,14 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
      */
     async _responseResourceFile(id, type, filename) {
 
-        const {ctx, app} = this
-        const url = type === "mock" ?
-            `${ctx.webApi.resourceInfo}/mocks/${id}/signedMockResourceInfo` : `${ctx.webApi.resourceInfo}/${id}/signedResourceInfo`
+        var {ctx, app} = this
+        var signedResourceInfo = null
+        if (type === 'mock') {
+            signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/mocks/${id}/signedMockResourceInfo`)
+        } else {
+            signedResourceInfo = await ctx.curlIntranetApi(`${ctx.webApi.resourceInfo}/${id}/signedResourceInfo`)
+        }
 
-        const signedResourceInfo = await ctx.curlIntranetApi(url)
         const {meta = {}, systemMeta, resourceType, resourceFileUrl} = signedResourceInfo
 
         ctx.set('freelog-resource-type', resourceType)

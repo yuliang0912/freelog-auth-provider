@@ -54,6 +54,7 @@ module.exports = class NodeTestResourceAuthService extends Service {
     async getRealResponseTestResourceInfo(testResourceId, parentEntityNid, subEntityId, subEntityName, subEntityType) {
 
         const dependencies = await this.getTestResourceDependencies(testResourceId, parentEntityNid, true, 3)
+
         if (!dependencies.length) {
             return null
         }

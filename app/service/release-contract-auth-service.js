@@ -44,7 +44,7 @@ module.exports = class ReleaseContractAuthService extends Service {
             let dependencies = authTree.filter(({parentReleaseSchemeId}) => parentReleaseSchemeId === schemeId)
             releaseScheme.resolveReleases = lodash.intersectionBy(resolveReleases, dependencies, x => x.releaseId)
         })
-        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
+        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(x => x.contracts).flattenDeep().map(x => x.contractId).uniq().value()
         if (!allSchemeContractIds.length) {
             return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
         }
@@ -91,7 +91,7 @@ module.exports = class ReleaseContractAuthService extends Service {
             releaseScheme.resolveReleases = lodash.intersectionWith(resolveReleases, dependencies, (x, y) => x.releaseId === y.id)
         })
 
-        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
+        const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(x => x.contracts).flattenDeep().map(x => x.contractId).uniq().value()
         if (!allSchemeContractIds.length) {
             return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
         }
