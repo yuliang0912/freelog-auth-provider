@@ -28,7 +28,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'release', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser | UnLoginUser | InternalClient)
 
-        if (!presentableId && (!releaseId || !releaseName)) {
+        if (!presentableId && !releaseId && !releaseName) {
             throw new ArgumentError("params-required-validate-failed", 'releaseId,releaseName')
         }
 
@@ -44,8 +44,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
 
-        const entityNid = presentableId.substr(0, 12)
-        const responseResourceInfo = await ctx.service.presentableAuthService.getRealResponseReleaseInfo(presentableId, entityNid)
+        const entityNid = presentableInfo.presentableId.substr(0, 12)
+        const responseResourceInfo = await ctx.service.presentableAuthService.getRealResponseReleaseInfo(presentableInfo.presentableId, entityNid)
         responseResourceInfo.releaseName = presentableInfo['presentableName']
 
         await this._responseAuthResult(presentableInfo, authResult, responseResourceInfo, extName)

@@ -12,7 +12,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         super(...arguments)
         this.contractProvider = app.dal.contractProvider
     }
-    
+
     /**
      * 测试资源授权
      * @param ctx
@@ -27,7 +27,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         const extName = ctx.checkParams('extName').optional().type('string').in(['file', 'info', 'auth']).value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
-        if (!testResourceId && (!releaseId || !releaseName)) {
+        if (!testResourceId && !releaseId && !releaseName) {
             throw new ArgumentError("params-required-validate-failed", 'releaseId,releaseName')
         }
 
@@ -42,8 +42,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.entityNullObjectCheck(testResourceInfo)
 
         const authResult = await ctx.service.testResourceAuthService.testResourceAuth(testResourceInfo)
-        const entityNid = testResourceId.substr(0, 12)
-        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceId, entityNid)
+        const entityNid = testResourceInfo['testResourceId'].substr(0, 12)
+        const responseResourceInfo = await ctx.service.testResourceAuthService.getRealResponseTestResourceInfo(testResourceInfo['testResourceId'], entityNid)
         responseResourceInfo.name = testResourceInfo['testResourceName']
 
         await this._responseAuthResult(testResourceInfo, authResult, responseResourceInfo, extName)
