@@ -29,7 +29,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         if (!releaseId && !releaseName) {
             throw new ArgumentError(ctx.gettext('params-required-validate-failed', 'releaseId,releaseName'))
         }
-
+        
         var getTestResourceUrl = `${ctx.webApi.testNode}/${nodeId}/testResources/findByReleaseName?`
         if (releaseId) { //同时存在时,优先ID
             getTestResourceUrl += `releaseId=${releaseId}`

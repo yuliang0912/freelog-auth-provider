@@ -6,7 +6,7 @@
 
 module.exports = {
 
-    //gatewayUrl: 'https://api.freelog.com',
+    gatewayUrl: 'http://api.testfreelog.com',
 
     middleware: ['errorHandler', 'localUserIdentity'],
 
@@ -14,9 +14,9 @@ module.exports = {
     //     url: "mongodb://119.23.45.143:27017/auth"
     // },
 
-    // mongoose: {
-    //     url: "mongodb://119.23.45.143:27018/auth"
-    // },
+    mongoose: {
+        url: "mongodb://119.23.45.143:27018/auth"
+    },
 
     // rabbitMq: {
     //     connOptions: {
@@ -33,7 +33,7 @@ module.exports = {
      */
 
     localIdentity: {
-        userId: 50003,
+        userId: 50018,
         userName: "余亮",
         nickname: "烟雨落叶",
         email: "4896819@qq.com",

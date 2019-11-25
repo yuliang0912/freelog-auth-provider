@@ -92,6 +92,9 @@ module.exports = class ReleaseContractAuthService extends Service {
         })
 
         const allSchemeContractIds = lodash.chain(releaseSchemes).map(x => x.resolveReleases).flattenDeep().map(({contracts}) => contracts).flattenDeep().map(x => x.contractId).uniq().value()
+        if (!allSchemeContractIds.length) {
+            return new commonAuthResult(authCodeEnum.BasedOnReleaseContract)
+        }
 
         const contracts = await this.contractProvider.find({_id: {$in: allSchemeContractIds}})
         const userIds = lodash.chain(contracts).map(x => x.partyTwoUserId).uniq().value()

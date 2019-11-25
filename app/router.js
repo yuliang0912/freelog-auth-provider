@@ -29,6 +29,11 @@ module.exports = app => {
     //发行授权
     router.get('release-auth', '/v1/auths/releases/:releaseId.:extName', releaseV1.releaseAuth)
     router.get('release-auth', '/v1/auths/releases/:releaseId', releaseV1.releaseAuth)
+
+    //presentable授权
+    router.get('presentable-auth-ext', '/v1/auths/:nodeId/presentables/detail.:extName', presentableV1.presentableAuth)
+    router.get('presentable-auth-ext', '/v1/auths/:nodeId/presentables/detail', presentableV1.presentableAuth)
+
     //presentable子依赖授权
     router.get('presentable-sub-release-auth-ext', '/v1/auths/presentables/:presentableId/subDepend.:extName', presentableV1.presentableSubReleaseAuth)
     router.get('presentable-sub-release-auth', '/v1/auths/presentables/:presentableId/subDepend', presentableV1.presentableSubReleaseAuth)
@@ -44,6 +49,9 @@ module.exports = app => {
     //测试资源主引用授权
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId.:extName', testNodeV1.testResourceAuth)
     router.get('node-test-resource-auth', '/v1/auths/testResources/:testResourceId', testNodeV1.testResourceAuth)
+
+    // router.get('node-test-resource-auth', '/v1/auths/testResources/detail.:extName?releaseId=', testNodeV1.testResourceAuth)
+    // router.get('node-test-resource-auth', '/v1/auths/testResources/detail?releaseId=', testNodeV1.testResourceAuth)
 
     router.resources('contract-info', '/v1/contracts', contract.v1)
 };
