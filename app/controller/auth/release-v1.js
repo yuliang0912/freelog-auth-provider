@@ -95,5 +95,4 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.set('content-length', headers['content-length'])
         })
     }
-
 }
