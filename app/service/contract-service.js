@@ -57,7 +57,7 @@ module.exports = class ContractService extends Service {
                 partyTwo: partyTwoId,
                 policySegment: policyInfo,
                 nodeId: nodeInfo ? nodeInfo.nodeId : 0,
-                contractName: `${releaseName}-${policyInfo.policyName}`,
+                contractName: policyInfo.policyName,
                 policyId: policyInfo.policyId,
                 policyStatus: policyInfo.status
             }
