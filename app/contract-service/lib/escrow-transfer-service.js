@@ -23,6 +23,7 @@ module.exports = class EscrowTransferService {
         const {contractId, contractName, contractType} = contractInfo
         const fsmState = contractInfo.contractClause.currentFsmState
 
+
         const model = {
             tradeRecordId: uuid.v4().replace(/-/g, ''),
             contractId, contractName, contractType, fsmState, fromAccountId, toAccountId, eventId,
