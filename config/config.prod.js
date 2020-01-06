@@ -12,7 +12,7 @@ module.exports = {
 
     rabbitMq: {
         connOptions: {
-            host: 'rabbitmq-prod.common:27017',
+            host: 'rabbitmq-prod.common',
             port: 5672,
             login: 'prod_user_auth',
             password: 'rabbit@freelog',
