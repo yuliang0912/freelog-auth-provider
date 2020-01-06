@@ -27,7 +27,7 @@ module.exports = {
     //         authMechanism: 'AMQPLAIN'
     //     },
     // },
-    
+
     localIdentity: {
         userId: 50018,
         userName: "余亮",
