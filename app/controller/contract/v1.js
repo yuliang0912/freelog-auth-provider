@@ -30,7 +30,10 @@ module.exports = class ContractController extends Controller {
         const targetIds = ctx.checkQuery('targetIds').optional().isSplitMongoObjectId().toSplitArray().default([]).value
         const isDefault = ctx.checkQuery('isDefault').optional().toInt().in([0, 1]).value
         const keywords = ctx.checkQuery("keywords").optional().decodeURIComponent().value
+        const status = ctx.checkQuery('status').optional().in([2, 3, 4, 6]).value
+        const order = ctx.checkQuery('order').optional().in(['asc', 'desc']).default('desc').value
         const projection = ctx.checkQuery('projection').optional().toSplitArray().default([]).value
+
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const condition = {}
@@ -55,6 +58,9 @@ module.exports = class ContractController extends Controller {
         if (isDefault !== undefined) {
             condition.isDefault = isDefault
         }
+        if (status) {
+            condition.status = status
+        }
         if (lodash.isString(keywords)) {
             let searchRegExp = new RegExp(keywords, "i")
             if (mongoObjectId.test(keywords.toLowerCase())) {
@@ -67,7 +73,7 @@ module.exports = class ContractController extends Controller {
         var dataList = []
         const totalItem = await this.contractProvider.count(condition)
         if (totalItem > (page - 1) * pageSize) {
-            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projection.join(' '), {createDate: -1})
+            dataList = await this.contractProvider.findPageList(condition, page, pageSize, projection.join(' '), {createDate: order === 'asc' ? 1 : -1})
         }
         ctx.success({page, pageSize, totalItem, dataList})
     }
