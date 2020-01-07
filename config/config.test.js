@@ -18,8 +18,8 @@ module.exports = {
 
     rabbitMq: {
         connOptions: {
-            host: '112.74.140.101',
-            port: 5673,
+            host: 'rabbitmq-test.common',
+            port: 5672,
             login: 'test_user_auth',
             password: 'rabbit@freelog',
             authMechanism: 'AMQPLAIN'
