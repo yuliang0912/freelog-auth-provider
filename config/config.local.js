@@ -18,15 +18,15 @@ module.exports = {
     //     url: "mongodb://119.23.45.143:27018/auth"
     // },
 
-    // rabbitMq: {
-    //     connOptions: {
-    //         host: '119.23.45.143',
-    //         port: 5673,
-    //         login: 'test_user_auth',
-    //         password: 'rabbit@freelog',
-    //         authMechanism: 'AMQPLAIN'
-    //     },
-    // },
+    rabbitMq: {
+        connOptions: {
+            host: '112.74.140.101',
+            port: 5673,
+            login: 'test_user_auth',
+            password: 'rabbit@freelog',
+            authMechanism: 'AMQPLAIN'
+        },
+    },
 
     localIdentity: {
         userId: 50018,
