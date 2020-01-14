@@ -11,11 +11,7 @@ module.exports = {
     middleware: ['errorHandler', 'localUserIdentity'],
 
     // mongoose: {
-    //     url: "mongodb://119.23.45.143:27017/auth"
-    // },
-
-    // mongoose: {
-    //     url: "mongodb://119.23.45.143:27018/auth"
+    //     url: "mongodb://39.108.77.211:30772/auth"
     // },
 
     rabbitMq: {

@@ -111,10 +111,11 @@ module.exports = class ContractEventsController extends Controller {
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
         const userInfo = ctx.request.identityInfo.userInfo
-        const contractInfo = await this.contractProvider.findById(contractId).then(model => ctx.entityNullObjectCheck(model))
+        const contractInfo = await this.contractProvider.findById(contractId).tap(model => ctx.entityNullObjectCheck(model))
         if (contractInfo.isTerminate) {
             throw new ArgumentError(ctx.gettext('contract-has-already-terminated'))
         }
+
         const eventInfo = contractInfo.fsmEvents.find(x => x && x.eventId === eventId && x.currentState === contractInfo.contractClause.currentFsmState)
         if (!eventInfo) {
             throw new ArgumentError(ctx.gettext('params-validate-failed', 'eventId'), {eventId})

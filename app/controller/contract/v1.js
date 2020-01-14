@@ -264,7 +264,7 @@ module.exports = class ContractController extends Controller {
         const eventId = ctx.checkQuery('eventId').exist().value
         ctx.validateParams().validateVisitorIdentity(LoginUser)
 
-        const contractInfo = await this.contractProvider.findById(contractId).then(model => ctx.entityNullObjectCheck(model))
+        const contractInfo = await this.contractProvider.findById(contractId).tap(model => ctx.entityNullObjectCheck(model))
         const result = ctx.app.contractService.isCanExecEvent(contractInfo, eventId)
 
         ctx.success({contractInfo, eventId, isCanExec: result})
