@@ -167,17 +167,12 @@ module.exports = Object.freeze({
     UserContractTerminated: 504,
 
     /**
-     * 未找到有效的resource合约(用户尚未与资源签约或者合约已废弃)
-     */
-    //NotFoundUserResourceContract: 504,
-
-    /**
      * 未找到用户信息(未登陆或已注销)
      */
     UnLoginUser: 505,
 
     /**
-     * 登陆用户未获得授权
+     * 登陆用户未获得授权(目前主要用于限制测试节点只能节点所有者才能访问)
      */
     UserUnauthorized: 550,
 
