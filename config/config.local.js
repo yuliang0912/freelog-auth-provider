@@ -6,7 +6,7 @@
 
 module.exports = {
 
-    gatewayUrl: 'http://api.testfreelog.com',
+    //gatewayUrl: 'http://api.testfreelog.com',
 
     middleware: ['errorHandler', 'localUserIdentity'],
 
@@ -14,15 +14,15 @@ module.exports = {
     //     url: "mongodb://39.108.77.211:30772/auth"
     // },
 
-    rabbitMq: {
-        connOptions: {
-            host: '112.74.140.101',
-            port: 5673,
-            login: 'test_user_auth',
-            password: 'rabbit@freelog',
-            authMechanism: 'AMQPLAIN'
-        },
-    },
+    // rabbitMq: {
+    //     connOptions: {
+    //         host: '112.74.140.101',
+    //         port: 5673,
+    //         login: 'test_user_auth',
+    //         password: 'rabbit@freelog',
+    //         authMechanism: 'AMQPLAIN'
+    //     },
+    // },
 
     localIdentity: {
         userId: 50018,

@@ -40,6 +40,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         } else if (releaseName) {
             presentableInfo = await ctx.curlIntranetApi(`${ctx.webApi.presentableInfo}/detail?nodeId=${nodeId}&releaseName=${releaseName}`)
         }
+
         ctx.entityNullObjectCheck(presentableInfo)
 
         const authResult = await ctx.service.presentableAuthService.presentableAllChainAuth(presentableInfo)
@@ -279,6 +280,11 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
         ctx.set('freelog-meta', encodeURIComponent(JSON.stringify(meta)))
         ctx.set('freelog-system-meta', encodeURIComponent(JSON.stringify(lodash.omit(systemMeta, 'dependencies'))))
 
+        if (ctx.get('If-None-Match') === resourceId) {
+            ctx.status = 304
+            return
+        }
+
         await ctx.curl(resourceFileUrl, {streaming: true}).then(({status, headers, res}) => {
             if (status < 200 || status > 299) {
                 throw new ApplicationError(ctx.gettext('文件流读取失败'), {httpStatus: status})
@@ -288,6 +294,8 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.attachment(filename || aliasName)
             ctx.set('content-type', headers['content-type'])
             ctx.set('content-length', headers['content-length'])
+            ctx.set('Last-Modified', signedResourceInfo.createDate)
+            ctx.set('ETag', resourceId)
         })
 
         if (resourceType === app.resourceType.VIDEO || resourceType === app.resourceType.AUDIO) {

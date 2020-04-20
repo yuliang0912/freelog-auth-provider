@@ -40,6 +40,7 @@ module.exports = class ReleaseSchemeAuthChangedEventHandler {
         const {resourceVersions} = await app.curlIntranetApi(`${app.webApi.releaseInfo}/${releaseId}`)
         const releaseVersions = resourceVersions.map(x => x.version)
 
+
         //获取所有依赖此发行的方案集合.然后通过semver规则对比.过滤掉不符合的版本
         const allAssociatedReleaseSchemes = await this.releaseSchemeAuthRelationProvider.find({resolveReleaseId: releaseId})
         const needCalculateAuthReleaseSchemeIds = lodash.chain(allAssociatedReleaseSchemes).flatten().filter(item => {
