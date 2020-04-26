@@ -80,7 +80,7 @@ module.exports = class UserContractAuthService extends Service {
         const {presentableId, policies, nodeId} = presentableInfo
         const contractType = app.contractType.PresentableToUser
 
-        const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
+        const policySegments = policies.filter(x => x.status === 1).map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
 
         const policyAuthResult = await authService.policyAuthorization({
             policySegments, contractType,
@@ -117,7 +117,7 @@ module.exports = class UserContractAuthService extends Service {
         const {app, authService} = this
         const {policies, userId} = presentableInfo
 
-        const policySegments = policies.map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
+        const policySegments = policies.filter(x => x.status === 1).map(policyInfo => releasePolicyCompiler.compile(policyInfo.policyText))
 
         return authService.policyAuthorization({
             policySegments,
