@@ -124,6 +124,9 @@ module.exports = class ContractService extends Service {
         }
 
         const policySegment = policies.find(t => t.policyId === policyId)
+        if (!policySegment || policySegment.status !== 1) {
+            throw new ApplicationError(ctx.gettext('未找到有效的策略'))
+        }
         const authResult = await authService.policyIdentityAuthentication({
             policySegment, partyTwoUserInfo: userInfo,
             partyOneUserId: presentableInfo.userId,
