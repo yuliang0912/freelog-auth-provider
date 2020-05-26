@@ -51,7 +51,7 @@ module.exports = appInfo => {
             fieldNameSize: 100,
             fieldSize: '100kb',
             fields: 10,
-            fileSize: '100mb',
+            fileSize: '20mb', //还取决于nginx和apiGateway
             files: 10,
             fileExtensions: [],
             whitelist: (fileName) => true,

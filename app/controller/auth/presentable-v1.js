@@ -292,7 +292,7 @@ module.exports = class PresentableOrResourceAuthController extends Controller {
             ctx.body = res
             ctx.status = status
             ctx.attachment(filename || aliasName)
-            ctx.set('content-type', headers['content-type'])
+            ctx.set('content-type', systemMeta.mimeType)
             ctx.set('content-length', headers['content-length'])
             ctx.set('Last-Modified', signedResourceInfo.createDate)
             ctx.set('ETag', resourceId)

@@ -8,11 +8,11 @@ module.exports = {
 
     //gatewayUrl: 'http://api.testfreelog.com',
 
-    middleware: ['errorHandler', 'localUserIdentity'],
+    //middleware: ['errorHandler', 'localUserIdentity'],
 
-    // mongoose: {
-    //     url: "mongodb://39.108.77.211:30772/auth"
-    // },
+    mongoose: {
+        url: "mongodb://39.108.77.211:30772/auth"
+    },
 
     // rabbitMq: {
     //     connOptions: {
