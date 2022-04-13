@@ -10,7 +10,7 @@
     "@freelog/resource-policy-lang": "0.0.34",
     "ali-oss": "^6.4.0",
     "amqp": "^0.2.7",
-    "async": "^3.1.0",
+    "async": "^3.2.2",
     "bluebird": "^3.7.2",
     "egg": "^2.26.0",
     "egg-freelog-base": "^1.2.27",
